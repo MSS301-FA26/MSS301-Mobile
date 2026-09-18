@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_image.dart';
+import '../../../../shared/widgets/age_badge.dart';
 import '../../../movie/presentation/models/movie.dart';
 
 class ComingSoonCard extends StatelessWidget {
@@ -38,7 +39,17 @@ class ComingSoonCard extends StatelessWidget {
                 height: 128,
                 child: ClipRRect(
                   borderRadius: AppRadii.control,
-                  child: AppImage(asset: movie.posterAsset),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      AppImage(asset: movie.posterAsset),
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        child: AgeBadge(rating: movie.ageRating),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),

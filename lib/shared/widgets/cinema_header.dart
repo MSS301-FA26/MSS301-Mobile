@@ -17,11 +17,11 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       toolbarHeight: 64,
       automaticallyImplyLeading: false,
-      titleSpacing: 12,
+      titleSpacing: 10,
       title: Row(
         children: [
           const _BrandMark(),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: InkWell(
               onTap: () => showModalBottomSheet<void>(
@@ -67,21 +67,54 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
           ),
           IconButton(
             tooltip: 'Tìm kiếm',
-            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            padding: EdgeInsets.zero,
             onPressed: () => onUnavailable('Tìm kiếm'),
-            icon: const Icon(Icons.search, size: 23),
+            icon: const Icon(Icons.search, size: 22),
           ),
           IconButton(
             tooltip: 'Thông báo',
-            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            padding: EdgeInsets.zero,
             onPressed: () => onUnavailable('Thông báo'),
-            icon: const Icon(Icons.notifications_none, size: 23),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_none, size: 22),
+                Positioned(
+                  top: 1,
+                  right: 0,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: AppColors.gold,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.background),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           IconButton(
             tooltip: 'Tài khoản',
-            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            padding: EdgeInsets.zero,
             onPressed: () => onUnavailable('Tài khoản'),
-            icon: const Icon(Icons.account_circle_outlined, size: 23),
+            icon: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.person_outline,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
         ],
       ),

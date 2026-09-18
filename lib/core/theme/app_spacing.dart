@@ -11,7 +11,8 @@ abstract final class AppSpacing {
 
   static const headerHeight = 64.0;
   static const bottomBarHeight = 64.0;
-  static const heroHeight = 404.0;
+  static const heroHeight = 398.0;
+  static const quickActionHeight = 100.0;
   static const movieCardWidth = 160.0;
 }
 

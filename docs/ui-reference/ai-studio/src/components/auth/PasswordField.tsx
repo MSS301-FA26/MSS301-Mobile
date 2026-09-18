@@ -1,0 +1,92 @@
+import React, { useState } from 'react';
+
+interface PasswordFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  error?: string;
+  helperText?: string;
+  autoComplete?: string;
+  showForgotPassword?: boolean;
+  onForgotPassword?: () => void;
+  icon?: string;
+}
+
+export const PasswordField: React.FC<PasswordFieldProps> = ({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder = 'Nhập mật khẩu...',
+  error,
+  helperText,
+  autoComplete = 'current-password',
+  showForgotPassword = false,
+  onForgotPassword,
+  icon = 'lock',
+}) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {/* Label & Optional Forgot Password Link */}
+      <div className="flex items-center justify-between">
+        <label htmlFor={id} className="text-xs font-semibold text-[#e5e2e1]">
+          {label} <span className="text-rose-400">*</span>
+        </label>
+        {showForgotPassword && onForgotPassword && (
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="text-xs text-[#F5B800] hover:underline font-medium focus:outline-none"
+          >
+            Quên mật khẩu?
+          </button>
+        )}
+      </div>
+
+      {/* Input container */}
+      <div className="relative">
+        <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#71717A] text-[20px] pointer-events-none select-none">
+          {icon}
+        </span>
+        <input
+          id={id}
+          type={showPassword ? 'text' : 'password'}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          className={`w-full h-12 bg-[#171719] border rounded-xl pl-11 pr-12 text-sm text-[#D4D4D8] placeholder-[#71717A] transition-all focus:outline-none ${
+            error
+              ? 'border-rose-500/80 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/40'
+              : 'border-[#2B2B30] focus:border-[#F5B800] focus:ring-1 focus:ring-[#F5B800]/30'
+          }`}
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-[#9c8f79] hover:text-white transition-colors focus:outline-none rounded-lg"
+          aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+        >
+          <span className="material-symbols-outlined text-[20px]">
+            {showPassword ? 'visibility_off' : 'visibility'}
+          </span>
+        </button>
+      </div>
+
+      {/* Helper text or Error message */}
+      {error ? (
+        <span className="text-[11px] text-rose-400 font-medium pl-0.5">
+          {error}
+        </span>
+      ) : helperText ? (
+        <span className="text-[11px] text-[#9c8f79] pl-0.5 leading-tight">
+          {helperText}
+        </span>
+      ) : null}
+    </div>
+  );
+};

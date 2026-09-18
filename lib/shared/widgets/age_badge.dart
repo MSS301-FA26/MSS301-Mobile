@@ -2,10 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
+enum AgeBadgeVariant { solid, hero }
+
 class AgeBadge extends StatelessWidget {
-  const AgeBadge({super.key, required this.rating});
+  const AgeBadge({
+    super.key,
+    required this.rating,
+    this.variant = AgeBadgeVariant.solid,
+  });
 
   final String rating;
+  final AgeBadgeVariant variant;
 
   @override
   Widget build(BuildContext context) {
@@ -16,18 +23,22 @@ class AgeBadge extends StatelessWidget {
         : isAllAges
         ? AppColors.allAgesBadge
         : AppColors.gold;
+    final isHero = variant == AgeBadgeVariant.hero;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: isHero ? 8 : 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color,
+        color: isHero ? AppColors.goldSurface : color,
         borderRadius: BorderRadius.circular(4),
+        border: isHero ? Border.all(color: AppColors.goldBorder) : null,
       ),
       child: Text(
         rating,
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          color: isAdult ? Colors.white : Colors.black,
+          color: isHero
+              ? AppColors.gold
+              : (isAdult ? Colors.white : Colors.black),
         ),
       ),
     );

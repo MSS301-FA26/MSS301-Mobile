@@ -71,7 +71,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: AppSpacing.xxs),
             SizedBox(
               height: AppSpacing.heroHeight,
               child: PageView.builder(
@@ -101,7 +101,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
             QuickActions(onUnavailable: _unavailable),
             const SizedBox(height: AppSpacing.xl),
             AppSectionHeader(

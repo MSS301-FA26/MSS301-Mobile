@@ -16,7 +16,7 @@ class GenreSelector extends StatelessWidget {
     'Tất cả',
     'Sci-Fi Cyber',
     'Cinematic Noir',
-    'Hoạt hình',
+    'Vision Quest Hoạt hình',
     'Pure Action',
   ];
 
@@ -40,7 +40,7 @@ class GenreSelector extends StatelessWidget {
                 selectedColor: AppColors.surfaceRaised,
                 side: BorderSide(
                   color: selectedGenre == genre
-                      ? AppColors.gold
+                      ? AppColors.gold.withValues(alpha: 0.5)
                       : AppColors.border,
                 ),
                 labelStyle: TextStyle(

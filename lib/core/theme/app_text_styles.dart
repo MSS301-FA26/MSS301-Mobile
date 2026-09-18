@@ -5,8 +5,8 @@ import 'app_colors.dart';
 /// Type scale used by the native widgets; Inter is bundled in assets/fonts.
 abstract final class AppTextStyles {
   static const heroTitle = TextStyle(
-    fontSize: 23,
-    fontWeight: FontWeight.w900,
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
     height: 1.1,
     color: AppColors.text,
   );

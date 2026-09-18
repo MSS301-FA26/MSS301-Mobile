@@ -52,8 +52,8 @@ class HeroCard extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.transparent,
-                          AppColors.background.withValues(alpha: 0.55),
+                          Colors.black.withValues(alpha: 0.16),
+                          AppColors.background.withValues(alpha: 0.65),
                           AppColors.background,
                         ],
                         stops: const [0.15, 0.58, 1],
@@ -70,30 +70,39 @@ class HeroCard extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          AgeBadge(rating: movie.ageRating),
+                          AgeBadge(
+                            rating: movie.ageRating,
+                            variant: AgeBadgeVariant.hero,
+                          ),
                           const SizedBox(width: 7),
-                          _HeroTag(movie.format),
+                          Flexible(child: _HeroTag(movie.format)),
                           const SizedBox(width: 7),
                           const Icon(
                             Icons.schedule,
                             size: 14,
                             color: AppColors.textMuted,
                           ),
-                          Text(
-                            movie.duration,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: AppColors.textMuted,
+                          Expanded(
+                            child: Text(
+                              movie.duration,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textMuted,
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 6),
                           const Icon(
                             Icons.star_rounded,
                             size: 15,
                             color: AppColors.gold,
                           ),
                           Text(
-                            '${movie.rating}',
+                            movie.ratingCount.isEmpty
+                                ? '${movie.rating}'
+                                : '${movie.rating} (${movie.ratingCount})',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -104,14 +113,10 @@ class HeroCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 9),
                       Text(
-                        movie.title,
+                        movie.title.toUpperCase(),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 23,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
-                        ),
+                        style: AppTextStyles.heroTitle,
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -151,7 +156,7 @@ class HeroCard extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: 32,
+            height: 28,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -160,7 +165,7 @@ class HeroCard extends StatelessWidget {
                     onTap: () => onDot(i),
                     child: Container(
                       width: i == activeIndex ? 24 : 7,
-                      height: 7,
+                      height: 6,
                       margin: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
                         color: i == activeIndex
@@ -193,6 +198,8 @@ class _HeroTag extends StatelessWidget {
     ),
     child: Text(
       label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
     ),
   );

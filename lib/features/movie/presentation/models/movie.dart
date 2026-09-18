@@ -5,6 +5,7 @@ class Movie {
     required this.ageRating,
     required this.duration,
     required this.rating,
+    this.ratingCount = '',
     required this.genre,
     required this.tagline,
     required this.posterAsset,
@@ -20,6 +21,7 @@ class Movie {
   final String ageRating;
   final String duration;
   final double rating;
+  final String ratingCount;
   final String genre;
   final String tagline;
   final String posterAsset;

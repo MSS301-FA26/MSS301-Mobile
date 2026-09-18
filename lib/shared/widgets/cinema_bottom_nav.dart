@@ -20,7 +20,7 @@ class CinemaBottomNav extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        height: 65,
+        height: AppSpacing.bottomBarHeight,
         decoration: const BoxDecoration(
           color: AppColors.background,
           border: Border(top: BorderSide(color: AppColors.border)),
@@ -34,12 +34,41 @@ class CinemaBottomNav extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        items[i].icon,
-                        size: 23,
-                        color: i == 0 ? AppColors.gold : AppColors.textMuted,
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Icon(
+                            items[i].icon,
+                            size: 22,
+                            color: i == 0
+                                ? AppColors.gold
+                                : AppColors.textMuted,
+                          ),
+                          if (i == 3)
+                            Positioned(
+                              top: -4,
+                              right: -9,
+                              child: Container(
+                                width: 16,
+                                height: 16,
+                                alignment: Alignment.center,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.gold,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Text(
+                                  '1',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         items[i].label,
                         maxLines: 1,
