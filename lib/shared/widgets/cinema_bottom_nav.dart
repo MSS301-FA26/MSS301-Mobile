@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 
 class CinemaBottomNav extends StatelessWidget {
-  const CinemaBottomNav({super.key, required this.onUnavailable});
+  const CinemaBottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
 
-  final void Function(String feature) onUnavailable;
+  final int currentIndex;
+  final ValueChanged<int> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -19,74 +24,95 @@ class CinemaBottomNav extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      child: Container(
-        height: AppSpacing.bottomBarHeight,
-        decoration: const BoxDecoration(
-          color: AppColors.background,
-          border: Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
-          children: [
-            for (var i = 0; i < items.length; i++)
-              Expanded(
-                child: InkWell(
-                  onTap: i == 0 ? null : () => onUnavailable(items[i].label),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Icon(
-                            items[i].icon,
-                            size: 22,
-                            color: i == 0
-                                ? AppColors.gold
-                                : AppColors.textMuted,
-                          ),
-                          if (i == 3)
-                            Positioned(
-                              top: -4,
-                              right: -9,
-                              child: Container(
-                                width: 16,
-                                height: 16,
-                                alignment: Alignment.center,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.gold,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Text(
-                                  '1',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        items[i].label,
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: i == 0 ? AppColors.gold : AppColors.textMuted,
-                          fontWeight: i == 0
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
+      child: Material(
+        color: AppColors.background,
+        child: Container(
+          height: AppSpacing.bottomBarHeight,
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: currentIndex,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: AppColors.background,
+            elevation: 0,
+            selectedFontSize: 10,
+            unselectedFontSize: 10,
+            selectedItemColor: AppColors.gold,
+            unselectedItemColor: AppColors.textMuted,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            showUnselectedLabels: true,
+            onTap: onTap,
+            items: [
+              for (var i = 0; i < items.length; i++)
+                BottomNavigationBarItem(
+                  icon: _BottomNavIcon(
+                    icon: items[i].icon,
+                    showBadge: i == 3,
+                    itemIndex: i,
                   ),
+                  activeIcon: _BottomNavIcon(
+                    icon: items[i].icon,
+                    showBadge: i == 3,
+                    itemIndex: i,
+                    selected: true,
+                  ),
+                  label: items[i].label,
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _BottomNavIcon extends StatelessWidget {
+  const _BottomNavIcon({
+    required this.icon,
+    required this.showBadge,
+    required this.itemIndex,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final bool showBadge;
+  final int itemIndex;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.gold : AppColors.textMuted;
+
+    return Stack(
+      key: ValueKey('bottom-nav-icon-$itemIndex'),
+      clipBehavior: Clip.none,
+      children: [
+        Icon(icon, size: 22, color: color),
+        if (showBadge)
+          Positioned(
+            top: -4,
+            right: -9,
+            child: Container(
+              width: 16,
+              height: 16,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.gold,
+                shape: BoxShape.circle,
+              ),
+              child: const Text(
+                '1',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

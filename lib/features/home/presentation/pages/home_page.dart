@@ -67,6 +67,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     return AppShell(
       onUnavailable: _unavailable,
+      currentIndex: 0,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
