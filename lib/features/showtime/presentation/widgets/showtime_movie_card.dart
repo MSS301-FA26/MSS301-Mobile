@@ -18,7 +18,7 @@ class ShowtimeMovieCard extends StatelessWidget {
   final Movie movie;
   final List<ShowtimeRoom> rooms;
   final String? selectedSlotId;
-  final ValueChanged<ShowtimeSlot> onSlotSelected;
+  final ValueChanged<ShowtimeSlot>? onSlotSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +118,7 @@ class _RoomSection extends StatelessWidget {
 
   final ShowtimeRoom room;
   final String? selectedSlotId;
-  final ValueChanged<ShowtimeSlot> onSlotSelected;
+  final ValueChanged<ShowtimeSlot>? onSlotSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +187,9 @@ class _RoomSection extends StatelessWidget {
             return _SlotPill(
               slot: slot,
               selected: selectedSlotId == slot.id,
-              onTap: slot.isSoldOut ? null : () => onSlotSelected(slot),
+              onTap: slot.isSoldOut || onSlotSelected == null
+                  ? null
+                  : () => onSlotSelected!(slot),
             );
           },
         ),

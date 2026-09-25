@@ -18,11 +18,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Phim đang chiếu'), findsOneWidget);
-      await tester.tap(find.text('Đặt vé ngay'));
+      await tester.tap(
+        find.byKey(const ValueKey('hero-open-avengers-endgame')),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Chi tiết phim'), findsOneWidget);
-      expect(find.textContaining('Thông tin đầy đủ và đặt vé'), findsOneWidget);
+      expect(find.textContaining('thông tin phim cơ bản'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Quay lại'));
       await tester.pumpAndSettle();
@@ -39,13 +41,70 @@ void main() {
 
     await tester.tap(find.text('Xem trailer'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Trailer sẽ được cập nhật'), findsOneWidget);
+    expect(find.textContaining('nội dung mô phỏng'), findsOneWidget);
     await tester.tap(find.byTooltip('Đóng'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('CineAI Central'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Nguyễn Huệ'), findsOneWidget);
+  });
+
+  testWidgets('booking CTA opens movie-filtered showtimes', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('hero-book-avengers-endgame')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ShowtimesPage), findsOneWidget);
+    expect(find.text('AVENGERS: ENDGAME'), findsOneWidget);
+    expect(find.text('INCEPTION'), findsNothing);
+  });
+
+  testWidgets('header actions route and preview notification is disabled', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
+    await tester.pumpAndSettle();
+
+    final notification = tester.widget<IconButton>(
+      find.widgetWithIcon(IconButton, Icons.notifications_none),
+    );
+    expect(notification.onPressed, isNull);
+
+    await tester.tap(find.byTooltip('Tìm kiếm'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DiscoverPage), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Tài khoản'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountPage), findsOneWidget);
+  });
+
+  testWidgets('preview quick actions are visibly disabled', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-nav-icon-0')).hitTestable(),
+    );
+    await tester.pumpAndSettle();
+
+    final foodAction = find.byKey(const ValueKey('quick-action-Bắp & Nước'));
+    expect(foodAction, findsOneWidget);
+    expect(tester.widget<InkWell>(foodAction).onTap, isNull);
+    expect(find.text('Sắp có'), findsNWidgets(4));
+    expect(find.byType(SnackBar), findsNothing);
   });
 
   testWidgets('bottom navigation tabs navigate to destinations', (

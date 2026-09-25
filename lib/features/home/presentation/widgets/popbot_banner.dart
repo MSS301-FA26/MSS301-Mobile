@@ -5,7 +5,7 @@ import '../../../../shared/widgets/app_button.dart';
 
 class PopBotBanner extends StatelessWidget {
   const PopBotBanner({super.key, required this.onOpen});
-  final VoidCallback onOpen;
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +47,10 @@ class PopBotBanner extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Text(
                           'PopBot AI',
@@ -56,7 +59,6 @@ class PopBotBanner extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
@@ -67,7 +69,7 @@ class PopBotBanner extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            'PRO',
+                            'XEM TRƯỚC',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -129,7 +131,7 @@ class _PromptChip extends StatelessWidget {
   const _PromptChip({required this.label, required this.onTap});
 
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Material(

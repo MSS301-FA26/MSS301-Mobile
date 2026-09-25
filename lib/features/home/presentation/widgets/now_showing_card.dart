@@ -6,10 +6,16 @@ import '../../../../shared/widgets/age_badge.dart';
 import '../../../movie/presentation/models/movie.dart';
 
 class NowShowingCard extends StatelessWidget {
-  const NowShowingCard({super.key, required this.movie, required this.onOpen});
+  const NowShowingCard({
+    super.key,
+    required this.movie,
+    required this.onOpen,
+    required this.onBook,
+  });
 
   final Movie movie;
   final VoidCallback onOpen;
+  final VoidCallback onBook;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +114,8 @@ class NowShowingCard extends StatelessWidget {
                   width: double.infinity,
                   height: 36,
                   child: OutlinedButton.icon(
-                    onPressed: onOpen,
+                    key: ValueKey('now-showing-book-${movie.id}'),
+                    onPressed: onBook,
                     icon: const Icon(
                       Icons.confirmation_number_outlined,
                       size: 14,

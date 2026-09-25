@@ -16,7 +16,7 @@ class ComingSoonCard extends StatelessWidget {
   final Movie movie;
   final bool reminded;
   final VoidCallback onOpen;
-  final VoidCallback onReminder;
+  final VoidCallback? onReminder;
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +120,11 @@ class ComingSoonCard extends StatelessWidget {
                             size: 15,
                           ),
                           label: Text(
-                            reminded ? 'Đã bật nhắc' : 'Nhắc tôi mở bán',
+                            reminded
+                                ? 'Đã bật nhắc'
+                                : onReminder == null
+                                ? 'Nhắc mở bán • Sắp có'
+                                : 'Nhắc tôi mở bán',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

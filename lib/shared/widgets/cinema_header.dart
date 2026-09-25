@@ -5,9 +5,16 @@ import '../../core/theme/app_theme.dart';
 import 'cinema_info_sheet.dart';
 
 class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
-  const CinemaHeader({super.key, required this.onUnavailable});
+  const CinemaHeader({
+    super.key,
+    required this.onSearch,
+    required this.onAccount,
+    this.onNotifications,
+  });
 
-  final void Function(String feature) onUnavailable;
+  final VoidCallback onSearch;
+  final VoidCallback onAccount;
+  final VoidCallback? onNotifications;
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
@@ -69,39 +76,21 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
             tooltip: 'Tìm kiếm',
             constraints: const BoxConstraints.tightFor(width: 40, height: 40),
             padding: EdgeInsets.zero,
-            onPressed: () => onUnavailable('Tìm kiếm'),
+            onPressed: onSearch,
             icon: const Icon(Icons.search, size: 22),
           ),
           IconButton(
-            tooltip: 'Thông báo',
+            tooltip: 'Thông báo • Sắp có',
             constraints: const BoxConstraints.tightFor(width: 40, height: 40),
             padding: EdgeInsets.zero,
-            onPressed: () => onUnavailable('Thông báo'),
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.notifications_none, size: 22),
-                Positioned(
-                  top: 1,
-                  right: 0,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: AppColors.gold,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.background),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            onPressed: onNotifications,
+            icon: const Icon(Icons.notifications_none, size: 22),
           ),
           IconButton(
             tooltip: 'Tài khoản',
             constraints: const BoxConstraints.tightFor(width: 40, height: 40),
             padding: EdgeInsets.zero,
-            onPressed: () => onUnavailable('Tài khoản'),
+            onPressed: onAccount,
             icon: Container(
               width: 32,
               height: 32,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../models/ticket_order.dart';
@@ -18,17 +20,6 @@ class OrdersPage extends ConsumerStatefulWidget {
 class _OrdersPageState extends ConsumerState<OrdersPage> {
   OrdersTab _tab = OrdersTab.upcoming;
 
-  void _showUnavailable(String feature) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature sẽ có trong giai đoạn tiếp theo.'),
-        backgroundColor: AppColors.surfaceRaised,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final orders = ref.watch(mockOrdersProvider);
@@ -42,7 +33,6 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
 
     return AppShell(
       currentIndex: 3,
-      onUnavailable: _showUnavailable,
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
@@ -62,13 +52,15 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
                 child: order.status == TicketOrderStatus.upcoming
                     ? UpcomingOrderCard(
                         order: order,
-                        onCancel: () => _showUnavailable('Hoàn / Đổi vé'),
-                        onOpenTicket: () => _showUnavailable('Mã vé điện tử'),
+                        onCancel: null,
+                        onOpenTicket: null,
                       )
                     : CompletedOrderCard(
                         order: order,
-                        onBookAgain: () => _showUnavailable('Đặt lại vé'),
-                        onRate: () => _showUnavailable('Đánh giá phim'),
+                        onBookAgain: () => context.go(
+                          AppRoutes.showtimesForMovie(order.movieId),
+                        ),
+                        onRate: null,
                       ),
               ),
         ],

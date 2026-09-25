@@ -7,7 +7,7 @@ class MembershipCard extends StatelessWidget {
   const MembershipCard({super.key, required this.user, required this.onQr});
 
   final MockUserProfile user;
-  final VoidCallback onQr;
+  final VoidCallback? onQr;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +71,7 @@ class MembershipCard extends StatelessWidget {
               TextButton.icon(
                 onPressed: onQr,
                 icon: const Icon(Icons.qr_code_rounded, size: 16),
-                label: const Text('Mã VIP'),
+                label: Text(onQr == null ? 'Sắp có' : 'Mã VIP'),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.gold,
                   backgroundColor: Colors.white.withValues(alpha: 0.1),

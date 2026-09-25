@@ -1,8 +1,8 @@
 # CINEPREMIER Mobile — UI Flow Specification
 
-> Phiên bản: 1.2  
+> Phiên bản: 1.4
 > Phạm vi: ứng dụng Flutter dành cho khách hàng  
-> Trạng thái: đặc tả luồng chức năng, dùng cùng các tài liệu kiến trúc và mapping hiện có
+> Trạng thái: tám quyết định flow lõi đã chốt; dùng cùng các tài liệu kiến trúc và mapping hiện có
 
 ## 1. Mục đích
 
@@ -40,6 +40,23 @@ Giai đoạn hiện tại chuẩn hóa Flutter theo contract đang tồn tại t
 - Mọi repository dùng interface; implementation trong giai đoạn này là mock để sau này có thể thay bằng remote repository mà không viết lại màn hình.
 - Route và tên feature đang có trong code được giữ làm alias tạm thời để tránh refactor làm nhiễu việc đánh giá UI. Việc đổi tên đồng loạt chỉ thực hiện ở một task riêng.
 - Các flow chưa có public API tương ứng phải ẩn, disabled có giải thích hoặc đặt sau feature flag; không được giả định backend đã hỗ trợ.
+
+### 1.3. Tám quyết định flow đã chốt
+
+Các quyết định dưới đây là baseline bắt buộc cho Backend-aligned Mock UI. Chỉ thay đổi khi có quyết định sản phẩm mới và phải cập nhật tài liệu này trong cùng pull request.
+
+| # | Nhóm flow | Quyết định đã chốt |
+| --- | --- | --- |
+| F1 | CTA và navigation | Mọi CTA active phải điều hướng hoặc thực hiện hành động thật trong mock; không dùng snackbar “sẽ có sau”. Tap nội dung phim mở chi tiết, còn **Đặt vé** mở lịch chiếu theo phim. |
+| F2 | Đặt vé lõi | `Home/Khám phá → Chi tiết phim → Lịch chiếu → Chọn ghế → Giữ ghế → Bắp nước hoặc bỏ qua → Checkout → Payment mock → Xác minh booking → Vé QR`. |
+| F3 | Trang chủ | Hero responsive; card và CTA có callback riêng; dữ liệu phim nhất quán; quick action chưa sẵn sàng phải tuân theo feature flag. |
+| F4 | Lịch chiếu và ghế | Không preselect ngày/suất/ghế. Tap suất hợp lệ đi thẳng sang ghế. Timer 3 phút chỉ bắt đầu sau khi hold trả booking `HOLDING`. |
+| F5 | Auth gate | Lưu pending action và các ID liên quan; login thành công resume đúng hành động nếu còn hợp lệ. Tab Account/Orders được phép hiển thị guest state trước. |
+| F6 | State machine | UI local, booking, payment và seat là các state riêng. Payment `SUCCESS` chỉ bắt đầu bước xác minh; chỉ booking `PAID` được phát hành QR. |
+| F7 | Feature chưa có contract | Food order độc lập, refund/đổi vé, voucher, VIP, favorite/review/notification và PopBot chỉ chạy trong preview build qua feature flag; release-like build mặc định tắt. |
+| F8 | Trạng thái UI | Màn phụ thuộc dữ liệu phải có loading, success, empty, error/retry và submitting/disabled khi phù hợp; business error không được chỉ hiện bằng toast chung. |
+
+Thứ tự ưu tiên triển khai là F1–F6 cho core booking, sau đó F8. F7 không được làm chậm core flow và không được dùng để tuyên bố backend đã hỗ trợ.
 
 ## 2. Nguyên tắc sản phẩm bắt buộc
 
@@ -161,8 +178,8 @@ Route chuẩn trong bảng 3.1–3.2 vẫn là đích dài hạn. Alias chỉ ph
 ### 3.5. Hành động toàn cục
 
 - Tìm kiếm mở tab Khám phá và focus ô tìm kiếm.
-- Biểu tượng trái tim mở Yêu thích; nếu chưa đăng nhập thì dùng auth gate và resume.
-- Thông báo mở Notification Center; badge lấy từ số thông báo chưa đọc, không hard-code.
+- Khi feature flag Yêu thích bật, biểu tượng trái tim mở Yêu thích; nếu chưa đăng nhập thì dùng auth gate và resume. Khi flag tắt, ẩn hoặc disabled có giải thích.
+- Khi feature flag Thông báo bật, action mở Notification Center; badge lấy từ số thông báo chưa đọc, không hard-code. Khi flag tắt, không hiển thị badge/action active.
 - Avatar mở tab Tài khoản hoặc màn hình hồ sơ tùy vị trí sử dụng.
 - Tap tên CineAI Central mở thông tin rạp dạng bottom sheet; CTA trong sheet mở Lịch chiếu.
 
@@ -201,6 +218,8 @@ flowchart TD
     Account --> Help[CSKH / Chính sách]
 ```
 
+Nhánh Movie → Showtimes → AuthGate → Seats → Combo → Review → VNPay → Result → Ticket là core flow. Các nhánh Food độc lập, Bot, Refund, Voucher và các tính năng F7 chỉ được xem là preview khi feature flag tương ứng bật.
+
 ## 5. Luồng A — Khám phá và xem phim
 
 ### 5.1. Trang chủ → Chi tiết phim
@@ -222,6 +241,8 @@ Trang chủ phải có:
 - loading skeleton, lỗi tải và retry.
 
 Không được dùng cùng một callback cho tap card và CTA Đặt vé.
+
+Quick action chỉ được active nếu route mock tương ứng đã tồn tại và feature flag cho phép. CinePoints có thể dùng repository mock theo contract loyalty; Bắp nước độc lập, PopBot và VIP mặc định là preview/off theo F7.
 
 ### 5.2. Khám phá → Tìm kiếm/lọc → Chi tiết phim
 
@@ -360,7 +381,7 @@ Các trạng thái riêng biệt:
 - `unknown`: chưa xác định, cho phép kiểm tra lại;
 - `expired`: thời gian giữ ghế đã hết.
 
-Chỉ `success` được mở Vé QR. Không suy ra thành công chỉ từ query/deep link phía client.
+Payment `success` chỉ chuyển UI sang bước xác minh booking. Không suy ra thành công chỉ từ query/deep link phía client và không mở Vé QR trước khi booking là `PAID`.
 
 Trong mock, trạng thái payment và booking phải tách riêng: payment có thể đã `SUCCESS` trong một khoảng mô phỏng ngắn trong khi booking vẫn `PENDING_PAYMENT`; chỉ khi booking chuyển sang `PAID` mới phát hành QR. Contract hiện tại có thời hạn giữ ghế 3 phút nhưng URL VNPay 15 phút, nên tích hợp thật phải chờ backend thống nhất quy tắc xử lý payment đến sau khi booking đã hết hạn.
 
@@ -490,6 +511,8 @@ Logged-in state:
 - số dư CineWallet;
 - Vé của tôi, Yêu thích, Voucher, PopBot, Hồ sơ, Bảo mật, Thông tin rạp, Chính sách, CSKH;
 - Đăng xuất có xác nhận.
+
+Các menu thuộc F7 chỉ hiển thị active trong preview build khi feature flag tương ứng bật. Nếu flag tắt, ưu tiên ẩn; chỉ disabled khi cần giới thiệu roadmap nội bộ và phải có giải thích ngay tại control.
 
 ### 10.2. CinePoints
 
@@ -738,34 +761,34 @@ Shared component chỉ chứa quy tắc trình bày/tương tác chung; business
 
 | Màn hình | CTA/đích chính | Trạng thái đặc biệt bắt buộc |
 | --- | --- | --- |
-| Trang chủ | Detail, Showtimes, Food, PopBot | Hero responsive, loading/error |
+| Trang chủ | Detail, Showtimes; Food/PopBot theo preview flag | Hero responsive, loading/error |
 | Khám phá | Detail, Showtimes | Search empty, filter, coming soon |
-| Chi tiết phim | Trailer, Favorite, Showtimes | Chưa mở bán, review eligibility |
+| Chi tiết phim | Trailer, Showtimes; Favorite theo preview flag | Chưa mở bán, review eligibility |
 | Lịch chiếu | Seat selection | Sold out, past slot, no schedule |
 | Chọn ghế | Concessions | Conflict, hold timeout, seat types |
 | Bắp nước kèm vé | Review order | Empty/out of stock, skip |
 | Xác nhận đơn | VNPay | Quote changed, hold expiry |
 | Kết quả thanh toán | Ticket/Retry/Orders | Processing/success/failure/unknown |
 | Vé QR | Refund/Orders/Home | Paid/used/expired/refunded |
-| Bắp nước độc lập | Cart | Categories, empty/error |
-| Giỏ bắp nước | VNPay | Empty cart, price changed |
-| Chi tiết đơn bắp nước | Pickup QR | Preparing/ready/collected |
+| Bắp nước độc lập `[preview]` | Cart | Categories, empty/error |
+| Giỏ bắp nước `[preview]` | VNPay | Empty cart, price changed |
+| Chi tiết đơn bắp nước `[preview]` | Pickup QR | Preparing/ready/collected |
 | Đơn của tôi | Ticket/Food detail | Tabs, filters, empty |
-| Hoàn/đổi | Submit request | Eligible/ineligible/processing/result |
+| Hoàn/đổi `[preview]` | Submit request | Eligible/ineligible/processing/result |
 | Đăng nhập | Resume pending action | Invalid/offline/locked |
 | Đăng ký | OTP | Validation/terms/duplicate email |
 | OTP | Next/resend/change email | Countdown/wrong/expired |
 | Quên/reset mật khẩu | Login/resume | Invalid/expired/success |
-| Yêu thích | Detail/Showtimes | Guest/empty/error |
-| Thông báo | Deep-link theo nội dung | Unread/read/empty/error |
+| Yêu thích `[preview]` | Detail/Showtimes | Guest/empty/error |
+| Thông báo `[preview]` | Deep-link theo nội dung | Unread/read/empty/error |
 | Tài khoản | Profile/features | Guest/logged-in |
 | Hồ sơ | Save | Validation/saving/success/error |
 | Bảo mật | Change password | Social account variant |
 | CinePoints | History | Empty/loading/error |
 | CineWallet | Withdraw/history | Pending/refund/withdraw status |
-| Voucher | Detail/use | Available/used/expired/ineligible |
-| VIP | Related benefit | Tier/conditions/loading |
-| PopBot | Detail/Showtimes | Thinking/error/retry |
+| Voucher `[preview]` | Detail/use | Available/used/expired/ineligible |
+| VIP `[preview]` | Related benefit | Tier/conditions/loading |
+| PopBot `[preview]` | Detail/Showtimes | Thinking/error/retry |
 | Thông tin rạp | Map/Showtimes | External app unavailable |
 | Chính sách | Expand section | Loading/version/error |
 | CSKH | FAQ/contact/PopBot | Search empty/offline |
@@ -781,58 +804,51 @@ Một màn hình chỉ được xem là hoàn thành khi:
 5. Không mất state ngoài ý muốn khi back hoặc auth resume.
 6. Có widget/navigation test cho happy path và critical error state.
 
-## 18. Thứ tự triển khai theo tài liệu SOLID
+## 18. Roadmap hoàn thành UI flow
 
-Thứ tự dưới đây tuân theo `MSS301_Mobile_Codex_Prompt_SOLID.md`. Trạng thái đã làm/chưa làm của từng màn hình được quản lý tại `Flutter_UI_Feature_Mapping.md`, không được suy ra từ roadmap này.
+F1–F8 là quyết định sản phẩm/UI, không phải phase code tuần tự. Thứ tự implementation duy nhất áp dụng cho giai đoạn hiện tại là R0–R8 dưới đây; task kỹ thuật và gate chi tiết nằm ở mục 12 của `BACKEND_ALIGNED_MOCK_UI_PLAN.md`.
 
-### Phase 1 — Foundation
+| Thứ tự | Phạm vi | Kết quả flow cần đạt |
+| --- | --- | --- |
+| R0 — Baseline ✅ | F1–F8 | Tài liệu, core/preview scope và feature flag đã chốt |
+| R1 — Navigation contract ✅ | F1A, F7 | Mọi CTA được phân loại; không còn active placeholder |
+| R2 — Contract foundation ✅ | M0, F6 | Model/repository mock đủ để state UI bám backend contract; presentation migration thuộc R3 |
+| R3 — Existing UI migration | M1, F1B, F3, F8 | Các màn hiện có dùng mock repository và giữ visual ổn định |
+| R4 — Booking entry | M2, F2, F4, F5, F6 | Detail → Showtime → Auth gate → Seat → Hold hoàn chỉnh |
+| R5 — Booking completion | M3, F2, F6 | Food/Skip → Checkout → Payment → Verify → Ticket/Order hoàn chỉnh |
+| R6 — Account completion | M4, F5 | Auth, profile, wallet, loyalty và resume flow hoàn chỉnh |
+| R7 — Preview flows | M5, F7 | Flow chưa có contract chỉ hoạt động sau feature flag |
+| R8 — Stabilization | F1–F8 | Responsive, accessibility, regression, docs và E2E đạt DoD |
 
-1. Feature-first structure.
-2. Theme, typography, spacing và radius tokens.
-3. GoRouter, Riverpod và app shell.
-4. Shared widgets cần thiết.
-5. Bottom navigation và responsive foundation.
+### 18.1. Quy tắc chuyển chặng
 
-### Phase 2 — Home
+1. R1 chỉ khóa hành vi/route; không cần tạo màn hình placeholder để giả hoàn thành CTA.
+2. R2 hoàn tất contract foundation trước khi chuyển hàng loạt widget sang model mới.
+3. R3 giữ visual ổn định, chỉ sửa UI bắt buộc theo F1/F3/F8.
+4. R4 và R5 hoàn thành core booking trước khi đầu tư các preview flow.
+5. R6 hoàn thiện auth/account nhưng auth gate tối thiểu phải có từ R4 để kiểm tra resume.
+6. R7 không được làm chậm hoặc thay đổi contract của core flow.
+7. F8 được thực hiện trong từng chặng; R8 là lượt kiểm chứng cuối, không phải thời điểm bắt đầu làm error/responsive state.
+8. Không bắt đầu API thật chỉ vì R8 hoàn tất; remote integration là phase riêng và còn phụ thuộc blocker backend.
 
-1. Trang chủ theo AI Studio reference.
-2. Mock movie/cinema data có cấu trúc.
-3. Hero, movie cards, genre, PopBot banner và quick actions.
-4. Movie Detail placeholder route.
-5. Widget/navigation test cho Home ở width 360/390/412.
+### 18.2. Quan hệ với tài liệu SOLID cũ
 
-### Phase 3 — Core booking flow
-
-1. Movie Detail hoàn chỉnh.
-2. Lịch chiếu → Chọn ghế → Bắp nước.
-3. Checkout → Payment mock states.
-4. Booking Success → Vé QR.
-5. Conflict ghế, timeout, payment failure và resume flow ở mức UI/mock tương ứng với phase.
-
-### Phase 4 — Supporting flows
-
-1. Đơn của tôi và hoàn/đổi vé.
-2. Bắp nước độc lập và mã nhận hàng.
-3. Voucher, CinePoints, CineWallet và VIP.
-4. Auth, hồ sơ, bảo mật và yêu thích.
-5. PopBot AI, thông tin rạp, chính sách, CSKH, đánh giá và notification center.
-
-Phạm vi mặc định trong tài liệu SOLID vẫn chỉ cho phép Phase 1 và Phase 2. Yêu cầu hiện tại mở rộng riêng phần **chuẩn hóa contract và repository mock** cho các flow cần đánh giá UI, nhưng không cho phép tích hợp API thật hoặc coi Phase 3/4 là đã hoàn thành. Thứ tự chi tiết và điều kiện hoàn thành áp dụng theo `BACKEND_ALIGNED_MOCK_UI_PLAN.md`.
+Foundation và Home của Phase 1/2 trong `MSS301_Mobile_Codex_Prompt_SOLID.md` được xem là baseline đã có. R1–R8 là roadmap kế tiếp được yêu cầu riêng cho Backend-aligned Mock UI, vẫn tuân thủ feature-first, Riverpod, GoRouter, mock data và nguyên tắc không tích hợp backend thật. Trạng thái đã làm/chưa làm của màn hình phải được cập nhật tại `Flutter_UI_Feature_Mapping.md`, không suy ra chỉ từ roadmap.
 
 ## 19. Checklist test end-to-end tối thiểu
 
 - Home → Đặt vé → chọn suất → login → ghế → bỏ qua bắp nước → VNPay → vé QR.
-- Movie detail → trailer → favorite → login → quay lại movie detail.
+- `[preview flag]` Movie detail → trailer → favorite → login → quay lại movie detail.
 - Lịch chiếu tab → suất hết chỗ/past slot không thể chọn → suất hợp lệ vào ghế.
 - Hai client chọn cùng ghế → client sau nhận conflict và UI cập nhật.
 - Giữ ghế hết hạn tại checkout → không thể thanh toán vé cũ.
 - VNPay success nhưng app chưa xác minh → giữ trạng thái processing, chưa sinh QR.
 - Payment failure → retry; nếu hold hết hạn thì quay về chọn ghế.
-- Đơn của tôi → Vé → Hoàn/đổi đủ điều kiện → CineWallet có giao dịch hoàn.
-- Bắp nước độc lập → thanh toán → mã nhận hàng → trạng thái đã nhận.
-- Voucher hết hạn/không đủ điều kiện không thể áp dụng.
+- `[preview flag]` Đơn của tôi → Vé → Hoàn/đổi đủ điều kiện → CineWallet có giao dịch hoàn.
+- `[preview flag]` Bắp nước độc lập → thanh toán → mã nhận hàng → trạng thái đã nhận.
+- `[preview flag]` Voucher hết hạn/không đủ điều kiện không thể áp dụng.
 - Guest mở Tài khoản/Đơn → login → trở lại đúng màn hình.
-- PopBot → card phim → chi tiết → đặt vé đúng movie ID.
+- `[preview flag]` PopBot → card phim → chi tiết → đặt vé đúng movie ID.
 - Offline/loading/empty/error trên các danh sách chính.
 - Layout không overflow ở 360/390/412px và khi bàn phím mở.
 

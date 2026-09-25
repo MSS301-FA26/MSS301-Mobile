@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/cinema_info_sheet.dart';
 import '../../../discover/presentation/widgets/format_filter_chips.dart';
 import '../../../movie/presentation/providers/mock_movies_provider.dart';
 import '../models/showtime_models.dart';
@@ -12,7 +13,9 @@ import '../widgets/date_selector.dart';
 import '../widgets/showtime_movie_card.dart';
 
 class ShowtimesPage extends ConsumerStatefulWidget {
-  const ShowtimesPage({super.key});
+  const ShowtimesPage({super.key, this.movieId});
+
+  final String? movieId;
 
   @override
   ConsumerState<ShowtimesPage> createState() => _ShowtimesPageState();
@@ -21,7 +24,6 @@ class ShowtimesPage extends ConsumerStatefulWidget {
 class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   int _selectedDate = 0;
   String _selectedFormat = 'Tất cả';
-  String? _selectedSlotId = 'slot-inc-c-2';
 
   static const _dates = [
     DateOption(label: 'Hôm nay', sub: '14/09'),
@@ -41,17 +43,6 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
     '2D Phụ đề',
   ];
 
-  void _showUnavailable(String feature) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature sẽ có trong giai đoạn tiếp theo.'),
-        backgroundColor: AppColors.surfaceRaised,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   bool _roomMatches(ShowtimeRoom room) {
     if (_selectedFormat == 'Tất cả') return true;
     return room.formatBadge.toLowerCase().contains(
@@ -62,14 +53,49 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   @override
   Widget build(BuildContext context) {
     final movies = ref.watch(mockMoviesProvider);
-    final showtimes = ref.watch(mockShowtimesProvider);
+    final allShowtimes = ref.watch(mockShowtimesProvider);
+    final showtimes = widget.movieId == null
+        ? allShowtimes
+        : allShowtimes
+              .where((showtime) => showtime.movieId == widget.movieId)
+              .toList();
 
     return AppShell(
       currentIndex: 2,
-      onUnavailable: _showUnavailable,
       body: ListView(
         children: [
-          CinemaStatusCard(onInfo: () => _showUnavailable('Thông tin rạp')),
+          CinemaStatusCard(
+            onInfo: () => showModalBottomSheet<void>(
+              context: context,
+              backgroundColor: AppColors.surface,
+              shape: const RoundedRectangleBorder(borderRadius: AppRadii.card),
+              builder: (context) => const CinemaInfoSheet(),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              0,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.lock_clock_outlined,
+                  size: 16,
+                  color: AppColors.textDisabled,
+                ),
+                SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Chọn ghế đang tạm khóa trong bản mock hiện tại.',
+                    style: AppTextStyles.caption,
+                  ),
+                ),
+              ],
+            ),
+          ),
           DateSelector(
             dates: _dates,
             selectedIndex: _selectedDate,
@@ -112,9 +138,8 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                         child: ShowtimeMovieCard(
                           movie: movie,
                           rooms: rooms,
-                          selectedSlotId: _selectedSlotId,
-                          onSlotSelected: (slot) =>
-                              setState(() => _selectedSlotId = slot.id),
+                          selectedSlotId: null,
+                          onSlotSelected: null,
                         ),
                       );
                     },

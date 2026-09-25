@@ -60,7 +60,7 @@ class TrailerPreviewDialog extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             const Text(
-              'Trailer sẽ được cập nhật trong giai đoạn tiếp theo.',
+              'Bản xem trước trailer đang dùng nội dung mô phỏng.',
               style: AppTextStyles.body,
             ),
           ],

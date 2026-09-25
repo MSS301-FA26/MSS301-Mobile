@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_image.dart';
 import '../../../../shared/widgets/age_badge.dart';
 import '../providers/mock_movies_provider.dart';
@@ -42,6 +44,26 @@ class MovieDetailPlaceholder extends ConsumerWidget {
           child: Container(height: 1, color: AppColors.border),
         ),
       ),
+      bottomNavigationBar: movie == null
+          ? null
+          : SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(top: BorderSide(color: AppColors.border)),
+                ),
+                child: AppButton(
+                  key: ValueKey('movie-detail-book-${movie.id}'),
+                  label: movie.isNowShowing ? 'Đặt vé' : 'Chưa mở bán',
+                  icon: Icons.confirmation_number_outlined,
+                  onPressed: movie.isNowShowing
+                      ? () => context.go(AppRoutes.showtimesForMovie(movie!.id))
+                      : null,
+                ),
+              ),
+            ),
       body: movie == null
           ? Center(
               child: Column(
@@ -178,7 +200,7 @@ class MovieDetailPlaceholder extends ConsumerWidget {
                               ),
                               SizedBox(height: 6),
                               Text(
-                                'Thông tin đầy đủ và đặt vé sẽ được hoàn thiện ở giai đoạn tiếp theo.',
+                                'Bản mock hiện hiển thị thông tin phim cơ bản để kiểm tra navigation và bố cục.',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,

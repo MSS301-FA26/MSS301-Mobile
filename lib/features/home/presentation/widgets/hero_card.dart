@@ -13,6 +13,7 @@ class HeroCard extends StatelessWidget {
     required this.activeIndex,
     required this.count,
     required this.onOpen,
+    required this.onBook,
     required this.onTrailer,
     required this.onDot,
   });
@@ -21,6 +22,7 @@ class HeroCard extends StatelessWidget {
   final int activeIndex;
   final int count;
   final VoidCallback onOpen;
+  final VoidCallback onBook;
   final VoidCallback onTrailer;
   final void Function(int) onDot;
 
@@ -40,6 +42,7 @@ class HeroCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 GestureDetector(
+                  key: ValueKey('hero-open-${movie.id}'),
                   onTap: onOpen,
                   child: AppImage(
                     asset: movie.bannerAsset ?? movie.posterAsset,
@@ -133,9 +136,10 @@ class HeroCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: AppButton(
+                              key: ValueKey('hero-book-${movie.id}'),
                               label: 'Đặt vé ngay',
                               icon: Icons.confirmation_number_outlined,
-                              onPressed: onOpen,
+                              onPressed: onBook,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.xs),

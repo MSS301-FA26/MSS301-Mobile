@@ -1,21 +1,21 @@
 # AI Studio to Flutter feature mapping
 
-The AI Studio export under `docs/ui-reference/ai-studio/` is a visual and interaction reference. Flutter uses native widgets, GoRouter, Riverpod, and structured mock presentation data. This document maps the full export; only Phase 1 and Phase 2 are implemented.
+The AI Studio export under `docs/ui-reference/ai-studio/` is a visual and interaction reference. Flutter uses native widgets, GoRouter, Riverpod, and structured mock data. This document maps the full export; Phase 1/2, R1 navigation contract, and R2 contract foundation are implemented. Existing presentation screens still use their legacy presentation models until R3.
 
 ## Screens
 
 | AI Studio screen | Flutter feature | Phase 1/2 status |
 | --- | --- | --- |
-| `HomeScreen.tsx` | `features/home/presentation` | Implemented |
-| `MovieDetailScreen.tsx` | `features/movie/presentation` | Route and visual placeholder |
-| `DiscoverScreen.tsx` | `features/search/presentation` | Deferred |
-| `ShowtimesScreen.tsx` | `features/showtime/presentation` | Deferred; also supplies the calendar tab |
+| `HomeScreen.tsx` | `features/home/presentation` | Implemented; R1 navigation contract applied |
+| `MovieDetailScreen.tsx` | `features/movie/presentation` | Visual placeholder; detail and booking routes active |
+| `DiscoverScreen.tsx` | `features/search/presentation` | Mock UI implemented under current `features/discover` alias |
+| `ShowtimesScreen.tsx` | `features/showtime/presentation` | Mock UI implemented; seat destination blocked until R4 |
 | `SeatsScreen.tsx` | `features/seat/presentation` | Deferred |
 | `ConcessionsScreen.tsx` | `features/food/presentation` | Deferred |
 | `PaymentScreen.tsx` | `features/checkout/presentation` and `features/payment/presentation` | Deferred |
-| `OrdersScreen.tsx` | `features/booking/presentation` | Deferred |
+| `OrdersScreen.tsx` | `features/booking/presentation` | Mock UI implemented under current `features/orders` alias; ticket/refund deferred |
 | `TicketDetailScreen.tsx` | `features/ticket/presentation` | Deferred |
-| `AccountScreen.tsx` | `features/profile/presentation` | Deferred |
+| `AccountScreen.tsx` | `features/profile/presentation` | Mock UI implemented under current `features/account` alias; child routes deferred |
 | `WalletScreen.tsx` | `features/wallet/presentation` | Deferred |
 | `VouchersScreen.tsx` | `features/promotion/presentation` | Deferred |
 | `VoucherDetailScreen.tsx` | `features/promotion/presentation` | Deferred |
@@ -54,8 +54,21 @@ The reference uses Material Symbols. Flutter uses the closest built-in Material 
 
 AI Studio has no bundled image or font assets. Its movie data contains external URLs, some of which resolve to unrelated UI mockups. Flutter bundles mock posters and banners under `assets/mock/movies/`, with provenance and remaining banner TODOs in `assets/mock/README.md`. Inter and its license are under `assets/fonts/`. The Phase 2 Home screen uses eight structured mock movies and one mock cinema.
 
+## Backend-aligned contract foundation
+
+R2 is implemented without connecting to a real API:
+
+- shared response/page parsing, `AppClock`/`FakeAppClock`, integer IDs and integer VND money;
+- backend-shaped catalog, showtime/seat map, checkout quote, booking, payment, profile, wallet, withdrawal and loyalty DTOs;
+- enum parsing with an `unknown` fallback and explicit catalog-seat-to-booking-seat mapping;
+- repository interfaces, in-memory mock implementations and Riverpod provider bindings;
+- deterministic scenario data for Inception, the 20:30 showtime, seats C4/C5, 90.000đ tickets, the 89.000đ combo and a 269.000đ quote;
+- contract and repository lifecycle tests, including hold conflict/expiry and the separate payment `SUCCESS` → booking `PAID` transition.
+
+R2 adds the data boundary only. It does not claim that Home, Discover, Movie, Showtimes, Orders or Account already consume the new repositories; that migration is R3.
+
 ## Navigation scope
 
-The active Flutter routes are `/home` and `/movie/:id`. Home movie taps open the Movie Detail placeholder; back returns to Home. The five-tab bar matches the reference visually. Other tab destinations and the booking flow are deferred with clear provisional feedback, so Phase 1/2 does not imply completed screens or backend behavior.
+The active Flutter routes are `/home`, `/discover`, `/showtimes`, `/orders`, `/account`, and `/movie/:id`. `/showtimes` accepts an optional `movieId` query. The five-tab bar, movie detail navigation, filtered booking entry, Search/Account header actions, and cinema information sheet are active. Actions without a destination are disabled or hidden according to `MOBILE_CTA_ROUTE_REGISTRY.md`; seat selection, ticket, auth/account child routes, and preview flows remain deferred.
 
-No API client, repository, use case, data source, or backend integration belongs in this phase.
+No API client, remote data source, or backend integration is active. Local repository interfaces and mock implementations are the R2 contract boundary.

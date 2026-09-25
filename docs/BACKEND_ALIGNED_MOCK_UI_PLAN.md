@@ -1,13 +1,15 @@
 # CINEPREMIER Mobile — Backend-aligned Mock UI Plan
 
-> Phiên bản: 1.0  
+> Phiên bản: 1.2
 > Ngày đối chiếu contract: 2026-09-25  
 > Phạm vi: `Mobile/MSS301-Mobile` đối chiếu với `BE/MSS301-Backend/cinema-services`  
-> Trạng thái: kế hoạch triển khai; chưa cho phép kết nối API thật
+> Trạng thái: R0–R2 hoàn thành; chưa cho phép kết nối API thật
 
 ## 1. Mục tiêu
 
 Mục tiêu của giai đoạn này là làm cho code Flutter có thể ánh xạ trực tiếp sang contract backend hiện tại nhưng vẫn chạy hoàn toàn bằng mock data. Sau giai đoạn này, nhóm có thể đánh giá và điều chỉnh toàn bộ UI/UX trước, rồi thay từng mock repository bằng remote repository mà không phải viết lại presentation flow.
+
+Mọi implementation trong kế hoạch này phải tuân theo tám quyết định F1–F8 đã chốt tại mục 1.3 của `CINEPREMIER_MOBILE_UI_FLOWS.md`. Khi plan và flow khác nhau về hành vi người dùng, flow specification được ưu tiên và plan phải được cập nhật theo.
 
 Kết quả cần đạt:
 
@@ -327,68 +329,168 @@ Mock repository in-memory được phép mutate để demo flow. Mỗi test ph�
 
 Migration route/folder là task độc lập sau khi UI flow ổn định. Deep link tương lai phải chọn một canonical route duy nhất trước khi tích hợp thật.
 
-## 12. Kế hoạch triển khai
+## 12. Kế hoạch triển khai tổng thể
 
-### M0 — Contract foundation
+### 12.1. Cách đọc F và M
 
-1. Tạo `AppClock`, money formatter và response/page wrapper dùng chung.
-2. Tạo enum parser có `unknown` và test cho toàn bộ enum đang dùng.
-3. Tạo DTO + mapper cho movie, showtime, seat, booking, payment, profile, wallet, loyalty.
-4. Tạo fixture JSON/object bám contract và `DemoScenario` liên kết ID.
-5. Tạo repository interface và Riverpod binding cho mock implementation.
+- `F1–F8` là các quyết định hành vi và tiêu chí UI trong flow specification. Chúng không phải tám phase code tuần tự.
+- `M0–M5` là các phase implementation kỹ thuật của Backend-aligned Mock UI.
+- Một phase M có thể hiện thực nhiều quyết định F; một quyết định F có thể kéo dài qua nhiều phase M.
+- `F8` là yêu cầu chất lượng xuyên suốt, không để đến cuối mới bổ sung loading/error/test.
 
-Điều kiện xong: fixture parse được, mapper test pass, không widget nào cần import fixture trực tiếp.
+### 12.2. Roadmap bắt buộc từ đầu đến cuối
 
-### M1 — Refactor màn hình hiện có, không đổi visual chủ đích
+| Thứ tự | Work package | F/M liên quan | Đầu ra chính | Gate hoàn thành |
+| --- | --- | --- | --- | --- |
+| R0 ✅ | Baseline tài liệu | F1–F8 | Flow, contract plan, core/preview scope và feature flag đã chốt | Hai tài liệu không mâu thuẫn |
+| R1 ✅ | Navigation contract | F1A, F7 | Danh mục CTA/route/parameter; tách active, disabled, hidden và preview | Không còn CTA active dẫn tới snackbar placeholder trên các màn hiện có |
+| R2 ✅ | Contract foundation | M0, F6 | Primitive, DTO, enum, mapper, fixture, repository interface/mock và provider binding | Analyzer sạch; contract/mapper/repository test pass; app không gọi network |
+| R3 | Existing UI migration | M1, F1B, F3, F8 | Home, Discover, Movie, Showtimes, Orders, Account đọc repository mock | Visual không đổi ngoài sửa lỗi; ID/date/money/status không còn dùng model cũ tại data boundary |
+| R4 | Booking entry | M2, F2, F4, F5, F6, F8 | Movie detail → showtime → auth gate → seat → hold | Hold/conflict/expire/back chạy bằng fake clock; timer chỉ bắt đầu khi `HOLDING` |
+| R5 | Booking completion | M3, F2, F6, F8 | Food kèm vé → checkout → payment result → verify booking → ticket/order | Happy path và failure/expiry/retry chạy end-to-end offline; QR chỉ khi `PAID` |
+| R6 | Account completion | M4, F5, F8 | Auth đầy đủ, profile, wallet, loyalty và guest/resume state | Không còn dead action trong feature đã bật; wallet/points tuân contract và product rule |
+| R7 | Preview flows | M5, F7, F8 | Các màn chưa có contract đầy đủ, cô lập sau feature flag | Release-like build tắt toàn bộ preview; preview build không làm bẩn DTO chuẩn |
+| R8 | Stabilization và handoff | F1–F8 | Regression, accessibility, responsive, docs và API-readiness report | Definition of Done mục 14.2 đạt; mock UI được coi là hoàn thành |
 
-1. Home/Discover/Movie đọc `CatalogRepository`.
+Không chuyển sang work package tiếp theo khi gate của package trước chưa đạt, ngoại trừ việc chuẩn bị visual độc lập không thay đổi contract hoặc navigation.
+
+### 12.3. R1 — F1A Navigation contract
+
+Registry thực thi của R1 được quản lý tại `MOBILE_CTA_ROUTE_REGISTRY.md`.
+
+> Trạng thái: **Hoàn thành**. Analyzer sạch, 8 widget/navigation test pass; R2 là work package kế tiếp.
+
+1. Kiểm kê mọi CTA, card tap, icon action, menu item và bottom-nav item đang hiển thị.
+2. Với mỗi action, ghi rõ route đích, path/query parameter, yêu cầu đăng nhập và feature flag.
+3. Phân loại action thành `core active`, `preview active`, `disabled with reason`, `hidden` hoặc `external intent`.
+4. Tách callback `onOpenDetails`, `onBook`, `onPlayTrailer` và các callback có ý nghĩa khác nhau.
+5. Các route đích chưa tồn tại và thuộc F7 phải hidden/disabled; không tạo placeholder chỉ để hiện snackbar.
+6. Thêm navigation test cho các route hiện có và test xác nhận preview action bị ẩn/tắt trong release-like configuration.
+
+Điều kiện xong: mọi control đang hiển thị đều có hành vi xác định; chưa bắt buộc hoàn thiện toàn bộ màn hình đích.
+
+### 12.4. R2 — M0 Contract foundation
+
+> Trạng thái: **Hoàn thành**. M0A–M0C đã được triển khai; analyzer sạch và toàn bộ 14 test pass. R3 là work package kế tiếp.
+
+Thực hiện theo lát cắt để tránh một pull request quá lớn:
+
+#### M0A — Shared contract primitives
+
+1. Tạo `AppClock`, `FakeAppClock`, money value/formatter và response/page wrapper thực sự được fixture sử dụng.
+2. Chốt quy tắc ID `int`, local date/time và VND integer.
+3. Tạo enum parser có `unknown`; không parse enum trong widget.
+4. Tạo `DemoScenario` giữ ID/clock seed dùng chung, không chứa UI state.
+
+#### M0B — Catalog và booking contracts
+
+1. Tạo DTO, mapper và fixture cho movie, showtime, seat map, food catalog và checkout quote.
+2. Tạo DTO, mapper và fixture cho hold request, booking response, booking seat/ticket/food.
+3. Tạo `CatalogRepository` và `BookingRepository` cùng mock implementation in-memory.
+4. Test `NORMAL → STANDARD`, physical/runtime seat status, quote và booking status.
+
+#### M0C — Payment và account contracts
+
+1. Tạo DTO, mapper và fixture cho payment, profile, wallet, withdrawal và loyalty.
+2. Tạo repository interface/mock tương ứng và Riverpod binding.
+3. Mô phỏng payment delay, wallet/loyalty state nhưng chưa dựng toàn bộ UI M4.
+4. Không tạo contract giả cho voucher, VIP, refund request hoặc PopBot.
+
+Điều kiện xong: fixture parse được, mapper/repository test pass, không widget nào import fixture trực tiếp và không phát sinh network request.
+
+Kết quả thực thi:
+
+- shared primitive nằm tại `lib/core/contracts`, `lib/core/money`, `lib/core/time` và `lib/core/demo`;
+- catalog/showtime, booking, payment và account có DTO bám public response/request hiện tại, enum parser có `unknown`, repository interface và mock in-memory;
+- Riverpod provider binding đã có cho từng nhóm repository nhưng presentation cũ chưa được chuyển sang dùng; việc chuyển này thuộc R3;
+- mock scenario dùng ID `int`, VND integer, thời gian tương đối qua `AppClock`, hold 3 phút, xung đột/nhả ghế và payment/booking state tách biệt;
+- `test/backend_aligned_contract_test.dart` khóa contract parsing, seat mapping, quote 269.000đ, lifecycle booking/payment, expiry và account state;
+- không thêm HTTP client, remote data source hoặc network request.
+
+### 12.5. R3 — M1 Existing UI migration
+
+1. Home/Discover/Movie đọc `CatalogRepository` và giữ presentation metadata riêng.
 2. Showtimes dùng `DateTime`, `ShowtimeStatus`, ID kiểu `int` và không preselect.
-3. Orders dùng `BookingResponse` mapping và đầy đủ status.
-4. Account tách profile, wallet, loyalty data thay vì một object mock tổng hợp.
-5. Sửa callback navigation: `onOpenDetails` và `onBook` là hai hành động riêng.
-6. Giữ screenshot/golden baseline để phát hiện thay đổi visual ngoài ý muốn.
+3. Orders dùng booking mapper và đầy đủ `BookingStatus`.
+4. Account compose profile, wallet và loyalty repositories thay vì một mock object tổng hợp.
+5. Hoàn thiện F1B: action core truyền đúng ID; action preview tuân feature flag.
+6. Sửa hero responsive, tách card/booking callback và bổ sung loading/empty/error cơ bản.
+7. Giữ screenshot/golden baseline để phát hiện thay đổi visual ngoài ý muốn.
 
-Điều kiện xong: toàn bộ UI hiện có chạy offline qua repository mock và không còn model String-ID cũ ở ranh giới data.
+Điều kiện xong: toàn bộ UI hiện có chạy offline qua repository mock, không còn String ID/date/price/status presentation cũ tại data boundary và không có regression navigation.
 
-### M2 — Movie detail, lịch chiếu và chọn ghế
+### 12.6. R4 — M2 Booking entry
 
 1. Hoàn thiện movie detail từ DTO + presentation metadata.
 2. Lịch chiếu lọc theo movie/date và điều hướng bằng `showtimeId`.
-3. Seat map hỗ trợ standard/VIP/couple, physical/runtime status và legend accessible.
-4. Tạo booking draft local, hold mock, conflict, timer 3 phút, expire và cancel confirmation.
+3. Thêm session mock tối thiểu và auth gate giữ pending action; form auth đầy đủ thuộc M4.
+4. Seat map hỗ trợ standard/VIP/couple, physical/runtime status và legend accessible.
+5. Tạo booking draft local, hold mock, conflict, timer 3 phút, expire và cancel confirmation.
+6. Test back/resume, sold/past slot, seat conflict, couple seat và fake-clock expiry.
 
-Điều kiện xong: Home/Detail → Showtimes → Seat selection → hold chạy được bằng mock và test fake clock.
+Điều kiện xong: Home/Detail → Showtimes → Auth gate → Seat selection → Hold chạy được bằng mock, không mất context và không tự chọn dữ liệu cho người dùng.
 
-### M3 — Concessions, checkout, payment result và vé QR
+### 12.7. R5 — M3 Booking completion
 
-1. Food item/combo và quantity state từ catalog mock.
-2. Checkout quote, snapshot, total và quote-changed state.
-3. Payment `PENDING/SUCCESS/FAILED`, processing delay và retry.
-4. Booking chuyển `PAID` mới mở ticket; QR dùng booking contract.
-5. Order list/detail phản ánh booking vừa tạo.
+1. Food item/combo và quantity state từ catalog mock; bước này được phép bỏ qua.
+2. Checkout quote, snapshot, total, quote-changed và hold-expired state.
+3. Payment `PENDING/SUCCESS/FAILED`, processing delay, unknown/cancelled presentation state và retry.
+4. Sau payment `SUCCESS`, kiểm tra booking; chỉ booking `PAID` mới mở ticket.
+5. Booking QR là mã chính; Order list/detail phản ánh booking vừa tạo.
+6. Chạy E2E happy path, payment failure, payment success chờ booking, hold expiry và retry.
 
-Điều kiện xong: happy path và failure/expiry path chạy end-to-end không cần backend.
+Điều kiện xong: core booking F2 hoạt động end-to-end khi backend tắt và các state machine F6 không bị trộn.
 
-### M4 — Auth, profile, wallet và loyalty
+### 12.8. R6 — M4 Account completion
 
-1. Auth gate giữ pending action và resume đúng route.
-2. Profile edit/validation với mock repository.
-3. Wallet balance, transaction, withdrawal states; không có top-up CTA.
-4. Loyalty balance/history/config; checkout redemption mặc định tắt.
+1. Hoàn thiện login, register, OTP, reset password, logout và session state bằng mock.
+2. Pending action resume đúng route/ID hoặc về màn an toàn nếu context hết hạn.
+3. Profile edit/validation, password và avatar metadata.
+4. Wallet balance, transaction, withdrawal states; không có top-up CTA và không dùng wallet thanh toán vé.
+5. Loyalty balance/history/config; checkout redemption tiếp tục mặc định tắt.
+6. Hoàn thiện guest/loading/empty/error/submitting cho Account và Orders.
 
-Điều kiện xong: guest/logged-in state nhất quán và account menu không còn dead action cho feature đã bật.
+Điều kiện xong: guest/logged-in state nhất quán, auth resume có test và account không còn dead action đối với feature core đã bật.
 
-### M5 — Flow chưa có contract đầy đủ
+### 12.9. R7 — M5 Preview flows
 
-Chỉ dựng để review UI sau feature flag:
+Chỉ thực hiện sau khi R5 và R6 ổn định. Thứ tự nội bộ đề xuất:
 
-- food order độc lập;
-- refund/đổi vé;
-- voucher và VIP;
-- favorite, review và notification;
-- PopBot chat.
+1. Thông tin rạp, chính sách và CSKH tĩnh/mock vì ít phụ thuộc contract.
+2. Food order độc lập.
+3. Refund/đổi vé.
+4. Voucher và VIP.
+5. Favorite, review và notification.
+6. PopBot chat.
 
-Mỗi flow phải dùng model/repository tạm riêng, có nhãn `provisional`, và không được trộn field giả vào DTO backend đã chuẩn hóa.
+Mỗi flow phải dùng feature flag mặc định `off`, model/repository tạm có nhãn `provisional`, test riêng và không trộn field giả vào DTO backend đã chuẩn hóa.
+
+Điều kiện xong: preview build review được từng flow; release-like build không hiển thị action active của các flow này.
+
+### 12.10. R8 — Stabilization và handoff
+
+1. Chạy toàn bộ analyze, unit, notifier, widget, navigation và E2E mock test.
+2. Kiểm tra width 360/390/412, text scale, keyboard, safe area, scroll và accessibility label.
+3. Kiểm tra toàn bộ CTA registry, feature flag matrix và auth resume.
+4. Kiểm tra snapshot data xuyên suốt movie → booking → payment → ticket/order.
+5. Cập nhật `Flutter_UI_Feature_Mapping.md` theo trạng thái code thực tế.
+6. Cập nhật hai tài liệu này nếu implementation buộc thay đổi quyết định đã chốt.
+7. Lập API-readiness report từ blocker mục 15; không tự bắt đầu remote integration.
+
+Điều kiện xong: đạt Definition of Done, không còn lỗi blocker thuộc mock UI và có danh sách blocker backend rõ ràng cho phase tích hợp thật.
+
+### 12.11. Ma trận F → work package
+
+| Flow decision | Work package chính | Work package kiểm chứng |
+| --- | --- | --- |
+| F1 CTA/navigation | R1, R3 | R8 |
+| F2 Core booking | R4, R5 | R8 |
+| F3 Home | R3 | R8 |
+| F4 Showtime/seat/hold | R4 | R5, R8 |
+| F5 Auth gate/resume | R4, R6 | R8 |
+| F6 State machine | R2, R4, R5 | R8 |
+| F7 Preview isolation | R1, R7 | R8 |
+| F8 Common UI states | R3–R7 | R8 |
 
 ## 13. Feature flag đề xuất
 

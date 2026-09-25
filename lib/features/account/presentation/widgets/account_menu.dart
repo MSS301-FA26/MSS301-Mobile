@@ -7,7 +7,7 @@ class WalletTile extends StatelessWidget {
   const WalletTile({super.key, required this.user, required this.onManage});
 
   final MockUserProfile user;
-  final VoidCallback onManage;
+  final VoidCallback? onManage;
 
   @override
   Widget build(BuildContext context) {
@@ -60,8 +60,8 @@ class WalletTile extends StatelessWidget {
                 borderRadius: AppRadii.control,
               ),
             ),
-            child: const Text(
-              'Quản lý ví',
+            child: Text(
+              onManage == null ? 'Sắp có' : 'Quản lý ví',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
             ),
           ),
@@ -104,16 +104,18 @@ class AccountMenuItemData {
   const AccountMenuItemData({
     required this.icon,
     required this.label,
-    required this.onTap,
+    this.onTap,
     this.iconColor = AppColors.gold,
     this.trailing,
+    this.status,
   });
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color iconColor;
   final String? trailing;
+  final String? status;
 }
 
 class AccountMenuRow extends StatelessWidget {
@@ -123,21 +125,26 @@ class AccountMenuRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = item.onTap != null;
     return InkWell(
       onTap: item.onTap,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
-            Icon(item.icon, size: 21, color: item.iconColor),
+            Icon(
+              item.icon,
+              size: 21,
+              color: enabled ? item.iconColor : AppColors.textDisabled,
+            ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
                 item.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.text,
+                style: TextStyle(
+                  color: enabled ? AppColors.text : AppColors.textDisabled,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -150,6 +157,17 @@ class AccountMenuRow extends StatelessWidget {
                   color: AppColors.gold,
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            if (item.status != null) ...[
+              Text(
+                item.status!,
+                style: const TextStyle(
+                  color: AppColors.textDisabled,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(width: 4),

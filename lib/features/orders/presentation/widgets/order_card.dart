@@ -15,8 +15,8 @@ class UpcomingOrderCard extends StatelessWidget {
   });
 
   final TicketOrder order;
-  final VoidCallback onCancel;
-  final VoidCallback onOpenTicket;
+  final VoidCallback? onCancel;
+  final VoidCallback? onOpenTicket;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +57,14 @@ class UpcomingOrderCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
+          if (onCancel == null && onOpenTicket == null) ...[
+            const Text(
+              'Mã vé và hoàn/đổi đang tạm khóa trong bản mock.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -216,8 +224,8 @@ class CompletedOrderCard extends StatelessWidget {
   });
 
   final TicketOrder order;
-  final VoidCallback onBookAgain;
-  final VoidCallback onRate;
+  final VoidCallback? onBookAgain;
+  final VoidCallback? onRate;
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +329,7 @@ class CompletedOrderCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.xs),
               AppButton(
-                label: 'Đánh giá',
+                label: onRate == null ? 'Đánh giá • Sắp có' : 'Đánh giá',
                 icon: Icons.star_rounded,
                 variant: AppButtonVariant.secondary,
                 height: 38,

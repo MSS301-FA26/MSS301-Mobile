@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/app_shell.dart';
@@ -26,7 +27,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   final PageController _heroController = PageController();
   int _activeHero = 0;
   String _genre = 'Tất cả';
-  final Set<String> _reminders = {};
 
   @override
   void dispose() {
@@ -37,16 +37,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   void _openMovie(Movie movie) =>
       context.pushNamed('movieDetail', pathParameters: {'id': movie.id});
 
-  void _unavailable(String feature) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature sẽ có trong giai đoạn tiếp theo.'),
-        backgroundColor: AppColors.surfaceRaised,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
+  void _bookMovie(Movie movie) =>
+      context.go(AppRoutes.showtimesForMovie(movie.id));
 
   bool _matchesGenre(Movie movie) {
     return _genre == 'Tất cả' || movie.genreTags.contains(_genre);
@@ -66,7 +58,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     ];
 
     return AppShell(
-      onUnavailable: _unavailable,
       currentIndex: 0,
       body: SingleChildScrollView(
         child: Column(
@@ -88,6 +79,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     activeIndex: _activeHero,
                     count: heroes.length,
                     onOpen: () => _openMovie(heroes[index]),
+                    onBook: () => _bookMovie(heroes[index]),
                     onTrailer: () => showDialog<void>(
                       context: context,
                       builder: (context) =>
@@ -103,12 +95,12 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            QuickActions(onUnavailable: _unavailable),
+            const QuickActions(),
             const SizedBox(height: AppSpacing.xl),
             AppSectionHeader(
               title: 'Phim đang chiếu',
               action: 'Xem tất cả',
-              onAction: () => _unavailable('Khám phá'),
+              onAction: () => context.go(AppRoutes.discover),
             ),
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
@@ -122,11 +114,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                 itemBuilder: (context, index) => NowShowingCard(
                   movie: nowShowing[index],
                   onOpen: () => _openMovie(nowShowing[index]),
+                  onBook: () => _bookMovie(nowShowing[index]),
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            PopBotBanner(onOpen: () => _unavailable('PopBot AI')),
+            const PopBotBanner(onOpen: null),
             const SizedBox(height: AppSpacing.xl),
             const AppSectionHeader(
               title: 'Thể loại thịnh hành',
@@ -141,7 +134,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             AppSectionHeader(
               title: 'Phim sắp chiếu VIP',
               action: 'Xem lịch',
-              onAction: () => _unavailable('Lịch chiếu'),
+              onAction: () => context.go(AppRoutes.showtimes),
             ),
             const Padding(
               padding: EdgeInsets.only(left: 30, right: 16, bottom: 12),
@@ -160,11 +153,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 child: ComingSoonCard(
                   movie: movie,
-                  reminded: _reminders.contains(movie.id),
+                  reminded: false,
                   onOpen: () => _openMovie(movie),
-                  onReminder: () => setState(() {
-                    if (!_reminders.add(movie.id)) _reminders.remove(movie.id);
-                  }),
+                  onReminder: null,
                 ),
               ),
             const SizedBox(height: AppSpacing.md),

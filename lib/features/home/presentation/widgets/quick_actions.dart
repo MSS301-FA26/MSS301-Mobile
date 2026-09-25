@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class QuickActions extends StatelessWidget {
-  const QuickActions({super.key, required this.onUnavailable});
-  final void Function(String) onUnavailable;
+  const QuickActions({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +58,8 @@ class QuickActions extends StatelessWidget {
                 color: AppColors.surface,
                 borderRadius: AppRadii.card,
                 child: InkWell(
-                  onTap: () => onUnavailable(actions[i].label),
+                  key: ValueKey('quick-action-${actions[i].label}'),
+                  onTap: null,
                   borderRadius: AppRadii.card,
                   child: Container(
                     height: AppSpacing.quickActionHeight,
@@ -90,16 +90,30 @@ class QuickActions extends StatelessWidget {
                         const SizedBox(height: 6),
                         Expanded(
                           child: Center(
-                            child: Text(
-                              actions[i].label,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                height: 1.1,
-                              ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  actions[i].label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.1,
+                                    color: AppColors.textDisabled,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Sắp có',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: AppColors.textDisabled,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),

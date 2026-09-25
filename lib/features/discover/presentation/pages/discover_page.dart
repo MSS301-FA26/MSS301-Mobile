@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../movie/presentation/models/movie.dart';
@@ -37,17 +38,6 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
     super.dispose();
   }
 
-  void _showUnavailable(String feature) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature sẽ có trong giai đoạn tiếp theo.'),
-        backgroundColor: AppColors.surfaceRaised,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   bool _matches(Movie movie) {
     final inTab = _tab == DiscoverMovieTab.now
         ? movie.isNowShowing
@@ -76,7 +66,6 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
 
     return AppShell(
       currentIndex: 1,
-      onUnavailable: _showUnavailable,
       body: CustomScrollView(
         slivers: [
           SliverPadding(
@@ -135,7 +124,8 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                     'movieDetail',
                     pathParameters: {'id': movie.id},
                   ),
-                  onBook: () => context.go('/showtimes'),
+                  onBook: () =>
+                      context.go(AppRoutes.showtimesForMovie(movie.id)),
                 );
               },
             ),

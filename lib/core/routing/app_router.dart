@@ -6,33 +6,35 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/movie/presentation/pages/movie_detail_placeholder.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
 import '../../features/showtime/presentation/pages/showtimes_page.dart';
+import 'app_routes.dart';
 
 final appRouter = GoRouter(
-  initialLocation: '/home',
+  initialLocation: AppRoutes.home,
   routes: [
-    GoRoute(path: '/', redirect: (context, state) => '/home'),
+    GoRoute(path: '/', redirect: (context, state) => AppRoutes.home),
     GoRoute(
-      path: '/home',
+      path: AppRoutes.home,
       name: 'home',
       builder: (context, state) => const HomePage(),
     ),
     GoRoute(
-      path: '/discover',
+      path: AppRoutes.discover,
       name: 'discover',
       builder: (context, state) => const DiscoverPage(),
     ),
     GoRoute(
-      path: '/showtimes',
+      path: AppRoutes.showtimes,
       name: 'showtimes',
-      builder: (context, state) => const ShowtimesPage(),
+      builder: (context, state) =>
+          ShowtimesPage(movieId: state.uri.queryParameters['movieId']),
     ),
     GoRoute(
-      path: '/orders',
+      path: AppRoutes.orders,
       name: 'orders',
       builder: (context, state) => const OrdersPage(),
     ),
     GoRoute(
-      path: '/account',
+      path: AppRoutes.account,
       name: 'account',
       builder: (context, state) => const AccountPage(),
     ),
