@@ -1,9 +1,9 @@
 # CINEPREMIER Mobile — Backend-aligned Mock UI Plan
 
-> Phiên bản: 1.3
+> Phiên bản: 1.4
 > Ngày đối chiếu contract: 2026-09-25  
 > Phạm vi: `Mobile/MSS301-Mobile` đối chiếu với `BE/MSS301-Backend/cinema-services`  
-> Trạng thái: R0–R3 hoàn thành; chưa cho phép kết nối API thật
+> Trạng thái: R0–R4 hoàn thành; chưa cho phép kết nối API thật
 
 ## 1. Mục tiêu
 
@@ -346,7 +346,7 @@ Migration route/folder là task độc lập sau khi UI flow ổn định. Deep 
 | R1 ✅ | Navigation contract | F1A, F7 | Danh mục CTA/route/parameter; tách active, disabled, hidden và preview | Không còn CTA active dẫn tới snackbar placeholder trên các màn hiện có |
 | R2 ✅ | Contract foundation | M0, F6 | Primitive, DTO, enum, mapper, fixture, repository interface/mock và provider binding | Analyzer sạch; contract/mapper/repository test pass; app không gọi network |
 | R3 ✅ | Existing UI migration | M1, F1B, F3, F8 | Home, Discover, Movie, Showtimes, Orders, Account đọc repository mock | Analyzer sạch; responsive/navigation/repository-state test pass; ID/date/money/status không còn dùng model cũ tại data boundary |
-| R4 | Booking entry | M2, F2, F4, F5, F6, F8 | Movie detail → showtime → auth gate → seat → hold | Hold/conflict/expire/back chạy bằng fake clock; timer chỉ bắt đầu khi `HOLDING` |
+| R4 ✅ | Booking entry | M2, F2, F4, F5, F6, F8 | Movie detail → showtime → auth gate → seat → hold | Analyzer sạch; hold/conflict/expire/back/logo guard chạy bằng fake clock; timer chỉ bắt đầu khi `HOLDING` |
 | R5 | Booking completion | M3, F2, F6, F8 | Food kèm vé → checkout → payment result → verify booking → ticket/order | Happy path và failure/expiry/retry chạy end-to-end offline; QR chỉ khi `PAID` |
 | R6 | Account completion | M4, F5, F8 | Auth đầy đủ, profile, wallet, loyalty và guest/resume state | Không còn dead action trong feature đã bật; wallet/points tuân contract và product rule |
 | R7 | Preview flows | M5, F7, F8 | Các màn chưa có contract đầy đủ, cô lập sau feature flag | Release-like build tắt toàn bộ preview; preview build không làm bẩn DTO chuẩn |
@@ -409,7 +409,7 @@ Kết quả thực thi:
 
 ### 12.5. R3 — M1 Existing UI migration
 
-> Trạng thái: **Hoàn thành**. Analyzer sạch và toàn bộ 16 test pass; R4 là work package kế tiếp.
+> Trạng thái: **Hoàn thành**. Mốc R3 có 16 test pass; hiện R4 cũng đã hoàn thành và R5 là work package kế tiếp.
 
 1. Home/Discover/Movie đọc `CatalogRepository` và giữ presentation metadata riêng.
 2. Showtimes dùng `DateTime`, `ShowtimeStatus`, ID kiểu `int` và không preselect.
@@ -435,6 +435,8 @@ Kết quả thực thi:
 
 ### 12.6. R4 — M2 Booking entry
 
+> Trạng thái: **Hoàn thành**. Analyzer sạch và toàn bộ 22 test pass; R5 là work package kế tiếp.
+
 1. Hoàn thiện movie detail từ DTO + presentation metadata.
 2. Lịch chiếu lọc theo movie/date và điều hướng bằng `showtimeId`.
 3. Thêm session mock tối thiểu và auth gate giữ pending action; form auth đầy đủ thuộc M4.
@@ -443,6 +445,20 @@ Kết quả thực thi:
 6. Test back/resume, sold/past slot, seat conflict, couple seat và fake-clock expiry.
 
 Điều kiện xong: Home/Detail → Showtimes → Auth gate → Seat selection → Hold chạy được bằng mock, không mất context và không tự chọn dữ liệu cho người dùng.
+
+Kết quả thực thi:
+
+- Movie Detail hiển thị nội dung, đạo diễn, diễn viên, ngôn ngữ/phụ đề và trailer từ DTO + presentation metadata;
+- suất hợp lệ điều hướng bằng `showtimeId`; suất `COMPLETED`/không mở bán bị disabled và không có preselect ngày/suất;
+- session mock tối thiểu giữ pending booking action, đăng nhập mock và resume đúng `showtimeId`; auth form đầy đủ vẫn thuộc R6/M4;
+- `/seat-selection/:showtimeId` hiển thị tóm tắt suất, màn chiếu, sơ đồ zoom/pan, ghế thường/VIP/đôi, held/booked/maintenance và legend có semantic label;
+- lựa chọn ghế là local state, giới hạn 6 ghế và ghế đôi chọn/bỏ theo cặp;
+- nhấn **Tiếp tục** mới gọi hold; timer 3 phút chỉ xuất hiện sau booking `HOLDING`;
+- conflict đánh dấu ghế vừa tranh chấp là unavailable; fake clock expiry giải phóng ghế và cho chọn lại/về lịch chiếu;
+- back khi có lựa chọn/hold và logo khi có booking draft đều có confirmation; nút giữ người dùng ở lại là primary, hành động rời đi là secondary;
+- mock booking conflict được khóa theo `(showtimeId, seatId)`, tránh xung đột sai giữa hai suất dùng cùng physical seat;
+- `test/booking_entry_test.dart` khóa happy path, auth resume, couple seat, back confirmation, conflict, logo guard và expiry;
+- R4 dừng sau hold; food, checkout, payment và ticket chưa được mở trước R5.
 
 ### 12.7. R5 — M3 Booking completion
 

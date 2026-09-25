@@ -180,7 +180,7 @@ class _RoomSection extends StatelessWidget {
             crossAxisCount: 3,
             crossAxisSpacing: AppSpacing.xs,
             mainAxisSpacing: AppSpacing.xs,
-            childAspectRatio: 1.35,
+            childAspectRatio: 1.2,
           ),
           itemBuilder: (context, index) {
             final slot = room.slots[index];
@@ -213,6 +213,7 @@ class _SlotPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final soldOut = slot.isSoldOut;
     return InkWell(
+      key: ValueKey('showtime-slot-${slot.id}'),
       onTap: onTap,
       borderRadius: AppRadii.control,
       child: Opacity(

@@ -10,9 +10,10 @@ import '../../../../shared/widgets/age_badge.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../models/movie.dart';
 import '../providers/movies_provider.dart';
+import '../widgets/trailer_preview_dialog.dart';
 
-class MovieDetailPlaceholder extends ConsumerWidget {
-  const MovieDetailPlaceholder({super.key, required this.movieId});
+class MovieDetailPage extends ConsumerWidget {
+  const MovieDetailPage({super.key, required this.movieId});
 
   final int movieId;
 
@@ -176,12 +177,25 @@ class MovieDetailPlaceholder extends ConsumerWidget {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          movie.tagline,
+                          movie.description ?? movie.tagline,
                           style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.textSecondary,
                             height: 1.5,
                           ),
+                        ),
+                        const SizedBox(height: 24),
+                        AppButton(
+                          label: 'Xem trailer',
+                          icon: Icons.play_circle_outline,
+                          variant: AppButtonVariant.secondary,
+                          onPressed: movie.trailerUrl == null
+                              ? null
+                              : () => showDialog<void>(
+                                  context: context,
+                                  builder: (context) =>
+                                      TrailerPreviewDialog(movie: movie),
+                                ),
                         ),
                         const SizedBox(height: 24),
                         Container(
@@ -192,10 +206,10 @@ class MovieDetailPlaceholder extends ConsumerWidget {
                             border: Border.all(color: AppColors.border),
                             borderRadius: AppRadii.card,
                           ),
-                          child: const Column(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'Chi tiết phim',
                                 style: TextStyle(
                                   fontSize: 15,
@@ -203,9 +217,28 @@ class MovieDetailPlaceholder extends ConsumerWidget {
                                   color: AppColors.gold,
                                 ),
                               ),
-                              SizedBox(height: 6),
-                              Text(
-                                'Bản mock hiện hiển thị thông tin phim cơ bản để kiểm tra navigation và bố cục.',
+                              const SizedBox(height: 10),
+                              _DetailRow(
+                                label: 'Đạo diễn',
+                                value: movie.director ?? 'Đang cập nhật',
+                              ),
+                              _DetailRow(
+                                label: 'Diễn viên',
+                                value: movie.cast ?? 'Đang cập nhật',
+                              ),
+                              _DetailRow(
+                                label: 'Ngôn ngữ',
+                                value: movie.language ?? 'Đang cập nhật',
+                              ),
+                              _DetailRow(
+                                label: 'Phụ đề',
+                                value:
+                                    movie.subtitleLanguage ?? 'Đang cập nhật',
+                                isLast: true,
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Dữ liệu đang chạy từ CatalogRepository mock theo contract backend.',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
@@ -239,6 +272,38 @@ class _InfoPill extends StatelessWidget {
     child: Text(
       label,
       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+    ),
+  );
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.isLast = false,
+  });
+
+  final String label;
+  final String value;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 82, child: Text(label, style: AppTextStyles.caption)),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }

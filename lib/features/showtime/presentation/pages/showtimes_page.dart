@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/cinema_info_sheet.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../discover/presentation/widgets/format_filter_chips.dart';
+import '../../../auth/application/mock_auth_session.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
 import '../models/showtime_models.dart';
@@ -86,6 +89,54 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
         .toList(growable: false);
   }
 
+  Future<void> _openSeatSelection(int movieId, ShowtimeSlot slot) async {
+    final auth = ref.read(mockAuthSessionProvider);
+    if (auth.isAuthenticated) {
+      context.push(AppRoutes.seatSelection(slot.id));
+      return;
+    }
+    ref
+        .read(mockAuthSessionProvider.notifier)
+        .requireBookingAuth(
+          PendingBookingAction(
+            movieId: movieId,
+            showtimeId: slot.id,
+            sourceRoute: AppRoutes.showtimesForMovie(movieId),
+          ),
+        );
+    final signIn = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng nhập để đặt vé'),
+        content: const Text(
+          'Bản R4 dùng phiên đăng nhập mock và sẽ tiếp tục đúng suất chiếu bạn vừa chọn.',
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Để sau'),
+          ),
+          FilledButton(
+            key: const ValueKey('mock-auth-continue'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Đăng nhập mock'),
+          ),
+        ],
+      ),
+    );
+    if (signIn != true || !mounted) {
+      ref.read(mockAuthSessionProvider.notifier).clearPending();
+      return;
+    }
+    final pending = ref
+        .read(mockAuthSessionProvider.notifier)
+        .signInAndTakePending();
+    if (pending != null && mounted) {
+      context.push(AppRoutes.seatSelection(pending.showtimeId));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final moviesState = ref.watch(moviesProvider);
@@ -146,7 +197,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                 SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
-                    'Chọn một ngày để lọc lịch chiếu. Chọn ghế sẽ được mở ở R4.',
+                    'Chọn ngày để lọc lịch chiếu, sau đó chọn một suất còn mở bán.',
                     style: AppTextStyles.caption,
                   ),
                 ),
@@ -194,7 +245,8 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                           movie: movie,
                           rooms: rooms,
                           selectedSlotId: null,
-                          onSlotSelected: null,
+                          onSlotSelected: (slot) =>
+                              _openSeatSelection(movieShowtime.movieId, slot),
                         ),
                       );
                     },

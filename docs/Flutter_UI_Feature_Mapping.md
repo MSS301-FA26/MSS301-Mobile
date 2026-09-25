@@ -7,10 +7,10 @@ The AI Studio export under `docs/ui-reference/ai-studio/` is a visual and intera
 | AI Studio screen | Flutter feature | Current status |
 | --- | --- | --- |
 | `HomeScreen.tsx` | `features/home/presentation` | Repository-backed mock UI; responsive/navigation regression covered |
-| `MovieDetailScreen.tsx` | `features/movie/presentation` | Repository-backed visual placeholder; detail and booking routes active |
+| `MovieDetailScreen.tsx` | `features/movie/presentation` | Repository-backed detail content, trailer and booking route active |
 | `DiscoverScreen.tsx` | `features/search/presentation` | Repository-backed mock UI under current `features/discover` alias |
-| `ShowtimesScreen.tsx` | `features/showtime/presentation` | Repository-backed typed schedule; seat destination blocked until R4 |
-| `SeatsScreen.tsx` | `features/seat/presentation` | Deferred |
+| `ShowtimesScreen.tsx` | `features/showtime/presentation` | Repository-backed typed schedule; valid slots open seat selection through auth gate |
+| `SeatsScreen.tsx` | `features/seat/presentation` | R4 implemented: typed seat map, local selection, hold, timer, conflict/expiry and leave guards |
 | `ConcessionsScreen.tsx` | `features/food/presentation` | Deferred |
 | `PaymentScreen.tsx` | `features/checkout/presentation` and `features/payment/presentation` | Deferred |
 | `OrdersScreen.tsx` | `features/booking/presentation` | Reads `BookingRepository` under current `features/orders` alias; ticket/refund deferred |

@@ -11,6 +11,12 @@ class Movie {
     required this.genre,
     required this.tagline,
     required this.posterAsset,
+    this.description,
+    this.director,
+    this.cast,
+    this.language,
+    this.subtitleLanguage,
+    this.trailerUrl,
     this.genreTags = const [],
     this.bannerAsset,
     this.format = '2D',
@@ -26,6 +32,12 @@ class Movie {
   final String ratingCount;
   final String genre;
   final String tagline;
+  final String? description;
+  final String? director;
+  final String? cast;
+  final String? language;
+  final String? subtitleLanguage;
+  final String? trailerUrl;
   final String posterAsset;
   final List<String> genreTags;
   final String? bannerAsset;

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mss301_mobile/app/app.dart';
+import 'package:mss301_mobile/core/routing/app_router.dart';
+import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/account/presentation/pages/account_page.dart';
 import 'package:mss301_mobile/features/discover/presentation/pages/discover_page.dart';
 import 'package:mss301_mobile/features/home/presentation/pages/home_page.dart';
@@ -11,6 +13,8 @@ import 'package:mss301_mobile/features/showtime/presentation/widgets/date_select
 import 'package:mss301_mobile/features/movie/presentation/providers/movies_provider.dart';
 
 void main() {
+  setUp(() => appRouter.go(AppRoutes.home));
+
   for (final width in [360.0, 390.0, 412.0]) {
     testWidgets('home navigation at ${width.toInt()} px', (tester) async {
       await tester.binding.setSurfaceSize(Size(width, 800));
@@ -24,7 +28,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Chi tiết phim'), findsOneWidget);
-      expect(find.textContaining('thông tin phim cơ bản'), findsOneWidget);
+      expect(
+        find.textContaining('Dữ liệu đang chạy từ CatalogRepository'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byTooltip('Quay lại'));
       await tester.pumpAndSettle();

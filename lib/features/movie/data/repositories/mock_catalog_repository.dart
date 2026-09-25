@@ -77,11 +77,11 @@ class MockCatalogRepository implements CatalogRepository {
   @override
   Future<ShowtimeSeatMapDto> getSeatMap(int showtimeId) async {
     await _wait();
-    final map = _fixtures.seatMap();
-    if (map.showtime.id != showtimeId) {
+    try {
+      return _fixtures.seatMap(showtimeId);
+    } on StateError {
       throw const CatalogNotFoundException('Không tìm thấy suất chiếu.');
     }
-    return map;
   }
 
   @override

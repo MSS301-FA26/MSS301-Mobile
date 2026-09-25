@@ -22,7 +22,7 @@ class MockBookingRepository implements BookingRepository {
   final CatalogRepository _catalogRepository;
   final Duration delay;
   final Map<int, BookingDto> _bookings = {};
-  final Set<int> _heldSeatIds = {};
+  final Set<({int showtimeId, int seatId})> _heldSeats = {};
   var _nextBookingId = DemoIds.booking;
 
   Future<void> _wait() => Future<void>.delayed(delay);
@@ -30,7 +30,10 @@ class MockBookingRepository implements BookingRepository {
   @override
   Future<BookingDto> holdSeats(int userId, HoldSeatsRequestDto request) async {
     await _wait();
-    if (request.seatIds.any(_heldSeatIds.contains)) {
+    if (request.seatIds.any(
+      (seatId) =>
+          _heldSeats.contains((showtimeId: request.showtimeId, seatId: seatId)),
+    )) {
       throw const BookingConflictException('Ghế vừa được người khác giữ.');
     }
     final quote = await _catalogRepository.createCheckoutQuote(
@@ -133,7 +136,11 @@ class MockBookingRepository implements BookingRepository {
       createdAt: _clock.now(),
     );
     _bookings[bookingId] = booking;
-    _heldSeatIds.addAll(request.seatIds);
+    _heldSeats.addAll(
+      request.seatIds.map(
+        (seatId) => (showtimeId: request.showtimeId, seatId: seatId),
+      ),
+    );
     return booking;
   }
 
@@ -282,7 +289,11 @@ class MockBookingRepository implements BookingRepository {
   }
 
   void _releaseSeats(BookingDto booking) {
-    _heldSeatIds.removeAll(booking.seats.map((seat) => seat.seatId));
+    _heldSeats.removeAll(
+      booking.seats.map(
+        (seat) => (showtimeId: booking.showtimeId, seatId: seat.seatId),
+      ),
+    );
   }
 
   void _seedDemoBookings() {

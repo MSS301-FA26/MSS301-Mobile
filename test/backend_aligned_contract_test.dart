@@ -19,6 +19,7 @@ import 'package:mss301_mobile/features/payment/data/models/payment_dto.dart';
 import 'package:mss301_mobile/features/payment/data/models/payment_enums.dart';
 import 'package:mss301_mobile/features/payment/data/repositories/mock_payment_repository.dart';
 import 'package:mss301_mobile/features/showtime/data/models/showtime_dto.dart';
+import 'package:mss301_mobile/features/showtime/presentation/models/showtime_models.dart';
 
 void main() {
   group('backend-shaped contracts', () {
@@ -157,6 +158,19 @@ void main() {
   });
 
   group('backend-aligned mock repositories', () {
+    test('marks a past completed showtime as non-selectable', () async {
+      final clock = FakeAppClock(DateTime.utc(2026, 9, 25, 12));
+      final catalog = MockCatalogRepository(scenario: DemoScenario(clock));
+      final showtime = await catalog.getShowtime(DemoIds.showtimeSpiderVerse);
+
+      expect(showtime, isNotNull);
+      expect(showtime!.startTime.isBefore(clock.now()), isTrue);
+      final presentation = mapShowtimesToPresentation(showtime.movieId, [
+        showtime,
+      ]);
+      expect(presentation.rooms.single.slots.single.isSoldOut, isTrue);
+    });
+
     test(
       'runs quote, hold, checkout and two-step payment confirmation',
       () async {

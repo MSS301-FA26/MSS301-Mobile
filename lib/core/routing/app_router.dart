@@ -3,8 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/account/presentation/pages/account_page.dart';
 import '../../features/discover/presentation/pages/discover_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
-import '../../features/movie/presentation/pages/movie_detail_placeholder.dart';
+import '../../features/movie/presentation/pages/movie_detail_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
+import '../../features/seat/presentation/pages/seat_selection_page.dart';
 import '../../features/showtime/presentation/pages/showtimes_page.dart';
 import 'app_routes.dart';
 
@@ -42,8 +43,16 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/movie/:id',
       name: 'movieDetail',
-      builder: (context, state) => MovieDetailPlaceholder(
+      builder: (context, state) => MovieDetailPage(
         movieId: int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.seatSelectionPattern,
+      name: 'seatSelection',
+      builder: (context, state) => SeatSelectionPage(
+        showtimeId:
+            int.tryParse(state.pathParameters['showtimeId'] ?? '') ?? -1,
       ),
     ),
   ],

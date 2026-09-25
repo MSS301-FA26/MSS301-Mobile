@@ -1,7 +1,7 @@
 # CINEPREMIER Mobile — CTA and Route Registry
 
-> Phiên bản: 1.0
-> Phạm vi: R1 — F1A Navigation contract
+> Phiên bản: 1.1
+> Phạm vi: R1 — F1A Navigation contract, cập nhật route qua R4
 > Chế độ: Backend-aligned Mock UI, không gọi API thật
 > Trạng thái: hoàn thành ngày 2026-09-25
 
@@ -28,7 +28,7 @@ Không dùng snackbar “sẽ có sau” để thay thế navigation. Một acti
 | `/orders` | `orders` | Không | `core-active` |
 | `/account` | `account` | Không | `core-active`; alias hiện tại của `/profile` |
 | `/movie/:id` | `movieDetail` | Path `id` | `core-active` |
-| `/seat-selection/:showtimeId` | Chưa tạo | Path `showtimeId` | `core-blocked`, dự kiến R4 |
+| `/seat-selection/:showtimeId` | `seatSelection` | Path `showtimeId` | `core-active`; triển khai tại R4 |
 | `/ticket/:bookingId` | Chưa tạo | Path `bookingId` | `core-blocked`, dự kiến R5 |
 
 Route path được khai báo tập trung tại `lib/core/routing/app_routes.dart`. Từ R3, `movieId` được parse tại router boundary và dùng kiểu `int` trong ứng dụng.
@@ -44,7 +44,7 @@ Route path được khai báo tập trung tại `lib/core/routing/app_routes.dar
 | Account | Đi `/account` | `core-active` |
 | Bottom nav Home/Discover/Showtimes/Orders/Account | Đi root route tương ứng | `core-active` |
 
-Quy tắc cần triển khai khi R4 có booking session đang hoạt động:
+Quy tắc đã triển khai từ R4 khi booking session đang hoạt động:
 
 - nếu người dùng nhấn logo CP khi chưa có booking draft/hold, đi thẳng về `/home`;
 - nếu đang chọn ghế hoặc đã có booking `HOLDING`/`PENDING_PAYMENT`, không điều hướng ngay mà mở dialog hỏi **“Bạn có muốn dừng đặt vé và quay lại Trang chủ không?”**;
@@ -93,10 +93,12 @@ Quy tắc cần triển khai khi R4 có booking session đang hoạt động:
 | Thông tin rạp | Mở `CinemaInfoSheet` | `modal-active` |
 | Date selector | Đổi ngày local | `local-active`; ngày động thuộc M1 |
 | Format chip | Lọc phòng local | `local-active` |
-| Suất hợp lệ | Đích `/seat-selection/:showtimeId` chưa tồn tại | `core-blocked`, dự kiến R4 |
+| Suất hợp lệ | Auth gate nếu cần, sau đó đi `/seat-selection/:showtimeId` | `core-active` |
 | Suất hết chỗ | Không action | disabled hợp lệ |
 
 Query `movieId` phải lọc danh sách về đúng phim. Không tự chọn sẵn suất; việc bỏ ngày hard-code và tạo ngày động thuộc M1/F4.
+
+Màn chọn ghế R4 giữ lựa chọn local trước khi người dùng nhấn **Tiếp tục**. Sau khi hold trả `HOLDING`, timer 3 phút mới bắt đầu. Back hoặc logo khi có draft/hold đều phải xác nhận và giải phóng hold khi người dùng đồng ý rời đi. Bước sau hold vẫn dừng tại R4; bắp nước/checkout thuộc R5.
 
 ## 7. Orders
 
@@ -119,7 +121,7 @@ Query `movieId` phải lọc danh sách về đúng phim. Không tự chọn s�
 | Voucher cá nhân | Chưa có voucher contract | `preview-disabled`; không hiển thị count giả |
 | Thông tin rạp | Mở `CinemaInfoSheet` | `modal-active` |
 | CSKH | Chưa có support route | `core-blocked`, dự kiến R7 |
-| Đăng xuất | Chưa có session/auth state | Ẩn đến R6 |
+| Đăng xuất | Mới có session mock tối thiểu cho auth gate R4, chưa có auth UI đầy đủ | Ẩn đến R6 |
 
 ## 9. Feature flag dự kiến
 
