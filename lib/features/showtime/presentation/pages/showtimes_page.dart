@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/cinema_info_sheet.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../discover/presentation/widgets/format_filter_chips.dart';
-import '../../../movie/presentation/providers/mock_movies_provider.dart';
+import '../../../movie/data/repositories/catalog_providers.dart';
+import '../../../movie/presentation/providers/movies_provider.dart';
 import '../models/showtime_models.dart';
-import '../providers/mock_showtimes_provider.dart';
+import '../providers/showtimes_provider.dart';
 import '../widgets/cinema_status_card.dart';
 import '../widgets/date_selector.dart';
 import '../widgets/showtime_movie_card.dart';
@@ -15,25 +17,15 @@ import '../widgets/showtime_movie_card.dart';
 class ShowtimesPage extends ConsumerStatefulWidget {
   const ShowtimesPage({super.key, this.movieId});
 
-  final String? movieId;
+  final int? movieId;
 
   @override
   ConsumerState<ShowtimesPage> createState() => _ShowtimesPageState();
 }
 
 class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
-  int _selectedDate = 0;
+  int? _selectedDate;
   String _selectedFormat = 'Tất cả';
-
-  static const _dates = [
-    DateOption(label: 'Hôm nay', sub: '14/09'),
-    DateOption(label: 'T.Ba', sub: '15/09'),
-    DateOption(label: 'T.Tư', sub: '16/09'),
-    DateOption(label: 'T.Năm', sub: '17/09'),
-    DateOption(label: 'T.Sáu', sub: '18/09'),
-    DateOption(label: 'T.Bảy', sub: '19/09'),
-    DateOption(label: 'Chủ Nhật', sub: '20/09'),
-  ];
 
   static const _formats = [
     'Tất cả',
@@ -50,15 +42,80 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
     );
   }
 
+  List<DateOption> _dates(DateTime now) => List.generate(7, (index) {
+    final date = DateTime(now.year, now.month, now.day + index);
+    const weekdays = [
+      'T.Hai',
+      'T.Ba',
+      'T.Tư',
+      'T.Năm',
+      'T.Sáu',
+      'T.Bảy',
+      'Chủ Nhật',
+    ];
+    return DateOption(
+      date: date,
+      label: index == 0 ? 'Hôm nay' : weekdays[date.weekday - 1],
+      sub:
+          '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}',
+    );
+  });
+
+  List<ShowtimeRoom> _visibleRooms(
+    MovieShowtime movieShowtime,
+    List<DateOption> dates,
+  ) {
+    final selected = _selectedDate == null ? null : dates[_selectedDate!].date;
+    return movieShowtime.rooms
+        .where(_roomMatches)
+        .map((room) {
+          final slots = selected == null
+              ? room.slots
+              : room.slots
+                    .where((slot) => _sameDay(slot.startAt, selected))
+                    .toList(growable: false);
+          return ShowtimeRoom(
+            id: room.id,
+            name: room.name,
+            formatBadge: room.formatBadge,
+            screenDetail: room.screenDetail,
+            slots: slots,
+          );
+        })
+        .where((room) => room.slots.isNotEmpty)
+        .toList(growable: false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final movies = ref.watch(mockMoviesProvider);
-    final allShowtimes = ref.watch(mockShowtimesProvider);
+    final moviesState = ref.watch(moviesProvider);
+    final showtimesState = ref.watch(showtimesProvider);
+    if (moviesState.isLoading || showtimesState.isLoading) {
+      return const AppShell(
+        currentIndex: 2,
+        body: RepositoryStatePane.loading(),
+      );
+    }
+    if (moviesState.hasError || showtimesState.hasError) {
+      return AppShell(
+        currentIndex: 2,
+        body: RepositoryStatePane.error(
+          onRetry: () {
+            ref.invalidate(moviesProvider);
+            ref.invalidate(showtimesProvider);
+          },
+        ),
+      );
+    }
+
+    final movies = moviesState.requireValue;
+    final allShowtimes = showtimesState.requireValue;
+    final dates = _dates(ref.watch(appClockProvider).now());
     final showtimes = widget.movieId == null
         ? allShowtimes
         : allShowtimes
               .where((showtime) => showtime.movieId == widget.movieId)
-              .toList();
+              .toList(growable: false);
 
     return AppShell(
       currentIndex: 2,
@@ -89,7 +146,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                 SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
-                    'Chọn ghế đang tạm khóa trong bản mock hiện tại.',
+                    'Chọn một ngày để lọc lịch chiếu. Chọn ghế sẽ được mở ở R4.',
                     style: AppTextStyles.caption,
                   ),
                 ),
@@ -97,7 +154,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
             ),
           ),
           DateSelector(
-            dates: _dates,
+            dates: dates,
             selectedIndex: _selectedDate,
             onSelected: (index) => setState(() => _selectedDate = index),
           ),
@@ -129,9 +186,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                       final movie = movies.firstWhere(
                         (movie) => movie.id == movieShowtime.movieId,
                       );
-                      final rooms = movieShowtime.rooms
-                          .where(_roomMatches)
-                          .toList();
+                      final rooms = _visibleRooms(movieShowtime, dates);
                       if (rooms.isEmpty) return const SizedBox.shrink();
                       return Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -144,6 +199,19 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                       );
                     },
                   ),
+                if (showtimes.isEmpty)
+                  const RepositoryStatePane.empty(
+                    title: 'Chưa có lịch chiếu',
+                    message: 'Phim này chưa có suất chiếu đang mở bán.',
+                  ),
+                if (showtimes.isNotEmpty &&
+                    showtimes.every(
+                      (item) => _visibleRooms(item, dates).isEmpty,
+                    ))
+                  const RepositoryStatePane.empty(
+                    title: 'Không có suất phù hợp',
+                    message: 'Hãy chọn ngày hoặc định dạng khác.',
+                  ),
               ],
             ),
           ),
@@ -152,3 +220,8 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
     );
   }
 }
+
+bool _sameDay(DateTime first, DateTime second) =>
+    first.year == second.year &&
+    first.month == second.month &&
+    first.day == second.day;

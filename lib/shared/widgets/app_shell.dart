@@ -24,6 +24,7 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CinemaHeader(
+        onHome: () => context.go(AppRoutes.home),
         onSearch: () => context.go(AppRoutes.discover),
         onAccount: () => context.go(AppRoutes.account),
       ),

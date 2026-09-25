@@ -73,7 +73,7 @@ class ComingSoonCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                movie.releaseDate ?? '',
+                                _releaseDate(movie.releaseDate),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -161,4 +161,11 @@ class ComingSoonCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _releaseDate(DateTime? value) {
+  if (value == null) return 'Sắp chiếu';
+  final day = value.day.toString().padLeft(2, '0');
+  final month = value.month.toString().padLeft(2, '0');
+  return 'Khởi chiếu $day/$month';
 }

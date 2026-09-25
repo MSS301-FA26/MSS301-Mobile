@@ -813,7 +813,7 @@ F1–F8 là quyết định sản phẩm/UI, không phải phase code tuần t�
 | R0 — Baseline ✅ | F1–F8 | Tài liệu, core/preview scope và feature flag đã chốt |
 | R1 — Navigation contract ✅ | F1A, F7 | Mọi CTA được phân loại; không còn active placeholder |
 | R2 — Contract foundation ✅ | M0, F6 | Model/repository mock đủ để state UI bám backend contract; presentation migration thuộc R3 |
-| R3 — Existing UI migration | M1, F1B, F3, F8 | Các màn hiện có dùng mock repository và giữ visual ổn định |
+| R3 — Existing UI migration ✅ | M1, F1B, F3, F8 | Các màn hiện có dùng mock repository, ID/date/money/status typed và có loading/empty/error cơ bản |
 | R4 — Booking entry | M2, F2, F4, F5, F6 | Detail → Showtime → Auth gate → Seat → Hold hoàn chỉnh |
 | R5 — Booking completion | M3, F2, F6 | Food/Skip → Checkout → Payment → Verify → Ticket/Order hoàn chỉnh |
 | R6 — Account completion | M4, F5 | Auth, profile, wallet, loyalty và resume flow hoàn chỉnh |

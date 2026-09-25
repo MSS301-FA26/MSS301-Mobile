@@ -31,17 +31,26 @@ Không dùng snackbar “sẽ có sau” để thay thế navigation. Một acti
 | `/seat-selection/:showtimeId` | Chưa tạo | Path `showtimeId` | `core-blocked`, dự kiến R4 |
 | `/ticket/:bookingId` | Chưa tạo | Path `bookingId` | `core-blocked`, dự kiến R5 |
 
-Route path được khai báo tập trung tại `lib/core/routing/app_routes.dart`. ID hiện vẫn theo model mock cũ trong R1 và sẽ đổi sang `int` tại M0/M1.
+Route path được khai báo tập trung tại `lib/core/routing/app_routes.dart`. Từ R3, `movieId` được parse tại router boundary và dùng kiểu `int` trong ứng dụng.
 
 ## 3. Header và app shell
 
 | Control | Hành vi | Trạng thái |
 | --- | --- | --- |
+| Logo CP | Đi `/home` | `core-active` |
 | Tên CineAI Central | Mở `CinemaInfoSheet` | `modal-active` |
 | Search | Đi `/discover` | `core-active` |
 | Notification | Không có route/contract | `preview-disabled`, không hiển thị unread badge |
 | Account | Đi `/account` | `core-active` |
 | Bottom nav Home/Discover/Showtimes/Orders/Account | Đi root route tương ứng | `core-active` |
+
+Quy tắc cần triển khai khi R4 có booking session đang hoạt động:
+
+- nếu người dùng nhấn logo CP khi chưa có booking draft/hold, đi thẳng về `/home`;
+- nếu đang chọn ghế hoặc đã có booking `HOLDING`/`PENDING_PAYMENT`, không điều hướng ngay mà mở dialog hỏi **“Bạn có muốn dừng đặt vé và quay lại Trang chủ không?”**;
+- nút **Không** là primary, có độ nhấn thị giác cao hơn và chỉ đóng dialog để tiếp tục đặt vé;
+- nút **Có** là secondary, ít nổi bật hơn; khi xác nhận phải giải phóng hold/session theo state hiện tại rồi mới về `/home`;
+- dialog không được tự hủy booking đã `PAID` và không được làm mất pending action ngoài ý muốn.
 
 ## 4. Home
 

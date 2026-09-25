@@ -1,21 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/cinema_info_sheet.dart';
-import '../models/mock_user_profile.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
+import '../providers/account_summary_provider.dart';
 import '../widgets/account_menu.dart';
 import '../widgets/account_profile_card.dart';
 import '../widgets/membership_card.dart';
 
-class AccountPage extends StatelessWidget {
+class AccountPage extends ConsumerWidget {
   const AccountPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final user = mockUserProfile;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accountState = ref.watch(accountSummaryProvider);
+    if (accountState.isLoading) {
+      return const AppShell(
+        currentIndex: 4,
+        body: RepositoryStatePane.loading(),
+      );
+    }
+    if (accountState.hasError) {
+      return AppShell(
+        currentIndex: 4,
+        body: RepositoryStatePane.error(
+          onRetry: () => ref.invalidate(accountSummaryProvider),
+        ),
+      );
+    }
+    final user = accountState.requireValue;
     return AppShell(
       currentIndex: 4,
       body: ListView(

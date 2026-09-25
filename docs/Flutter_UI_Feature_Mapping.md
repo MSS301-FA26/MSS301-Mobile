@@ -1,21 +1,21 @@
 # AI Studio to Flutter feature mapping
 
-The AI Studio export under `docs/ui-reference/ai-studio/` is a visual and interaction reference. Flutter uses native widgets, GoRouter, Riverpod, and structured mock data. This document maps the full export; Phase 1/2, R1 navigation contract, and R2 contract foundation are implemented. Existing presentation screens still use their legacy presentation models until R3.
+The AI Studio export under `docs/ui-reference/ai-studio/` is a visual and interaction reference. Flutter uses native widgets, GoRouter, Riverpod, and structured mock data. This document maps the full export; Phase 1/2 and work packages R1–R3 are implemented. Existing screens now consume the backend-aligned mock repositories; no real API is connected.
 
 ## Screens
 
-| AI Studio screen | Flutter feature | Phase 1/2 status |
+| AI Studio screen | Flutter feature | Current status |
 | --- | --- | --- |
-| `HomeScreen.tsx` | `features/home/presentation` | Implemented; R1 navigation contract applied |
-| `MovieDetailScreen.tsx` | `features/movie/presentation` | Visual placeholder; detail and booking routes active |
-| `DiscoverScreen.tsx` | `features/search/presentation` | Mock UI implemented under current `features/discover` alias |
-| `ShowtimesScreen.tsx` | `features/showtime/presentation` | Mock UI implemented; seat destination blocked until R4 |
+| `HomeScreen.tsx` | `features/home/presentation` | Repository-backed mock UI; responsive/navigation regression covered |
+| `MovieDetailScreen.tsx` | `features/movie/presentation` | Repository-backed visual placeholder; detail and booking routes active |
+| `DiscoverScreen.tsx` | `features/search/presentation` | Repository-backed mock UI under current `features/discover` alias |
+| `ShowtimesScreen.tsx` | `features/showtime/presentation` | Repository-backed typed schedule; seat destination blocked until R4 |
 | `SeatsScreen.tsx` | `features/seat/presentation` | Deferred |
 | `ConcessionsScreen.tsx` | `features/food/presentation` | Deferred |
 | `PaymentScreen.tsx` | `features/checkout/presentation` and `features/payment/presentation` | Deferred |
-| `OrdersScreen.tsx` | `features/booking/presentation` | Mock UI implemented under current `features/orders` alias; ticket/refund deferred |
+| `OrdersScreen.tsx` | `features/booking/presentation` | Reads `BookingRepository` under current `features/orders` alias; ticket/refund deferred |
 | `TicketDetailScreen.tsx` | `features/ticket/presentation` | Deferred |
-| `AccountScreen.tsx` | `features/profile/presentation` | Mock UI implemented under current `features/account` alias; child routes deferred |
+| `AccountScreen.tsx` | `features/profile/presentation` | Composes profile/wallet/loyalty repositories under current `features/account` alias; child routes deferred |
 | `WalletScreen.tsx` | `features/wallet/presentation` | Deferred |
 | `VouchersScreen.tsx` | `features/promotion/presentation` | Deferred |
 | `VoucherDetailScreen.tsx` | `features/promotion/presentation` | Deferred |
@@ -65,10 +65,10 @@ R2 is implemented without connecting to a real API:
 - deterministic scenario data for Inception, the 20:30 showtime, seats C4/C5, 90.000đ tickets, the 89.000đ combo and a 269.000đ quote;
 - contract and repository lifecycle tests, including hold conflict/expiry and the separate payment `SUCCESS` → booking `PAID` transition.
 
-R2 adds the data boundary only. It does not claim that Home, Discover, Movie, Showtimes, Orders or Account already consume the new repositories; that migration is R3.
+R3 connects Home, Discover, Movie, Showtimes, Orders and Account to this local repository boundary. Presentation-only metadata stays outside backend DTOs, while IDs, date/time, VND values and contract statuses remain typed through the mapper boundary.
 
 ## Navigation scope
 
 The active Flutter routes are `/home`, `/discover`, `/showtimes`, `/orders`, `/account`, and `/movie/:id`. `/showtimes` accepts an optional `movieId` query. The five-tab bar, movie detail navigation, filtered booking entry, Search/Account header actions, and cinema information sheet are active. Actions without a destination are disabled or hidden according to `MOBILE_CTA_ROUTE_REGISTRY.md`; seat selection, ticket, auth/account child routes, and preview flows remain deferred.
 
-No API client, remote data source, or backend integration is active. Local repository interfaces and mock implementations are the R2 contract boundary.
+No API client, remote data source, or backend integration is active. Local repository interfaces and mock implementations are the active data boundary for R3.

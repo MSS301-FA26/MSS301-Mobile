@@ -4,9 +4,17 @@ abstract final class DemoIds {
   static const user = 1;
   static const movieInception = 1;
   static const movieAvengers = 2;
+  static const movieJoker = 3;
+  static const movieSpiderVerse = 4;
+  static const movieCoco = 5;
+  static const movieGreenMile = 6;
+  static const movieParasite = 7;
+  static const movieLaLaLand = 8;
   static const cinemaCentral = 1;
   static const roomC = 3;
   static const showtimeInception = 1001;
+  static const showtimeAvengers = 1002;
+  static const showtimeSpiderVerse = 1003;
   static const seatC4 = 3004;
   static const seatC5 = 3005;
   static const booking = 5001;

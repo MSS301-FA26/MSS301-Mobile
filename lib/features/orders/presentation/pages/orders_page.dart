@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../models/ticket_order.dart';
-import '../providers/mock_orders_provider.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
+import '../providers/orders_provider.dart';
 import '../widgets/order_card.dart';
 import '../widgets/orders_segmented_tabs.dart';
 
@@ -22,13 +22,24 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
 
   @override
   Widget build(BuildContext context) {
-    final orders = ref.watch(mockOrdersProvider);
-    final upcoming = orders
-        .where((order) => order.status == TicketOrderStatus.upcoming)
-        .toList();
-    final completed = orders
-        .where((order) => order.status == TicketOrderStatus.completed)
-        .toList();
+    final ordersState = ref.watch(ordersProvider);
+    if (ordersState.isLoading) {
+      return const AppShell(
+        currentIndex: 3,
+        body: RepositoryStatePane.loading(),
+      );
+    }
+    if (ordersState.hasError) {
+      return AppShell(
+        currentIndex: 3,
+        body: RepositoryStatePane.error(
+          onRetry: () => ref.invalidate(ordersProvider),
+        ),
+      );
+    }
+    final orders = ordersState.requireValue;
+    final upcoming = orders.where((order) => order.isUpcoming).toList();
+    final completed = orders.where((order) => !order.isUpcoming).toList();
     final visible = _tab == OrdersTab.upcoming ? upcoming : completed;
 
     return AppShell(
@@ -49,7 +60,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
             for (final order in visible)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: order.status == TicketOrderStatus.upcoming
+                child: order.isUpcoming
                     ? UpcomingOrderCard(
                         order: order,
                         onCancel: null,

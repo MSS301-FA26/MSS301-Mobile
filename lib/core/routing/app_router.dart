@@ -25,8 +25,9 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.showtimes,
       name: 'showtimes',
-      builder: (context, state) =>
-          ShowtimesPage(movieId: state.uri.queryParameters['movieId']),
+      builder: (context, state) => ShowtimesPage(
+        movieId: int.tryParse(state.uri.queryParameters['movieId'] ?? ''),
+      ),
     ),
     GoRoute(
       path: AppRoutes.orders,
@@ -41,8 +42,9 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/movie/:id',
       name: 'movieDetail',
-      builder: (context, state) =>
-          MovieDetailPlaceholder(movieId: state.pathParameters['id']!),
+      builder: (context, state) => MovieDetailPlaceholder(
+        movieId: int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+      ),
     ),
   ],
 );

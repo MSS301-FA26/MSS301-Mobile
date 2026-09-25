@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../models/mock_user_profile.dart';
+import '../models/account_summary.dart';
 
 class WalletTile extends StatelessWidget {
   const WalletTile({super.key, required this.user, required this.onManage});
 
-  final MockUserProfile user;
+  final AccountSummary user;
   final VoidCallback? onManage;
 
   @override
@@ -41,7 +41,7 @@ class WalletTile extends StatelessWidget {
                 const Text('Số dư ví CineWallet', style: AppTextStyles.caption),
                 const SizedBox(height: 3),
                 Text(
-                  '${_formatNumber(user.walletBalance)} đ',
+                  user.walletBalance.format(),
                   style: const TextStyle(
                     color: AppColors.text,
                     fontSize: 16,
@@ -182,15 +182,4 @@ class AccountMenuRow extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatNumber(int value) {
-  final text = value.toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < text.length; i++) {
-    final fromEnd = text.length - i;
-    buffer.write(text[i]);
-    if (fromEnd > 1 && fromEnd % 3 == 1) buffer.write('.');
-  }
-  return buffer.toString();
 }

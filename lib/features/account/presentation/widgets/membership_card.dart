@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../models/mock_user_profile.dart';
+import '../models/account_summary.dart';
 
 class MembershipCard extends StatelessWidget {
   const MembershipCard({super.key, required this.user, required this.onQr});
 
-  final MockUserProfile user;
+  final AccountSummary user;
   final VoidCallback? onQr;
 
   @override

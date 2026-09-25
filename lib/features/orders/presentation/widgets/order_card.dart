@@ -299,7 +299,7 @@ class CompletedOrderCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Ghế ${order.seats.join(', ')} • ${_formatCurrency(order.totalPrice)}',
+                      'Ghế ${order.seats.join(', ')} • ${order.totalPrice.format()}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -341,17 +341,6 @@ class CompletedOrderCard extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatCurrency(int value) {
-  final text = value.toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < text.length; i++) {
-    final fromEnd = text.length - i;
-    buffer.write(text[i]);
-    if (fromEnd > 1 && fromEnd % 3 == 1) buffer.write('.');
-  }
-  return '$bufferđ';
 }
 
 class _PulseDot extends StatelessWidget {

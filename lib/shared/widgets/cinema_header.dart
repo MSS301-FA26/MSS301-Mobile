@@ -7,11 +7,13 @@ import 'cinema_info_sheet.dart';
 class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
   const CinemaHeader({
     super.key,
+    required this.onHome,
     required this.onSearch,
     required this.onAccount,
     this.onNotifications,
   });
 
+  final VoidCallback onHome;
   final VoidCallback onSearch;
   final VoidCallback onAccount;
   final VoidCallback? onNotifications;
@@ -27,7 +29,7 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
       titleSpacing: 10,
       title: Row(
         children: [
-          const _BrandMark(),
+          _BrandMark(onTap: onHome),
           const SizedBox(width: 6),
           Expanded(
             child: InkWell(
@@ -116,36 +118,50 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
 }
 
 class _BrandMark extends StatelessWidget {
-  const _BrandMark();
+  const _BrandMark({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      label: 'Về trang chủ',
+      child: Material(
         color: AppColors.surface,
         borderRadius: AppRadii.control,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: 'C',
-              style: TextStyle(color: AppColors.text),
+        child: InkWell(
+          key: const ValueKey('header-home-logo'),
+          onTap: onTap,
+          borderRadius: AppRadii.control,
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: AppRadii.control,
+              border: Border.all(color: AppColors.border),
             ),
-            TextSpan(
-              text: 'P',
-              style: TextStyle(color: AppColors.gold),
+            child: const Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'C',
+                    style: TextStyle(color: AppColors.text),
+                  ),
+                  TextSpan(
+                    text: 'P',
+                    style: TextStyle(color: AppColors.gold),
+                  ),
+                ],
+              ),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1,
+              ),
             ),
-          ],
-        ),
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -1,
+          ),
         ),
       ),
     );

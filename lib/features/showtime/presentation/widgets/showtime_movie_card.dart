@@ -17,7 +17,7 @@ class ShowtimeMovieCard extends StatelessWidget {
 
   final Movie movie;
   final List<ShowtimeRoom> rooms;
-  final String? selectedSlotId;
+  final int? selectedSlotId;
   final ValueChanged<ShowtimeSlot>? onSlotSelected;
 
   @override
@@ -117,7 +117,7 @@ class _RoomSection extends StatelessWidget {
   });
 
   final ShowtimeRoom room;
-  final String? selectedSlotId;
+  final int? selectedSlotId;
   final ValueChanged<ShowtimeSlot>? onSlotSelected;
 
   @override

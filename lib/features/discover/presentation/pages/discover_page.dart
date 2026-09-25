@@ -5,8 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/presentation/models/movie.dart';
-import '../../../movie/presentation/providers/mock_movies_provider.dart';
+import '../../../movie/presentation/providers/movies_provider.dart';
 import '../widgets/discover_movie_card.dart';
 import '../widgets/discover_search_bar.dart';
 import '../widgets/discover_segmented_control.dart';
@@ -59,7 +60,22 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
 
   @override
   Widget build(BuildContext context) {
-    final movies = ref.watch(mockMoviesProvider);
+    final moviesState = ref.watch(moviesProvider);
+    if (moviesState.isLoading) {
+      return const AppShell(
+        currentIndex: 1,
+        body: RepositoryStatePane.loading(),
+      );
+    }
+    if (moviesState.hasError) {
+      return AppShell(
+        currentIndex: 1,
+        body: RepositoryStatePane.error(
+          onRetry: () => ref.invalidate(moviesProvider),
+        ),
+      );
+    }
+    final movies = moviesState.requireValue;
     final filtered = movies.where(_matches).toList();
     final nowCount = movies.where((movie) => movie.isNowShowing).length;
     final soonCount = movies.where((movie) => movie.isComingSoon).length;
@@ -108,27 +124,36 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
               AppSpacing.md,
               AppSpacing.xl,
             ),
-            sliver: SliverGrid.builder(
-              itemCount: filtered.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: AppSpacing.sm,
-                mainAxisSpacing: AppSpacing.sm,
-                childAspectRatio: 0.48,
-              ),
-              itemBuilder: (context, index) {
-                final movie = filtered[index];
-                return DiscoverMovieCard(
-                  movie: movie,
-                  onOpen: () => context.pushNamed(
-                    'movieDetail',
-                    pathParameters: {'id': movie.id},
+            sliver: filtered.isEmpty
+                ? const SliverToBoxAdapter(
+                    child: RepositoryStatePane.empty(
+                      title: 'Không tìm thấy phim',
+                      message: 'Hãy thử từ khóa hoặc bộ lọc khác.',
+                      icon: Icons.search_off_rounded,
+                    ),
+                  )
+                : SliverGrid.builder(
+                    itemCount: filtered.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: AppSpacing.sm,
+                          mainAxisSpacing: AppSpacing.sm,
+                          childAspectRatio: 0.48,
+                        ),
+                    itemBuilder: (context, index) {
+                      final movie = filtered[index];
+                      return DiscoverMovieCard(
+                        movie: movie,
+                        onOpen: () => context.pushNamed(
+                          'movieDetail',
+                          pathParameters: {'id': '${movie.id}'},
+                        ),
+                        onBook: () =>
+                            context.go(AppRoutes.showtimesForMovie(movie.id)),
+                      );
+                    },
                   ),
-                  onBook: () =>
-                      context.go(AppRoutes.showtimesForMovie(movie.id)),
-                );
-              },
-            ),
           ),
         ],
       ),

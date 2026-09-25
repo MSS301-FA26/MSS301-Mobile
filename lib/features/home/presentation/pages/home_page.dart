@@ -6,8 +6,9 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/presentation/models/movie.dart';
-import '../../../movie/presentation/providers/mock_movies_provider.dart';
+import '../../../movie/presentation/providers/movies_provider.dart';
 import '../../../movie/presentation/widgets/trailer_preview_dialog.dart';
 import '../widgets/coming_soon_card.dart';
 import '../widgets/genre_selector.dart';
@@ -35,7 +36,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _openMovie(Movie movie) =>
-      context.pushNamed('movieDetail', pathParameters: {'id': movie.id});
+      context.pushNamed('movieDetail', pathParameters: {'id': '${movie.id}'});
 
   void _bookMovie(Movie movie) =>
       context.go(AppRoutes.showtimesForMovie(movie.id));
@@ -46,15 +47,39 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final movies = ref.watch(mockMoviesProvider);
+    final moviesState = ref.watch(moviesProvider);
+    if (moviesState.isLoading) {
+      return const AppShell(
+        currentIndex: 0,
+        body: RepositoryStatePane.loading(),
+      );
+    }
+    if (moviesState.hasError) {
+      return AppShell(
+        currentIndex: 0,
+        body: RepositoryStatePane.error(
+          onRetry: () => ref.invalidate(moviesProvider),
+        ),
+      );
+    }
+    final movies = moviesState.requireValue;
+    if (movies.isEmpty) {
+      return const AppShell(
+        currentIndex: 0,
+        body: RepositoryStatePane.empty(
+          title: 'Chưa có phim',
+          message: 'Danh sách phim sẽ được cập nhật sớm.',
+        ),
+      );
+    }
     final nowShowing = movies
         .where((movie) => movie.isNowShowing && _matchesGenre(movie))
         .toList();
     final comingSoon = movies.where((movie) => movie.isComingSoon).toList();
     final heroes = [
-      movies.firstWhere((movie) => movie.id == 'avengers-endgame'),
-      movies.firstWhere((movie) => movie.id == 'inception'),
-      movies.firstWhere((movie) => movie.id == 'spider-verse'),
+      movies.firstWhere((movie) => movie.id == 2),
+      movies.firstWhere((movie) => movie.id == 1),
+      movies.firstWhere((movie) => movie.id == 4),
     ];
 
     return AppShell(

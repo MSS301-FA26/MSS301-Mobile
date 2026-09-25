@@ -5,8 +5,8 @@ abstract final class AppRoutes {
   static const orders = '/orders';
   static const account = '/account';
 
-  static String movieDetail(String movieId) => '/movie/$movieId';
+  static String movieDetail(int movieId) => '/movie/$movieId';
 
-  static String showtimesForMovie(String movieId) =>
-      Uri(path: showtimes, queryParameters: {'movieId': movieId}).toString();
+  static String showtimesForMovie(int movieId) =>
+      Uri(path: showtimes, queryParameters: {'movieId': '$movieId'}).toString();
 }

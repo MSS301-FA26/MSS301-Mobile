@@ -7,6 +7,8 @@ import 'package:mss301_mobile/features/discover/presentation/pages/discover_page
 import 'package:mss301_mobile/features/home/presentation/pages/home_page.dart';
 import 'package:mss301_mobile/features/orders/presentation/pages/orders_page.dart';
 import 'package:mss301_mobile/features/showtime/presentation/pages/showtimes_page.dart';
+import 'package:mss301_mobile/features/showtime/presentation/widgets/date_selector.dart';
+import 'package:mss301_mobile/features/movie/presentation/providers/movies_provider.dart';
 
 void main() {
   for (final width in [360.0, 390.0, 412.0]) {
@@ -18,9 +20,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Phim đang chiếu'), findsOneWidget);
-      await tester.tap(
-        find.byKey(const ValueKey('hero-open-avengers-endgame')),
-      );
+      await tester.tap(find.byKey(const ValueKey('hero-open-2')));
       await tester.pumpAndSettle();
 
       expect(find.text('Chi tiết phim'), findsOneWidget);
@@ -57,12 +57,16 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('hero-book-avengers-endgame')));
+    await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
 
     expect(find.byType(ShowtimesPage), findsOneWidget);
     expect(find.text('AVENGERS: ENDGAME'), findsOneWidget);
     expect(find.text('INCEPTION'), findsNothing);
+    expect(
+      tester.widget<DateSelector>(find.byType(DateSelector)).selectedIndex,
+      isNull,
+    );
   });
 
   testWidgets('header actions route and preview notification is disabled', (
@@ -86,6 +90,10 @@ void main() {
     await tester.tap(find.byTooltip('Tài khoản'));
     await tester.pumpAndSettle();
     expect(find.byType(AccountPage), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('header-home-logo')));
+    await tester.pumpAndSettle();
+    expect(find.byType(HomePage), findsOneWidget);
   });
 
   testWidgets('preview quick actions are visibly disabled', (tester) async {
@@ -131,5 +139,50 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(HomePage), findsOneWidget);
+  });
+
+  testWidgets('R3 account and orders read backend-aligned repositories', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-nav-icon-3')).hitTestable(),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('CP-MOCK-5101'), findsOneWidget);
+    expect(find.text('INCEPTION'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('bottom-nav-icon-4')).hitTestable(),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Nguyễn Minh'), findsOneWidget);
+    expect(find.text('1.250'), findsOneWidget);
+    expect(find.text('500.000đ'), findsOneWidget);
+  });
+
+  testWidgets('R3 repository error exposes retry state', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          moviesProvider.overrideWith(
+            (ref) => throw StateError('catalog unavailable'),
+          ),
+        ],
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đã xảy ra lỗi'), findsOneWidget);
+    expect(find.text('Thử lại'), findsOneWidget);
   });
 }

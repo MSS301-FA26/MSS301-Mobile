@@ -1,4 +1,5 @@
 import '../../../../core/demo/demo_scenario.dart';
+import '../../../../core/money/vnd_money.dart';
 import '../../../../core/time/app_clock.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../movie/data/models/food_quote_dto.dart';
@@ -13,7 +14,9 @@ class MockBookingRepository implements BookingRepository {
     this._clock,
     this._catalogRepository, {
     this.delay = Duration.zero,
-  });
+  }) {
+    _seedDemoBookings();
+  }
 
   final AppClock _clock;
   final CatalogRepository _catalogRepository;
@@ -280,5 +283,110 @@ class MockBookingRepository implements BookingRepository {
 
   void _releaseSeats(BookingDto booking) {
     _heldSeatIds.removeAll(booking.seats.map((seat) => seat.seatId));
+  }
+
+  void _seedDemoBookings() {
+    final scenario = DemoScenario(_clock);
+    _bookings.addAll({
+      5101: _demoBooking(
+        id: 5101,
+        movieId: DemoIds.movieInception,
+        showtimeId: DemoIds.showtimeInception,
+        movieTitle: 'Inception',
+        poster: 'assets/mock/movies/inception-poster.jpg',
+        roomName: 'Phòng C',
+        showtimeStart: scenario.showtimeStart,
+        seatLabels: const ['C4', 'C5'],
+        status: BookingStatus.paid,
+        total: const VndMoney(269000),
+        foodName: 'Combo Couple',
+      ),
+      5102: _demoBooking(
+        id: 5102,
+        movieId: DemoIds.movieAvengers,
+        showtimeId: DemoIds.showtimeAvengers,
+        movieTitle: 'Avengers: Endgame',
+        poster: 'assets/mock/movies/avengers-endgame-poster.jpg',
+        roomName: 'Phòng B',
+        showtimeStart: _clock.now().subtract(const Duration(days: 30)),
+        seatLabels: const ['G12', 'G13'],
+        status: BookingStatus.used,
+        total: const VndMoney(340000),
+        foodName: 'Combo Solo',
+      ),
+    });
+  }
+
+  BookingDto _demoBooking({
+    required int id,
+    required int movieId,
+    required int showtimeId,
+    required String movieTitle,
+    required String poster,
+    required String roomName,
+    required DateTime showtimeStart,
+    required List<String> seatLabels,
+    required BookingStatus status,
+    required VndMoney total,
+    required String foodName,
+  }) {
+    final seatStatus = status == BookingStatus.used
+        ? BookingSeatStatus.checkedIn
+        : BookingSeatStatus.booked;
+    final seats = seatLabels.indexed
+        .map(
+          (entry) => BookingSeatDto(
+            id: id * 100 + entry.$1,
+            seatId: id * 100 + entry.$1,
+            showtimeId: showtimeId,
+            rowLabel: entry.$2.substring(0, 1),
+            seatNumber: int.tryParse(entry.$2.substring(1)) ?? 0,
+            seatLabel: entry.$2,
+            seatType: BookingSeatType.vip,
+            unitPrice: const VndMoney(90000),
+            status: seatStatus,
+            ticketType: TicketType.adult,
+          ),
+        )
+        .toList(growable: false);
+    return BookingDto(
+      id: id,
+      bookingCode: 'CP-MOCK-$id',
+      userId: DemoIds.user,
+      showtimeId: showtimeId,
+      movieId: movieId,
+      movieTitle: movieTitle,
+      movieTitleSnapshot: movieTitle,
+      posterUrl: poster,
+      moviePosterSnapshot: poster,
+      cinemaName: 'CineAI Central',
+      cinemaNameSnapshot: 'CineAI Central',
+      roomName: roomName,
+      roomNameSnapshot: roomName,
+      showtimeStart: showtimeStart,
+      showtimeStartSnapshot: showtimeStart,
+      subtotal: total,
+      discountAmount: VndMoney.zero,
+      loyaltyPointsRedeemed: 0,
+      totalAmount: total,
+      status: status,
+      paidAt: showtimeStart.subtract(const Duration(days: 1)),
+      checkedInAt: status == BookingStatus.used ? showtimeStart : null,
+      qrCode: 'MOCK-BOOKING-QR-$id',
+      seats: seats,
+      tickets: const [],
+      foods: [
+        BookingFoodDto(
+          id: id * 10000,
+          productId: 4101,
+          isCombo: true,
+          productName: foodName,
+          quantity: 1,
+          unitPrice: const VndMoney(89000),
+          lineTotal: const VndMoney(89000),
+        ),
+      ],
+      createdAt: showtimeStart.subtract(const Duration(days: 1)),
+    );
   }
 }

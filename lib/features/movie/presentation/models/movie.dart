@@ -1,3 +1,5 @@
+import '../../data/models/catalog_enums.dart';
+
 class Movie {
   const Movie({
     required this.id,
@@ -13,10 +15,10 @@ class Movie {
     this.bannerAsset,
     this.format = '2D',
     this.releaseDate,
-    this.isNowShowing = false,
+    required this.status,
   });
 
-  final String id;
+  final int id;
   final String title;
   final String ageRating;
   final String duration;
@@ -28,8 +30,9 @@ class Movie {
   final List<String> genreTags;
   final String? bannerAsset;
   final String format;
-  final String? releaseDate;
-  final bool isNowShowing;
+  final DateTime? releaseDate;
+  final MovieStatus status;
 
-  bool get isComingSoon => !isNowShowing;
+  bool get isNowShowing => status == MovieStatus.nowShowing;
+  bool get isComingSoon => status == MovieStatus.upcoming;
 }

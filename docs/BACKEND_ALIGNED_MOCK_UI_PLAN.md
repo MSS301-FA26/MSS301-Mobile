@@ -1,9 +1,9 @@
 # CINEPREMIER Mobile — Backend-aligned Mock UI Plan
 
-> Phiên bản: 1.2
+> Phiên bản: 1.3
 > Ngày đối chiếu contract: 2026-09-25  
 > Phạm vi: `Mobile/MSS301-Mobile` đối chiếu với `BE/MSS301-Backend/cinema-services`  
-> Trạng thái: R0–R2 hoàn thành; chưa cho phép kết nối API thật
+> Trạng thái: R0–R3 hoàn thành; chưa cho phép kết nối API thật
 
 ## 1. Mục tiêu
 
@@ -345,7 +345,7 @@ Migration route/folder là task độc lập sau khi UI flow ổn định. Deep 
 | R0 ✅ | Baseline tài liệu | F1–F8 | Flow, contract plan, core/preview scope và feature flag đã chốt | Hai tài liệu không mâu thuẫn |
 | R1 ✅ | Navigation contract | F1A, F7 | Danh mục CTA/route/parameter; tách active, disabled, hidden và preview | Không còn CTA active dẫn tới snackbar placeholder trên các màn hiện có |
 | R2 ✅ | Contract foundation | M0, F6 | Primitive, DTO, enum, mapper, fixture, repository interface/mock và provider binding | Analyzer sạch; contract/mapper/repository test pass; app không gọi network |
-| R3 | Existing UI migration | M1, F1B, F3, F8 | Home, Discover, Movie, Showtimes, Orders, Account đọc repository mock | Visual không đổi ngoài sửa lỗi; ID/date/money/status không còn dùng model cũ tại data boundary |
+| R3 ✅ | Existing UI migration | M1, F1B, F3, F8 | Home, Discover, Movie, Showtimes, Orders, Account đọc repository mock | Analyzer sạch; responsive/navigation/repository-state test pass; ID/date/money/status không còn dùng model cũ tại data boundary |
 | R4 | Booking entry | M2, F2, F4, F5, F6, F8 | Movie detail → showtime → auth gate → seat → hold | Hold/conflict/expire/back chạy bằng fake clock; timer chỉ bắt đầu khi `HOLDING` |
 | R5 | Booking completion | M3, F2, F6, F8 | Food kèm vé → checkout → payment result → verify booking → ticket/order | Happy path và failure/expiry/retry chạy end-to-end offline; QR chỉ khi `PAID` |
 | R6 | Account completion | M4, F5, F8 | Auth đầy đủ, profile, wallet, loyalty và guest/resume state | Không còn dead action trong feature đã bật; wallet/points tuân contract và product rule |
@@ -358,7 +358,7 @@ Không chuyển sang work package tiếp theo khi gate của package trước ch
 
 Registry thực thi của R1 được quản lý tại `MOBILE_CTA_ROUTE_REGISTRY.md`.
 
-> Trạng thái: **Hoàn thành**. Analyzer sạch, 8 widget/navigation test pass; R2 là work package kế tiếp.
+> Trạng thái: **Hoàn thành**. Analyzer sạch và navigation contract được giữ bởi regression test.
 
 1. Kiểm kê mọi CTA, card tap, icon action, menu item và bottom-nav item đang hiển thị.
 2. Với mỗi action, ghi rõ route đích, path/query parameter, yêu cầu đăng nhập và feature flag.
@@ -371,7 +371,7 @@ Registry thực thi của R1 được quản lý tại `MOBILE_CTA_ROUTE_REGISTR
 
 ### 12.4. R2 — M0 Contract foundation
 
-> Trạng thái: **Hoàn thành**. M0A–M0C đã được triển khai; analyzer sạch và toàn bộ 14 test pass. R3 là work package kế tiếp.
+> Trạng thái: **Hoàn thành**. M0A–M0C đã được triển khai và được giữ bởi contract/repository test.
 
 Thực hiện theo lát cắt để tránh một pull request quá lớn:
 
@@ -402,12 +402,14 @@ Kết quả thực thi:
 
 - shared primitive nằm tại `lib/core/contracts`, `lib/core/money`, `lib/core/time` và `lib/core/demo`;
 - catalog/showtime, booking, payment và account có DTO bám public response/request hiện tại, enum parser có `unknown`, repository interface và mock in-memory;
-- Riverpod provider binding đã có cho từng nhóm repository nhưng presentation cũ chưa được chuyển sang dùng; việc chuyển này thuộc R3;
+- Riverpod provider binding có cho từng nhóm repository; presentation hiện tại đã được chuyển sang dùng qua R3;
 - mock scenario dùng ID `int`, VND integer, thời gian tương đối qua `AppClock`, hold 3 phút, xung đột/nhả ghế và payment/booking state tách biệt;
 - `test/backend_aligned_contract_test.dart` khóa contract parsing, seat mapping, quote 269.000đ, lifecycle booking/payment, expiry và account state;
 - không thêm HTTP client, remote data source hoặc network request.
 
 ### 12.5. R3 — M1 Existing UI migration
+
+> Trạng thái: **Hoàn thành**. Analyzer sạch và toàn bộ 16 test pass; R4 là work package kế tiếp.
 
 1. Home/Discover/Movie đọc `CatalogRepository` và giữ presentation metadata riêng.
 2. Showtimes dùng `DateTime`, `ShowtimeStatus`, ID kiểu `int` và không preselect.
@@ -418,6 +420,18 @@ Kết quả thực thi:
 7. Giữ screenshot/golden baseline để phát hiện thay đổi visual ngoài ý muốn.
 
 Điều kiện xong: toàn bộ UI hiện có chạy offline qua repository mock, không còn String ID/date/price/status presentation cũ tại data boundary và không có regression navigation.
+
+Kết quả thực thi:
+
+- Home, Discover và Movie Detail đọc `CatalogRepository` qua `moviesProvider`/`movieProvider`; metadata rating, tagline, banner và format vẫn nằm riêng ở presentation mapper;
+- Showtimes đọc catalog repository, dùng `int` ID, `DateTime`, `VndMoney`, `ShowtimeStatus`, ngày sinh theo `AppClock` và không preselect ngày/suất;
+- Orders đọc `BookingRepository`, ánh xạ đủ `BookingStatus`, snapshot phim/rạp/phòng/ghế/F&B và giữ mock booking seed trong repository thay vì presentation provider;
+- Account tổng hợp `ProfileRepository`, `WalletRepository` và `LoyaltyRepository`; presentation không còn import object profile tĩnh;
+- route `movieId` được parse tại router boundary và dùng `int` trong ứng dụng;
+- loading, empty, error/retry dùng chung qua `RepositoryStatePane`; Discover, Showtimes và Orders có empty state theo ngữ cảnh;
+- các provider mock presentation cũ đã được loại bỏ; widget không import fixture trực tiếp;
+- responsive test tại 360/390/412 px, navigation regression, repository-backed Account/Orders và error/retry đều pass;
+- không thêm HTTP client, remote data source hoặc API call thật.
 
 ### 12.6. R4 — M2 Booking entry
 

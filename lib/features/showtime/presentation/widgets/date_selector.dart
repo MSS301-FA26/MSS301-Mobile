@@ -3,8 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class DateOption {
-  const DateOption({required this.label, required this.sub});
+  const DateOption({
+    required this.date,
+    required this.label,
+    required this.sub,
+  });
 
+  final DateTime date;
   final String label;
   final String sub;
 }
@@ -18,7 +23,7 @@ class DateSelector extends StatelessWidget {
   });
 
   final List<DateOption> dates;
-  final int selectedIndex;
+  final int? selectedIndex;
   final ValueChanged<int> onSelected;
 
   @override

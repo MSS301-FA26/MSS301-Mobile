@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../models/mock_user_profile.dart';
+import '../models/account_summary.dart';
 
 class AccountProfileCard extends StatelessWidget {
   const AccountProfileCard({super.key, required this.user});
 
-  final MockUserProfile user;
+  final AccountSummary user;
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +105,7 @@ class AccountProfileCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Thành viên CinePremier từ ${user.joinDate}',
+                  'Thành viên CinePremier từ ${user.joinYear}',
                   style: const TextStyle(
                     color: AppColors.textDisabled,
                     fontSize: 11,

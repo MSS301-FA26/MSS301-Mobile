@@ -7,24 +7,29 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_image.dart';
 import '../../../../shared/widgets/age_badge.dart';
-import '../providers/mock_movies_provider.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../models/movie.dart';
+import '../providers/movies_provider.dart';
 
 class MovieDetailPlaceholder extends ConsumerWidget {
   const MovieDetailPlaceholder({super.key, required this.movieId});
 
-  final String movieId;
+  final int movieId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final movies = ref.watch(mockMoviesProvider);
-    Movie? movie;
-    for (final item in movies) {
-      if (item.id == movieId) {
-        movie = item;
-        break;
-      }
+    final movieState = ref.watch(movieProvider(movieId));
+    if (movieState.isLoading) {
+      return const Scaffold(body: RepositoryStatePane.loading());
     }
+    if (movieState.hasError) {
+      return Scaffold(
+        body: RepositoryStatePane.error(
+          onRetry: () => ref.invalidate(movieProvider(movieId)),
+        ),
+      );
+    }
+    final Movie? movie = movieState.requireValue;
 
     return Scaffold(
       appBar: AppBar(
@@ -59,7 +64,7 @@ class MovieDetailPlaceholder extends ConsumerWidget {
                   label: movie.isNowShowing ? 'Đặt vé' : 'Chưa mở bán',
                   icon: Icons.confirmation_number_outlined,
                   onPressed: movie.isNowShowing
-                      ? () => context.go(AppRoutes.showtimesForMovie(movie!.id))
+                      ? () => context.go(AppRoutes.showtimesForMovie(movie.id))
                       : null,
                 ),
               ),
