@@ -80,7 +80,9 @@ class MockBookingRepository implements BookingRepository {
             seatType: mapCatalogSeatTypeToBooking(seat.seatType),
             unitPrice: seat.unitPrice,
             status: BookingSeatStatus.holding,
-            ticketType: TicketType.adult,
+            ticketType: quote.tickets
+                .firstWhere((ticket) => ticket.seatId == seat.seatId)
+                .ticketType,
           );
         })
         .toList(growable: false);
@@ -90,7 +92,10 @@ class MockBookingRepository implements BookingRepository {
             id: bookingId * 1000 + entry.$1,
             seatId: entry.$2.seatId,
             ticketType: entry.$2.ticketType,
-            viewerAge: 22,
+            viewerAge: request.tickets
+                .where((ticket) => ticket.seatId == entry.$2.seatId)
+                .map((ticket) => ticket.viewerAge)
+                .firstOrNull,
             quantity: entry.$2.quantity,
             unitPrice: entry.$2.unitPrice,
             lineTotal: entry.$2.lineTotal,
@@ -159,6 +164,26 @@ class MockBookingRepository implements BookingRepository {
       CheckoutQuoteRequestDto(
         showtimeId: current.showtimeId,
         seatIds: current.seats.map((seat) => seat.seatId).toList(),
+        tickets:
+            (request.tickets.isEmpty
+                    ? current.tickets.map(
+                        (ticket) => TicketSelectionDto(
+                          seatId: ticket.seatId,
+                          ticketType: ticket.ticketType,
+                          viewerAge: ticket.viewerAge,
+                          quantity: ticket.quantity,
+                        ),
+                      )
+                    : request.tickets)
+                .map(
+                  (ticket) => QuoteTicketRequestDto(
+                    seatId: ticket.seatId,
+                    ticketType: ticket.ticketType,
+                    viewerAge: ticket.viewerAge ?? 30,
+                    quantity: ticket.quantity,
+                  ),
+                )
+                .toList(growable: false),
         foods: request.foods
             .map(
               (food) => QuoteFoodRequestDto(

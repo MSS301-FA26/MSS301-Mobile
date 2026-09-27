@@ -183,11 +183,27 @@ void main() {
           const CheckoutQuoteRequestDto(
             showtimeId: DemoIds.showtimeInception,
             seatIds: [DemoIds.seatC4, DemoIds.seatC5],
+            tickets: [
+              QuoteTicketRequestDto(
+                seatId: DemoIds.seatC4,
+                ticketType: TicketType.adult,
+                viewerAge: 30,
+              ),
+              QuoteTicketRequestDto(
+                seatId: DemoIds.seatC5,
+                ticketType: TicketType.student,
+                viewerAge: 20,
+              ),
+            ],
             foods: [QuoteFoodRequestDto(productId: 4101, isCombo: true)],
           ),
         );
 
-        expect(quote.total, const VndMoney(269000));
+        expect(quote.total, const VndMoney(299000));
+        expect(quote.tickets.map((ticket) => ticket.ticketType), [
+          TicketType.adult,
+          TicketType.student,
+        ]);
         expect(quote.movie?.title, 'Inception');
         expect(quote.cinema?.id, DemoIds.cinemaCentral);
 
@@ -196,10 +212,24 @@ void main() {
           const HoldSeatsRequestDto(
             showtimeId: DemoIds.showtimeInception,
             seatIds: [DemoIds.seatC4, DemoIds.seatC5],
+            tickets: [
+              TicketSelectionDto(
+                seatId: DemoIds.seatC4,
+                ticketType: TicketType.adult,
+                viewerAge: 30,
+              ),
+              TicketSelectionDto(
+                seatId: DemoIds.seatC5,
+                ticketType: TicketType.student,
+                viewerAge: 20,
+              ),
+            ],
             foods: foods,
           ),
         );
         expect(held.status, BookingStatus.holding);
+        expect(held.tickets.last.ticketType, TicketType.student);
+        expect(held.seats.last.ticketType, TicketType.student);
         expect(held.holdExpiresAt, clock.now().add(const Duration(minutes: 3)));
         expect(
           () => bookings.holdSeats(
@@ -217,6 +247,7 @@ void main() {
           const UpdateHoldingBookingRequestDto(foods: foods),
         );
         expect(pending.status, BookingStatus.pendingPayment);
+        expect(pending.tickets.last.ticketType, TicketType.student);
 
         final createdPayment = await payments.createPayment(
           DemoIds.user,

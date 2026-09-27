@@ -4,6 +4,8 @@
 > Phạm vi: ứng dụng Flutter dành cho khách hàng  
 > Trạng thái: tám quyết định flow lõi đã chốt; dùng cùng các tài liệu kiến trúc và mapping hiện có
 
+> Luồng Vé & Ghế V2 và CTA chọn suất đã được triển khai trong backend-aligned mock UI. `BOOKING_FLOW_V2_REWORK_PLAN.md` là nguồn chi tiết cho mapping vé–ghế, giới hạn mock và các blocker trước khi nối API thật.
+
 ## 1. Mục đích
 
 Tài liệu này là nguồn thống nhất về:
@@ -285,7 +287,7 @@ Quy tắc CTA:
 ```mermaid
 stateDiagram-v2
     [*] --> SelectingShowtime
-    SelectingShowtime --> Authenticating: Chọn suất khi chưa đăng nhập
+    SelectingShowtime --> Authenticating: Nhấn CTA Vé & Ghế khi chưa đăng nhập
     Authenticating --> SelectingSeats: Đăng nhập thành công
     SelectingShowtime --> SelectingSeats: Đã đăng nhập
     SelectingSeats --> HoldingSeats: Xác nhận ghế
@@ -315,12 +317,12 @@ Hành vi:
 2. Nếu vào từ tab Lịch chiếu, hiển thị danh sách toàn bộ phim theo ngày.
 3. Ngày được tạo theo thời gian thực; không hard-code ngày demo vào production.
 4. Suất đã qua giờ bắt đầu hoặc hết chỗ phải disabled và có nhãn rõ.
-5. Tap suất hợp lệ:
-   - ghi nhận `movieId`, `showtimeId`, ngày, giờ, phòng, định dạng và giá;
+5. Tap suất hợp lệ chỉ ghi nhận một `movieId/showtimeId` active và hiện footer tóm tắt; không tự điều hướng.
+6. Nhấn **Tiếp tục: Vé & Ghế**:
    - nếu chưa đăng nhập, mở auth và lưu pending action;
-   - nếu đã đăng nhập, đi thẳng sang Chọn ghế.
+   - nếu đã đăng nhập, đi sang màn Vé & Ghế đúng suất đã chọn.
 
-### 6.2. Chọn ghế
+### 6.2. Chọn Vé & Ghế
 
 UI bắt buộc:
 
@@ -331,13 +333,14 @@ UI bắt buộc:
 - trạng thái hiển thị available, selected local, held runtime, booked/sold và maintenance;
 - chú giải bằng màu kết hợp chữ/icon;
 - zoom/pan khi sơ đồ vượt khung;
-- loại vé và cảnh báo độ tuổi;
+- counter Người lớn/Sinh viên/Trẻ em, loại vé active và mapping từng ghế theo loại vé;
 - thanh dưới có danh sách ghế, tổng tiền và CTA **Tiếp tục**.
 
 Quy tắc:
 
 - không cho chọn ghế sold/held;
-- giới hạn số ghế theo rule backend; prototype dùng tối đa 6 ghế;
+- backend chưa công bố giới hạn public; mock UI dùng policy tập trung tối đa 8 vé mỗi giao dịch;
+- CTA chỉ bật khi tổng số ghế đã gán bằng tổng số vé; một lần nhấn tạo hold rồi điều hướng ngay sang Bắp nước;
 - ghế đôi phải chọn/bỏ theo cặp nếu business rule yêu cầu;
 - trước khi người dùng xác nhận ghế, lựa chọn chỉ là state local và chưa có đồng hồ giữ ghế;
 - đồng hồ 3 phút chỉ bắt đầu sau khi mock repository trả booking `HOLDING`, bám theo thời hạn giữ ghế hiện tại của booking service;
@@ -353,6 +356,7 @@ Quy tắc:
 3. Tạm tính cập nhật tức thời.
 4. Có CTA **Bỏ qua** và **Tiếp tục**.
 5. Trở lại từ checkout phải khôi phục giỏ trước đó.
+6. Back UI hoặc hệ thống quay về đúng màn Vé & Ghế và giữ mapping/cart; muốn sửa ghế đang hold phải xác nhận hủy hold cũ trước khi tạo hold mới.
 
 Trạng thái bắt buộc: loading, empty menu, hết món, lỗi tải ảnh, số lượng tối đa và lỗi cập nhật giá.
 
@@ -815,10 +819,10 @@ F1–F8 là quyết định sản phẩm/UI, không phải phase code tuần t�
 | R2 — Contract foundation ✅ | M0, F6 | Model/repository mock đủ để state UI bám backend contract; presentation migration thuộc R3 |
 | R3 — Existing UI migration ✅ | M1, F1B, F3, F8 | Các màn hiện có dùng mock repository, ID/date/money/status typed và có loading/empty/error cơ bản |
 | R4 — Booking entry ✅ | M2, F2, F4, F5, F6 | Detail → Showtime → Auth gate → Seat → Hold hoàn chỉnh; back/logo guard và expiry đã có test |
-| R5 — Booking completion | M3, F2, F6 | Food/Skip → Checkout → Payment → Verify → Ticket/Order hoàn chỉnh |
-| R6 — Account completion | M4, F5 | Auth, profile, wallet, loyalty và resume flow hoàn chỉnh |
-| R7 — Preview flows | M5, F7 | Flow chưa có contract chỉ hoạt động sau feature flag |
-| R8 — Stabilization | F1–F8 | Responsive, accessibility, regression, docs và E2E đạt DoD |
+| R5 — Booking completion ✅ | M3, F2, F6 | Food/Skip → Checkout → Payment → Verify → Ticket/Order hoàn chỉnh |
+| R6 — Account completion ✅ | M4, F5 | Auth, profile, wallet, loyalty và resume flow hoàn chỉnh |
+| R7 — Preview flows ✅ | M5, F7 | Flow chưa có contract chỉ hoạt động sau feature flag |
+| R8 — Stabilization ✅ | F1–F8 | Responsive, accessibility, regression, docs và E2E đạt DoD |
 
 ### 18.1. Quy tắc chuyển chặng
 

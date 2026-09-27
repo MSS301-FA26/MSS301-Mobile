@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/demo/demo_scenario.dart';
+import '../../movie/data/models/catalog_enums.dart';
 import '../../movie/data/repositories/catalog_providers.dart';
 import '../../orders/data/models/booking_dto.dart';
 import '../../orders/data/models/booking_enums.dart';
@@ -15,12 +16,35 @@ enum BookingEntryPhase {
   expired,
 }
 
+abstract final class BookingTicketPolicy {
+  static const maxTickets = 8;
+  static const supportedTypes = [
+    TicketType.adult,
+    TicketType.student,
+    TicketType.child,
+  ];
+
+  static int defaultViewerAge(TicketType type) => switch (type) {
+    TicketType.child => 10,
+    TicketType.student => 20,
+    _ => 30,
+  };
+}
+
+class SeatTicketAssignment {
+  const SeatTicketAssignment({required this.seatId, required this.ticketType});
+  final int seatId;
+  final TicketType ticketType;
+}
+
 class BookingEntryState {
   const BookingEntryState({
     required this.phase,
     this.movieId,
     this.showtimeId,
-    this.selectedSeatIds = const {},
+    this.ticketQuantities = const {},
+    this.activeTicketType,
+    this.assignments = const {},
     this.unavailableSeatIds = const {},
     this.booking,
     this.message,
@@ -31,11 +55,21 @@ class BookingEntryState {
   final BookingEntryPhase phase;
   final int? movieId;
   final int? showtimeId;
-  final Set<int> selectedSeatIds;
+  final Map<TicketType, int> ticketQuantities;
+  final TicketType? activeTicketType;
+  final Map<int, SeatTicketAssignment> assignments;
   final Set<int> unavailableSeatIds;
   final BookingDto? booking;
   final String? message;
 
+  Set<int> get selectedSeatIds => assignments.keys.toSet();
+  int get ticketCount => ticketQuantities.values.fold(0, (a, b) => a + b);
+  int get assignedCount => assignments.length;
+  bool get assignmentComplete =>
+      ticketCount > 0 && ticketCount == assignedCount;
+  int quantityFor(TicketType type) => ticketQuantities[type] ?? 0;
+  int assignedFor(TicketType type) =>
+      assignments.values.where((item) => item.ticketType == type).length;
   bool get hasActiveDraft => phase != BookingEntryPhase.idle;
   bool get hasActiveHold =>
       booking?.status == BookingStatus.holding ||
@@ -55,27 +89,114 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     );
   }
 
+  bool setTicketQuantity(
+    TicketType type,
+    int quantity, {
+    bool removeExcessAssignments = false,
+  }) {
+    if (state.phase != BookingEntryPhase.selectingSeats ||
+        !BookingTicketPolicy.supportedTypes.contains(type)) {
+      return false;
+    }
+    final nextQuantity = quantity.clamp(0, BookingTicketPolicy.maxTickets);
+    final totalWithoutType = state.ticketCount - state.quantityFor(type);
+    if (totalWithoutType + nextQuantity > BookingTicketPolicy.maxTickets) {
+      state = _copy(message: 'Mỗi giao dịch chỉ được đặt tối đa 8 vé.');
+      return false;
+    }
+    final assigned = state.assignments.values
+        .where((item) => item.ticketType == type)
+        .toList(growable: false);
+    if (assigned.length > nextQuantity && !removeExcessAssignments) {
+      return false;
+    }
+    final nextAssignments = Map<int, SeatTicketAssignment>.from(
+      state.assignments,
+    );
+    if (assigned.length > nextQuantity) {
+      for (final item in assigned.skip(nextQuantity)) {
+        nextAssignments.remove(item.seatId);
+      }
+    }
+    final quantities = Map<TicketType, int>.from(state.ticketQuantities);
+    if (nextQuantity == 0) {
+      quantities.remove(type);
+    } else {
+      quantities[type] = nextQuantity;
+    }
+    final TicketType? active = nextQuantity > 0
+        ? type
+        : (quantities.isEmpty ? null : quantities.keys.first);
+    state = _copy(
+      ticketQuantities: quantities,
+      assignments: nextAssignments,
+      activeTicketType: active,
+      clearActiveTicketType: active == null,
+      clearMessage: true,
+    );
+    return true;
+  }
+
+  void setActiveTicketType(TicketType type) {
+    if (state.quantityFor(type) == 0 ||
+        state.phase != BookingEntryPhase.selectingSeats) {
+      return;
+    }
+    state = _copy(activeTicketType: type, clearMessage: true);
+  }
+
   void toggleSeatIds(Set<int> seatIds) {
     if (state.phase != BookingEntryPhase.selectingSeats) return;
-    final next = {...state.selectedSeatIds};
-    final allSelected = seatIds.every(next.contains);
-    if (allSelected) {
-      next.removeAll(seatIds);
-    } else {
-      if (next.length + seatIds.where((id) => !next.contains(id)).length > 6) {
-        state = _copy(message: 'Bạn chỉ có thể chọn tối đa 6 ghế.');
-        return;
+    final next = Map<int, SeatTicketAssignment>.from(state.assignments);
+    if (seatIds.every(next.containsKey)) {
+      for (final id in seatIds) {
+        next.remove(id);
       }
-      next.addAll(seatIds);
+      state = _copy(assignments: next, clearMessage: true);
+      return;
     }
-    state = _copy(selectedSeatIds: next, clearMessage: true);
+    final type = state.activeTicketType;
+    if (type == null) {
+      state = _copy(
+        message: 'Hãy chọn số lượng và loại vé trước khi chọn ghế.',
+      );
+      return;
+    }
+    final newIds = seatIds.where((id) => !next.containsKey(id)).toList();
+    final remaining = state.quantityFor(type) - state.assignedFor(type);
+    if (newIds.length > remaining) {
+      state = _copy(
+        message: 'Loại vé đang chọn chỉ còn $remaining ghế cần gán.',
+      );
+      return;
+    }
+    for (final id in newIds) {
+      next[id] = SeatTicketAssignment(seatId: id, ticketType: type);
+    }
+    state = _copy(assignments: next, clearMessage: true);
   }
 
   Future<BookingDto?> holdSelectedSeats() async {
     final showtimeId = state.showtimeId;
-    if (showtimeId == null || state.selectedSeatIds.isEmpty) return null;
+    if (showtimeId == null || !state.assignmentComplete) {
+      state = _copy(
+        message: 'Hãy gán đủ ghế cho tất cả vé trước khi tiếp tục.',
+      );
+      return null;
+    }
     state = _copy(phase: BookingEntryPhase.submittingHold, clearMessage: true);
     try {
+      final tickets = state.assignments.values
+          .map(
+            (assignment) => TicketSelectionDto(
+              seatId: assignment.seatId,
+              ticketType: assignment.ticketType,
+              viewerAge: BookingTicketPolicy.defaultViewerAge(
+                assignment.ticketType,
+              ),
+            ),
+          )
+          .toList(growable: false);
       final booking = await ref
           .read(bookingRepositoryProvider)
           .holdSeats(
@@ -83,6 +204,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
             HoldSeatsRequestDto(
               showtimeId: showtimeId,
               seatIds: state.selectedSeatIds.toList(growable: false),
+              tickets: tickets,
             ),
           );
       state = _copy(phase: BookingEntryPhase.holding, booking: booking);
@@ -94,7 +216,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
           ...state.unavailableSeatIds,
           ...state.selectedSeatIds,
         },
-        selectedSeatIds: const {},
+        assignments: const {},
         message: error.message,
       );
       return null;
@@ -129,10 +251,27 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       try {
         await ref.read(bookingRepositoryProvider).cancel(booking.id);
       } on BookingConflictException {
-        // The mock may already have expired the hold; clearing local state is safe.
+        /* Already expired. */
       }
     }
     state = const BookingEntryState.idle();
+  }
+
+  Future<bool> editHeldSelection() async {
+    final booking = state.booking;
+    if (booking == null || !state.hasActiveHold) return true;
+    try {
+      await ref.read(bookingRepositoryProvider).cancel(booking.id);
+      state = _copy(
+        phase: BookingEntryPhase.selectingSeats,
+        clearBooking: true,
+        clearMessage: true,
+      );
+      return true;
+    } on BookingConflictException catch (error) {
+      state = _copy(message: error.message);
+      return false;
+    }
   }
 
   void restartSelection() {
@@ -140,23 +279,33 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       phase: BookingEntryPhase.selectingSeats,
       movieId: state.movieId,
       showtimeId: state.showtimeId,
+      ticketQuantities: state.ticketQuantities,
+      activeTicketType: state.activeTicketType,
     );
   }
 
   BookingEntryState _copy({
     BookingEntryPhase? phase,
-    Set<int>? selectedSeatIds,
+    Map<TicketType, int>? ticketQuantities,
+    TicketType? activeTicketType,
+    bool clearActiveTicketType = false,
+    Map<int, SeatTicketAssignment>? assignments,
     Set<int>? unavailableSeatIds,
     BookingDto? booking,
+    bool clearBooking = false,
     String? message,
     bool clearMessage = false,
   }) => BookingEntryState(
     phase: phase ?? state.phase,
     movieId: state.movieId,
     showtimeId: state.showtimeId,
-    selectedSeatIds: selectedSeatIds ?? state.selectedSeatIds,
+    ticketQuantities: ticketQuantities ?? state.ticketQuantities,
+    activeTicketType: clearActiveTicketType
+        ? null
+        : activeTicketType ?? state.activeTicketType,
+    assignments: assignments ?? state.assignments,
     unavailableSeatIds: unavailableSeatIds ?? state.unavailableSeatIds,
-    booking: booking ?? state.booking,
+    booking: clearBooking ? null : booking ?? state.booking,
     message: clearMessage ? null : message ?? state.message,
   );
 }

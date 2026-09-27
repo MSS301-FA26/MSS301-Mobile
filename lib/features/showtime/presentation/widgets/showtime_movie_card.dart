@@ -180,7 +180,7 @@ class _RoomSection extends StatelessWidget {
             crossAxisCount: 3,
             crossAxisSpacing: AppSpacing.xs,
             mainAxisSpacing: AppSpacing.xs,
-            childAspectRatio: 1.2,
+            childAspectRatio: 0.82,
           ),
           itemBuilder: (context, index) {
             final slot = room.slots[index];

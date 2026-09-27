@@ -9,8 +9,13 @@ The AI Studio export under `docs/ui-reference/ai-studio/` is a visual and intera
 | `HomeScreen.tsx` | `features/home/presentation` | Repository-backed mock UI; responsive/navigation regression covered |
 | `MovieDetailScreen.tsx` | `features/movie/presentation` | Repository-backed detail content, trailer and booking route active |
 | `DiscoverScreen.tsx` | `features/search/presentation` | Repository-backed mock UI under current `features/discover` alias |
-| `ShowtimesScreen.tsx` | `features/showtime/presentation` | Repository-backed typed schedule; valid slots open seat selection through auth gate |
-| `SeatsScreen.tsx` | `features/seat/presentation` | R4 implemented: typed seat map, local selection, hold, timer, conflict/expiry and leave guards |
+| `ShowtimesScreen.tsx` / `ai-studio-v2` | `features/showtime/presentation` | V2: one selected slot plus sticky Vé & Ghế CTA; auth gate runs on CTA |
+| `SeatsScreen.tsx` / `ai-studio-v2` | `features/seat/presentation` | V2: Adult/Student/Child counters, max 8, seat assignment, metadata layout, one-tap hold/navigation, conflict/expiry/leave guards |
+| Concessions / Checkout | `features/booking/presentation` | V2: Back returns to held seat mapping, cart persists, quote and VNPay mock preserve ticket-seat assignments |
+| Payment Result / Ticket QR | `features/booking/presentation` | V2: payment state separated from booking verification; QR only for `PAID`; ticket groups seats using `booking.tickets` |
+| Auth flows | `features/auth/presentation` | R6 implemented: login, register/OTP, reset password, guest and pending booking resume |
+| Profile / Wallet / CinePoints / Security | `features/account/presentation` | R6 implemented with backend-aligned repositories and mock mutation |
+| Preview flows | `features/preview` | R7 implemented behind compile-time flags with `Provisional*` repository/model |
 | `ConcessionsScreen.tsx` | `features/food/presentation` | Deferred |
 | `PaymentScreen.tsx` | `features/checkout/presentation` and `features/payment/presentation` | Deferred |
 | `OrdersScreen.tsx` | `features/booking/presentation` | Reads `BookingRepository` under current `features/orders` alias; ticket/refund deferred |

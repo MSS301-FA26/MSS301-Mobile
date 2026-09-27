@@ -1,6 +1,7 @@
 import '../../../../core/money/vnd_money.dart';
 import '../../data/models/booking_dto.dart';
 import '../../data/models/booking_enums.dart';
+import '../../../movie/data/models/catalog_enums.dart';
 
 class TicketOrder {
   const TicketOrder({
@@ -70,6 +71,17 @@ TicketOrder mapBookingToOrder(
   final seatTypes = booking.seats
       .map((seat) => seat.seatType.wireValue)
       .toSet();
+  final ticketSummary = [
+    for (final type in const [
+      TicketType.adult,
+      TicketType.student,
+      TicketType.child,
+    ])
+      if (booking.tickets
+          .where((ticket) => ticket.ticketType == type)
+          .isNotEmpty)
+        '${booking.tickets.where((ticket) => ticket.ticketType == type).length} ${_ticketLabel(type)}',
+  ].join(', ');
   final foods = booking.foods
       .map((food) => '${food.quantity}x ${food.productName}')
       .join(', ');
@@ -89,8 +101,9 @@ TicketOrder mapBookingToOrder(
     roomName: room,
     showtimeAt: booking.showtimeStartSnapshot ?? booking.showtimeStart,
     seats: booking.seats.map((seat) => seat.seatLabel).toList(growable: false),
-    seatsTypeLabel:
-        '${booking.seats.length} vé${seatTypes.isEmpty ? '' : ' (${seatTypes.join(', ')})'}',
+    seatsTypeLabel: ticketSummary.isNotEmpty
+        ? ticketSummary
+        : '${booking.seats.length} vé${seatTypes.isEmpty ? '' : ' (${seatTypes.join(', ')})'}',
     concessionsSummary: foods.isEmpty ? 'Không kèm F&B' : foods,
     totalPrice: booking.totalAmount,
     status: booking.status,
@@ -98,3 +111,9 @@ TicketOrder mapBookingToOrder(
 }
 
 String _two(int value) => value.toString().padLeft(2, '0');
+
+String _ticketLabel(TicketType type) => switch (type) {
+  TicketType.child => 'trẻ em',
+  TicketType.student => 'sinh viên',
+  _ => 'người lớn',
+};

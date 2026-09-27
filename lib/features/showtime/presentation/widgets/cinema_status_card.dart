@@ -65,24 +65,10 @@ class CinemaStatusCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          OutlinedButton.icon(
+          IconButton(
+            tooltip: 'Thông tin rạp',
             onPressed: onInfo,
-            icon: const Icon(Icons.info_outline_rounded, size: 15),
-            label: const Text('Thông tin'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textSecondary,
-              backgroundColor: AppColors.surfaceRaised,
-              side: const BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
-              ),
-              minimumSize: const Size(0, 34),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              textStyle: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            icon: const Icon(Icons.info_outline_rounded, size: 20),
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
+import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
@@ -63,8 +64,12 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
                 child: order.isUpcoming
                     ? UpcomingOrderCard(
                         order: order,
-                        onCancel: null,
-                        onOpenTicket: null,
+                        onCancel: FeatureFlags.refundPreview
+                            ? () =>
+                                  context.go(AppRoutes.previewRefund(order.id))
+                            : null,
+                        onOpenTicket: () =>
+                            context.go(AppRoutes.ticket(order.id)),
                       )
                     : CompletedOrderCard(
                         order: order,

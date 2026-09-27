@@ -1,7 +1,7 @@
 # CINEPREMIER Mobile — CTA and Route Registry
 
 > Phiên bản: 1.1
-> Phạm vi: R1 — F1A Navigation contract, cập nhật route qua R4
+> Phạm vi: R1 — F1A Navigation contract, cập nhật route qua R8
 > Chế độ: Backend-aligned Mock UI, không gọi API thật
 > Trạng thái: hoàn thành ngày 2026-09-25
 
@@ -29,7 +29,15 @@ Không dùng snackbar “sẽ có sau” để thay thế navigation. Một acti
 | `/account` | `account` | Không | `core-active`; alias hiện tại của `/profile` |
 | `/movie/:id` | `movieDetail` | Path `id` | `core-active` |
 | `/seat-selection/:showtimeId` | `seatSelection` | Path `showtimeId` | `core-active`; triển khai tại R4 |
-| `/ticket/:bookingId` | Chưa tạo | Path `bookingId` | `core-blocked`, dự kiến R5 |
+| `/booking/:bookingId/concessions` | `concessions` | Path `bookingId` | `core-active`; R5 |
+| `/booking/:bookingId/checkout` | `checkout` | Path `bookingId` | `core-active`; R5 |
+| `/payment/:paymentId` | `payment` | Path `paymentId` | `core-active`; R5 |
+| `/ticket/:bookingId` | `ticket` | Path `bookingId` | `core-active`; chỉ booking `PAID` |
+| `/auth/login`, `/auth/register`, `/auth/forgot-password` | Auth mock | Pending action | `core-active`; R6 |
+| `/account/profile`, `/account/security` | Account core | Session user | `core-active`; R6 |
+| `/account/wallet`, `/account/points` | Wallet/Loyalty | Session user | `core-active`; R6 |
+| `/information/cinema`, `/information/policies`, `/support` | Static/mock information | Không | `core-active`; guest truy cập được |
+| `/preview/*` | Provisional preview pages | Theo flow | `preview-disabled` mặc định; active khi build flag bật |
 
 Route path được khai báo tập trung tại `lib/core/routing/app_routes.dart`. Từ R3, `movieId` được parse tại router boundary và dùng kiểu `int` trong ứng dụng.
 
@@ -93,12 +101,13 @@ Quy tắc đã triển khai từ R4 khi booking session đang hoạt động:
 | Thông tin rạp | Mở `CinemaInfoSheet` | `modal-active` |
 | Date selector | Đổi ngày local | `local-active`; ngày động thuộc M1 |
 | Format chip | Lọc phòng local | `local-active` |
-| Suất hợp lệ | Auth gate nếu cần, sau đó đi `/seat-selection/:showtimeId` | `core-active` |
+| Suất hợp lệ | Chọn một suất local và hiện footer tóm tắt; chưa điều hướng | `local-active` |
+| Tiếp tục: Vé & Ghế | Auth gate nếu cần, sau đó đi `/seat-selection/:showtimeId` | `core-active` |
 | Suất hết chỗ | Không action | disabled hợp lệ |
 
 Query `movieId` phải lọc danh sách về đúng phim. Không tự chọn sẵn suất; việc bỏ ngày hard-code và tạo ngày động thuộc M1/F4.
 
-Màn chọn ghế R4 giữ lựa chọn local trước khi người dùng nhấn **Tiếp tục**. Sau khi hold trả `HOLDING`, timer 3 phút mới bắt đầu. Back hoặc logo khi có draft/hold đều phải xác nhận và giải phóng hold khi người dùng đồng ý rời đi. Bước sau hold vẫn dừng tại R4; bắp nước/checkout thuộc R5.
+Màn **Vé & Ghế** chọn số lượng Adult/Student/Child (tối đa 8), sau đó gán từng ghế theo loại vé active. CTA chỉ bật khi đã gán đủ; một lần nhấn sẽ tạo hold rồi đi Bắp nước. Back từ Bắp nước quay về đúng `showtimeId` và giữ mapping/cart; muốn sửa vé hoặc ghế phải xác nhận hủy hold cũ rồi tạo hold mới. Logo khi có draft/hold vẫn dùng leave guard. Checkout, vé điện tử và Đơn của tôi đọc phân loại từ `booking.tickets` theo `seatId`.
 
 ## 7. Orders
 
@@ -106,7 +115,7 @@ Màn chọn ghế R4 giữ lựa chọn local trước khi người dùng nhấn
 | --- | --- | --- |
 | Upcoming/Completed tab | Đổi danh sách local | `local-active` |
 | Hoàn/Đổi vé | Refund contract chưa có | `preview-disabled` |
-| Mở mã vé | Route ticket chưa có | `core-blocked`, dự kiến R5 |
+| Mở mã vé | `/ticket/:bookingId`; kiểm tra booking `PAID` | `core-active` |
 | Đặt lại vé | `/showtimes?movieId=:movieId` | `core-active` |
 | Đánh giá | Review contract chưa có | `preview-disabled` |
 
@@ -115,13 +124,13 @@ Màn chọn ghế R4 giữ lựa chọn local trước khi người dùng nhấn
 | Control | Hành vi | Trạng thái |
 | --- | --- | --- |
 | Mã VIP | Chưa có membership QR contract | `preview-disabled` |
-| Quản lý ví | Chưa có wallet route | `core-blocked`, dự kiến R6 |
+| Quản lý ví | `/account/wallet` | `core-active`; không có top-up/payment vé |
 | Vé xem phim của tôi | Đi `/orders` | `core-active` |
 | PopBot | Chưa có chat route/contract | `preview-disabled` |
 | Voucher cá nhân | Chưa có voucher contract | `preview-disabled`; không hiển thị count giả |
 | Thông tin rạp | Mở `CinemaInfoSheet` | `modal-active` |
-| CSKH | Chưa có support route | `core-blocked`, dự kiến R7 |
-| Đăng xuất | Mới có session mock tối thiểu cho auth gate R4, chưa có auth UI đầy đủ | Ẩn đến R6 |
+| CSKH | `/support` | `core-active`; guest truy cập được |
+| Đăng xuất | Dialog xác nhận và chuyển Account về guest state | `core-active` |
 
 ## 9. Feature flag dự kiến
 

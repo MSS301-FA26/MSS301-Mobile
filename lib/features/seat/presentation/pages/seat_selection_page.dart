@@ -12,6 +12,7 @@ import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
+import '../../../booking/presentation/widgets/booking_progress.dart';
 import '../../application/booking_entry_session.dart';
 import '../providers/seat_map_provider.dart';
 
@@ -29,6 +30,63 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
   Duration _remaining = Duration.zero;
   bool _expiryDialogOpen = false;
   bool _initialized = false;
+
+  Future<void> _changeTicket(TicketType type, int next) async {
+    final controller = ref.read(bookingEntryProvider.notifier);
+    if (controller.setTicketQuantity(type, next)) return;
+    final session = ref.read(bookingEntryProvider);
+    if (next >= session.assignedFor(type)) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bỏ ghế đã gán?'),
+        content: const Text(
+          'Giảm số lượng vé sẽ bỏ các ghế vượt quá của loại vé này.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Không'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Có, giảm vé'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      controller.setTicketQuantity(type, next, removeExcessAssignments: true);
+    }
+  }
+
+  Future<void> _editHold() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sửa vé và ghế?'),
+        content: const Text(
+          'Phiên giữ ghế hiện tại sẽ được hủy. Các lựa chọn được giữ lại để bạn chỉnh sửa và tạo phiên giữ mới.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Không'),
+          ),
+          OutlinedButton(
+            key: const ValueKey('confirm-edit-held-seats'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Có, sửa lựa chọn'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final edited = await ref
+        .read(bookingEntryProvider.notifier)
+        .editHeldSelection();
+    if (edited) _timer?.cancel();
+  }
 
   @override
   void dispose() {
@@ -188,10 +246,11 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     final selectedSeats = seatMap.seats
         .where((seat) => session.selectedSeatIds.contains(seat.seatId))
         .toList(growable: false);
-    final total = selectedSeats.fold(
-      VndMoney.zero,
-      (value, seat) => value + (seat.unitPrice ?? VndMoney.zero),
-    );
+    final total = selectedSeats.fold(VndMoney.zero, (value, seat) {
+      final type =
+          session.assignments[seat.seatId]?.ticketType ?? TicketType.adult;
+      return value + _ticketPrice(seatMap.showtime, seat, type);
+    });
     final holding = session.phase == BookingEntryPhase.holding;
     final submitting = session.phase == BookingEntryPhase.submittingHold;
 
@@ -205,6 +264,7 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
         showBottomNavigation: false,
         body: Column(
           children: [
+            const BookingProgress(currentStep: 1),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(AppSpacing.md),
@@ -215,6 +275,23 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                       seatMap: seatMap,
                       remaining: holding ? _remaining : null,
                     ),
+                    const SizedBox(height: AppSpacing.md),
+                    _TicketSelector(
+                      session: session,
+                      onChange: _changeTicket,
+                      onActivate: (type) => ref
+                          .read(bookingEntryProvider.notifier)
+                          .setActiveTicketType(type),
+                    ),
+                    if (holding) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      OutlinedButton.icon(
+                        key: const ValueKey('edit-held-seats'),
+                        onPressed: _editHold,
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Sửa số lượng vé hoặc ghế'),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.lg),
                     const _ScreenIndicator(),
                     const SizedBox(height: AppSpacing.lg),
@@ -224,7 +301,7 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                       boundaryMargin: const EdgeInsets.all(24),
                       child: _SeatGrid(
                         seatMap: seatMap,
-                        selectedSeatIds: session.selectedSeatIds,
+                        assignments: session.assignments,
                         unavailableSeatIds: session.unavailableSeatIds,
                         enabled: !holding && !submitting,
                         onSeat: (seat) => ref
@@ -234,6 +311,13 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     const _SeatLegend(),
+                    if (session.assignments.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _AssignmentSummary(
+                        assignments: session.assignments,
+                        seats: seatMap.seats,
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.md),
                     const Text(
                       'Loại vé: Người lớn • Vui lòng kiểm tra phân loại độ tuổi của phim.',
@@ -256,15 +340,19 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
               total: total,
               holding: holding,
               submitting: submitting,
-              onContinue:
-                  session.selectedSeatIds.isEmpty || holding || submitting
+              onContinue: submitting || !session.assignmentComplete
                   ? null
                   : () async {
+                      if (holding && session.booking != null) {
+                        context.go(AppRoutes.concessions(session.booking!.id));
+                        return;
+                      }
                       final booking = await ref
                           .read(bookingEntryProvider.notifier)
                           .holdSelectedSeats();
-                      if (booking == null || !mounted) return;
+                      if (booking == null || !context.mounted) return;
                       _startTimer();
+                      context.go(AppRoutes.concessions(booking.id));
                     },
             ),
           ],
@@ -272,6 +360,173 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
       ),
     );
   }
+}
+
+class _TicketSelector extends StatelessWidget {
+  const _TicketSelector({
+    required this.session,
+    required this.onChange,
+    required this.onActivate,
+  });
+
+  final BookingEntryState session;
+  final Future<void> Function(TicketType type, int quantity) onChange;
+  final ValueChanged<TicketType> onActivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final editable = session.phase == BookingEntryPhase.selectingSeats;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '1. CHỌN SỐ LƯỢNG VÉ',
+                style: AppTextStyles.cardTitle,
+              ),
+            ),
+            Text(
+              '${session.ticketCount}/${BookingTicketPolicy.maxTickets} vé',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        for (final type in BookingTicketPolicy.supportedTypes)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+            child: InkWell(
+              key: ValueKey('ticket-type-${type.wireValue.toLowerCase()}'),
+              onTap: editable && session.quantityFor(type) > 0
+                  ? () => onActivate(type)
+                  : null,
+              borderRadius: AppRadii.control,
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: session.activeTicketType == type
+                      ? _ticketColor(type).withValues(alpha: 0.14)
+                      : AppColors.surface,
+                  borderRadius: AppRadii.control,
+                  border: Border.all(
+                    color: session.activeTicketType == type
+                        ? _ticketColor(type)
+                        : AppColors.border,
+                    width: session.activeTicketType == type ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _ticketColor(type),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _ticketLabel(type),
+                            style: AppTextStyles.cardTitle,
+                          ),
+                          Text(
+                            'Đã gán ${session.assignedFor(type)}/${session.quantityFor(type)} ghế',
+                            style: AppTextStyles.caption,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      key: ValueKey(
+                        'ticket-minus-${type.wireValue.toLowerCase()}',
+                      ),
+                      onPressed: !editable || session.quantityFor(type) == 0
+                          ? null
+                          : () => onChange(type, session.quantityFor(type) - 1),
+                      icon: const Icon(Icons.remove_rounded),
+                    ),
+                    Text(
+                      '${session.quantityFor(type)}',
+                      style: AppTextStyles.sectionTitle,
+                    ),
+                    IconButton(
+                      key: ValueKey(
+                        'ticket-plus-${type.wireValue.toLowerCase()}',
+                      ),
+                      onPressed:
+                          !editable ||
+                              session.ticketCount >=
+                                  BookingTicketPolicy.maxTickets
+                          ? null
+                          : () => onChange(type, session.quantityFor(type) + 1),
+                      icon: const Icon(Icons.add_rounded),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        if (session.activeTicketType != null)
+          Text(
+            'Đang gán ghế cho: ${_ticketLabel(session.activeTicketType!)}',
+            style: TextStyle(
+              color: _ticketColor(session.activeTicketType!),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _AssignmentSummary extends StatelessWidget {
+  const _AssignmentSummary({required this.assignments, required this.seats});
+
+  final Map<int, SeatTicketAssignment> assignments;
+  final List<ShowtimeSeatDto> seats;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppSpacing.md),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: AppRadii.card,
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '2. GHẾ ĐÃ GÁN THEO LOẠI VÉ',
+          style: AppTextStyles.cardTitle,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        for (final type in BookingTicketPolicy.supportedTypes)
+          if (assignments.values.any((item) => item.ticketType == type))
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '${_ticketLabel(type)}: ${assignments.values.where((item) => item.ticketType == type).map((item) {
+                  final seat = seats.firstWhere((seat) => seat.seatId == item.seatId);
+                  return '${seat.rowLabel}${seat.seatNumber}';
+                }).join(', ')}',
+                style: TextStyle(
+                  color: _ticketColor(type),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+      ],
+    ),
+  );
 }
 
 class _ShowtimeSummary extends StatelessWidget {
@@ -355,14 +610,14 @@ class _ScreenIndicator extends StatelessWidget {
 class _SeatGrid extends StatelessWidget {
   const _SeatGrid({
     required this.seatMap,
-    required this.selectedSeatIds,
+    required this.assignments,
     required this.unavailableSeatIds,
     required this.enabled,
     required this.onSeat,
   });
 
   final ShowtimeSeatMapDto seatMap;
-  final Set<int> selectedSeatIds;
+  final Map<int, SeatTicketAssignment> assignments;
   final Set<int> unavailableSeatIds;
   final bool enabled;
   final ValueChanged<ShowtimeSeatDto> onSeat;
@@ -372,6 +627,9 @@ class _SeatGrid extends StatelessWidget {
     final rows = <String, List<ShowtimeSeatDto>>{};
     for (final seat in seatMap.seats) {
       rows.putIfAbsent(seat.rowLabel, () => []).add(seat);
+    }
+    for (final row in rows.values) {
+      row.sort((a, b) => a.displayColumn.compareTo(b.displayColumn));
     }
     return Column(
       children: [
@@ -387,10 +645,21 @@ class _SeatGrid extends StatelessWidget {
                 ),
                 for (final seat in row.value)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    padding: EdgeInsets.only(
+                      left:
+                          seat.displayColumn > 1 &&
+                              !row.value.any(
+                                (other) =>
+                                    other.displayColumn ==
+                                    seat.displayColumn - 1,
+                              )
+                          ? 18
+                          : 3,
+                      right: 3,
+                    ),
                     child: _SeatButton(
                       seat: seat,
-                      selected: selectedSeatIds.contains(seat.seatId),
+                      assignment: assignments[seat.seatId],
                       forcedUnavailable: unavailableSeatIds.contains(
                         seat.seatId,
                       ),
@@ -398,6 +667,14 @@ class _SeatGrid extends StatelessWidget {
                       onTap: () => onSeat(seat),
                     ),
                   ),
+                SizedBox(
+                  width: 24,
+                  child: Text(
+                    row.key,
+                    textAlign: TextAlign.end,
+                    style: AppTextStyles.caption,
+                  ),
+                ),
               ],
             ),
           ),
@@ -409,23 +686,24 @@ class _SeatGrid extends StatelessWidget {
 class _SeatButton extends StatelessWidget {
   const _SeatButton({
     required this.seat,
-    required this.selected,
+    required this.assignment,
     required this.forcedUnavailable,
     required this.enabled,
     required this.onTap,
   });
 
   final ShowtimeSeatDto seat;
-  final bool selected;
+  final SeatTicketAssignment? assignment;
   final bool forcedUnavailable;
   final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final selected = assignment != null;
     final available = seat.selectable && !forcedUnavailable;
     final color = selected
-        ? AppColors.gold
+        ? _ticketColor(assignment!.ticketType)
         : !available
         ? AppColors.border
         : switch (seat.seatType.normalized) {
@@ -445,8 +723,8 @@ class _SeatButton extends StatelessWidget {
         onTap: available && enabled ? onTap : null,
         borderRadius: AppRadii.small,
         child: Container(
-          width: seat.seatType.normalized == CatalogSeatType.couple ? 52 : 38,
-          height: 38,
+          width: seat.seatType.normalized == CatalogSeatType.couple ? 48 : 34,
+          height: 34,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color,
@@ -459,7 +737,7 @@ class _SeatButton extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.black : AppColors.text,
+              color: AppColors.text,
               fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
@@ -566,7 +844,7 @@ class _SeatActionBar extends StatelessWidget {
             child: AppButton(
               key: const ValueKey('seat-continue'),
               label: holding
-                  ? 'Đã giữ ghế • R5'
+                  ? 'Tiếp tục • Bắp nước'
                   : submitting
                   ? 'Đang giữ ghế...'
                   : 'Tiếp tục',
@@ -582,3 +860,36 @@ class _SeatActionBar extends StatelessWidget {
 String _dateTime(DateTime value) =>
     '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')} • '
     '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+
+String _ticketLabel(TicketType type) => switch (type) {
+  TicketType.student => 'Sinh viên',
+  TicketType.child => 'Trẻ em',
+  _ => 'Người lớn',
+};
+
+Color _ticketColor(TicketType type) => switch (type) {
+  TicketType.student => const Color(0xFF777BFF),
+  TicketType.child => const Color(0xFF22C99A),
+  _ => AppColors.gold,
+};
+
+VndMoney _ticketPrice(
+  ShowtimeDto showtime,
+  ShowtimeSeatDto seat,
+  TicketType ticketType,
+) {
+  final value = switch ((ticketType, seat.seatType.normalized)) {
+    (TicketType.adult, CatalogSeatType.standard) => showtime.adultStandardPrice,
+    (TicketType.student, CatalogSeatType.standard) =>
+      showtime.studentStandardPrice,
+    (TicketType.child, CatalogSeatType.standard) => showtime.childStandardPrice,
+    (TicketType.adult, CatalogSeatType.vip) => showtime.adultVipPrice,
+    (TicketType.student, CatalogSeatType.vip) => showtime.studentVipPrice,
+    (TicketType.child, CatalogSeatType.vip) => showtime.childVipPrice,
+    (TicketType.adult, CatalogSeatType.couple) => showtime.adultCouplePrice,
+    (TicketType.student, CatalogSeatType.couple) => showtime.studentCouplePrice,
+    (TicketType.child, CatalogSeatType.couple) => showtime.childCouplePrice,
+    _ => null,
+  };
+  return value ?? seat.unitPrice ?? VndMoney.zero;
+}

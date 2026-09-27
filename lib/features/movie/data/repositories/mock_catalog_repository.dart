@@ -110,6 +110,29 @@ class MockCatalogRepository implements CatalogRepository {
       throw const CatalogConflictException('Ghế không còn khả dụng.');
     }
 
+    final requestedTickets = request.tickets.isEmpty
+        ? selectedSeats
+              .map(
+                (seat) => QuoteTicketRequestDto(
+                  seatId: seat.seatId,
+                  ticketType: TicketType.adult,
+                  viewerAge: 30,
+                ),
+              )
+              .toList(growable: false)
+        : request.tickets;
+    final ticketSeatIds = requestedTickets
+        .expand((ticket) => List<int?>.filled(ticket.quantity, ticket.seatId))
+        .whereType<int>()
+        .toList(growable: false);
+    if (ticketSeatIds.length != selectedSeats.length ||
+        ticketSeatIds.toSet().length != selectedSeats.length ||
+        !request.seatIds.every(ticketSeatIds.contains)) {
+      throw const CatalogConflictException(
+        'Mỗi ghế phải được gán đúng một loại vé.',
+      );
+    }
+
     final products = [..._fixtures.foodItems(), ..._fixtures.foodCombos()];
     final seatSnapshots = selectedSeats
         .map(
@@ -121,16 +144,27 @@ class MockCatalogRepository implements CatalogRepository {
           ),
         )
         .toList(growable: false);
-    final ticketSnapshots = selectedSeats
-        .map(
-          (seat) => QuoteTicketSnapshotDto(
+    final ticketSnapshots = requestedTickets
+        .map((ticket) {
+          final seat = selectedSeats.firstWhere(
+            (item) => item.seatId == ticket.seatId,
+          );
+          final unitPrice =
+              _ticketPrice(
+                seatMap.showtime,
+                seat.seatType.normalized,
+                ticket.ticketType,
+              ) ??
+              seat.unitPrice ??
+              VndMoney.zero;
+          return QuoteTicketSnapshotDto(
             seatId: seat.seatId,
-            ticketType: TicketType.adult,
-            quantity: 1,
-            unitPrice: seat.unitPrice ?? VndMoney.zero,
-            lineTotal: seat.unitPrice ?? VndMoney.zero,
-          ),
-        )
+            ticketType: ticket.ticketType,
+            quantity: ticket.quantity,
+            unitPrice: unitPrice,
+            lineTotal: unitPrice.multiply(ticket.quantity),
+          );
+        })
         .toList(growable: false);
     final foodSnapshots = request.foods
         .map((selection) {
@@ -202,3 +236,21 @@ class MockCatalogRepository implements CatalogRepository {
     );
   }
 }
+
+VndMoney? _ticketPrice(
+  ShowtimeDto showtime,
+  CatalogSeatType seatType,
+  TicketType ticketType,
+) => switch ((ticketType, seatType)) {
+  (TicketType.adult, CatalogSeatType.standard) => showtime.adultStandardPrice,
+  (TicketType.child, CatalogSeatType.standard) => showtime.childStandardPrice,
+  (TicketType.student, CatalogSeatType.standard) =>
+    showtime.studentStandardPrice,
+  (TicketType.adult, CatalogSeatType.vip) => showtime.adultVipPrice,
+  (TicketType.child, CatalogSeatType.vip) => showtime.childVipPrice,
+  (TicketType.student, CatalogSeatType.vip) => showtime.studentVipPrice,
+  (TicketType.adult, CatalogSeatType.couple) => showtime.adultCouplePrice,
+  (TicketType.child, CatalogSeatType.couple) => showtime.childCouplePrice,
+  (TicketType.student, CatalogSeatType.couple) => showtime.studentCouplePrice,
+  _ => null,
+};
