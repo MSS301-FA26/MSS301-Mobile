@@ -6,6 +6,7 @@ import '../../movie/data/repositories/catalog_providers.dart';
 import '../../orders/data/models/booking_dto.dart';
 import '../../orders/data/models/booking_enums.dart';
 import '../../orders/data/repositories/booking_providers.dart';
+import '../../payment/application/payment_launcher.dart';
 import '../../payment/data/models/payment_dto.dart';
 import '../../payment/data/models/payment_enums.dart';
 import '../../payment/data/repositories/payment_providers.dart';
@@ -18,6 +19,7 @@ enum BookingCompletionPhase {
   preparingCheckout,
   checkout,
   creatingPayment,
+  openingPaymentGateway,
   paymentPending,
   paymentFailed,
   verifyingBooking,
@@ -49,6 +51,7 @@ class BookingCompletionState {
     BookingCompletionPhase.loading ||
     BookingCompletionPhase.preparingCheckout ||
     BookingCompletionPhase.creatingPayment ||
+    BookingCompletionPhase.openingPaymentGateway ||
     BookingCompletionPhase.verifyingBooking => true,
     _ => false,
   };
@@ -265,10 +268,31 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     state = state.copyWith(
       phase: payment.status == PaymentStatus.failed
           ? BookingCompletionPhase.paymentFailed
+          : payment.status == PaymentStatus.success
+          ? BookingCompletionPhase.verifyingBooking
           : BookingCompletionPhase.paymentPending,
       payment: payment,
       booking: booking,
     );
+  }
+
+  Future<bool> openPaymentGateway({
+    PaymentLaunchMode mode = PaymentLaunchMode.inAppWebView,
+  }) async {
+    final payment = state.payment;
+    if (payment == null) return false;
+    state = state.copyWith(
+      phase: BookingCompletionPhase.openingPaymentGateway,
+      clearMessage: true,
+    );
+    final result = await ref
+        .read(paymentLauncherProvider)
+        .open(payment, mode: mode);
+    state = state.copyWith(
+      phase: BookingCompletionPhase.paymentPending,
+      message: result.message,
+    );
+    return result.isUsable;
   }
 
   Future<bool> simulateSuccess() async {

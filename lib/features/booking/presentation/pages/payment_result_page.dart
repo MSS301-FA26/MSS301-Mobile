@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../orders/presentation/providers/orders_provider.dart';
+import '../../../payment/application/payment_launcher.dart';
 import '../../application/booking_completion_controller.dart';
 
 class PaymentResultPage extends ConsumerStatefulWidget {
@@ -42,6 +43,8 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
         ? Icons.error_outline_rounded
         : expired
         ? Icons.timer_off_outlined
+        : state.phase == BookingCompletionPhase.openingPaymentGateway
+        ? Icons.open_in_browser_rounded
         : Icons.account_balance_rounded;
     final color = ready
         ? Colors.greenAccent
@@ -54,9 +57,11 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
         ? 'Thanh toán thất bại'
         : expired
         ? 'Phiên giữ ghế đã hết'
+        : state.phase == BookingCompletionPhase.openingPaymentGateway
+        ? 'Đang mở VNPay'
         : state.phase == BookingCompletionPhase.verifyingBooking
         ? 'Đang xác minh booking'
-        : 'VNPay Mock';
+        : 'Cổng thanh toán VNPay';
 
     return AppShell(
       currentIndex: 2,
@@ -79,18 +84,61 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
                   state.message ??
                       (ready
                           ? 'Payment SUCCESS và booking PAID. Vé đã sẵn sàng.'
-                          : 'Đây là cổng thanh toán giả lập. Không có giao dịch thật.'),
+                          : 'Mặc định app dùng VNPay Mock. Khi Payment Service trả URL thật, nút bên dưới sẽ mở deep-link hoặc trình duyệt trong app.'),
                   textAlign: TextAlign.center,
                   style: AppTextStyles.caption,
                 ),
                 const SizedBox(height: AppSpacing.lg),
+                if (state.payment?.paymentUrl != null && !ready) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: AppRadii.card,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text(
+                      state.payment!.paymentUrl!,
+                      key: const ValueKey('payment-url'),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.caption,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 if (busy) const CircularProgressIndicator(),
                 if (!busy && !ready && !failed && !expired) ...[
                   SizedBox(
                     width: double.infinity,
                     child: AppButton(
+                      key: const ValueKey('payment-open-webview'),
+                      label: 'Mở VNPay trong app',
+                      icon: Icons.open_in_browser_rounded,
+                      onPressed: () => ref
+                          .read(bookingCompletionProvider.notifier)
+                          .openPaymentGateway(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton(
+                      key: const ValueKey('payment-open-deeplink'),
+                      label: 'Mở bằng app ngân hàng',
+                      icon: Icons.account_balance_wallet_rounded,
+                      variant: AppButtonVariant.secondary,
+                      onPressed: () => ref
+                          .read(bookingCompletionProvider.notifier)
+                          .openPaymentGateway(mode: PaymentLaunchMode.deepLink),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton(
                       key: const ValueKey('payment-success'),
-                      label: 'Mô phỏng thanh toán thành công',
+                      label: 'Mô phỏng callback thành công',
                       onPressed: () async {
                         final success = await ref
                             .read(bookingCompletionProvider.notifier)
@@ -104,7 +152,7 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
                     width: double.infinity,
                     child: AppButton(
                       key: const ValueKey('payment-failure'),
-                      label: 'Mô phỏng giao dịch bị từ chối',
+                      label: 'Mô phỏng callback bị từ chối',
                       variant: AppButtonVariant.secondary,
                       onPressed: () => ref
                           .read(bookingCompletionProvider.notifier)
