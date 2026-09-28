@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mss301_mobile/core/network/api_gateway_config.dart';
 import 'package:mss301_mobile/core/contracts/api_response.dart';
 import 'package:mss301_mobile/core/contracts/page_response.dart';
 import 'package:mss301_mobile/core/demo/demo_scenario.dart';
@@ -18,11 +19,27 @@ import 'package:mss301_mobile/features/orders/data/repositories/mock_booking_rep
 import 'package:mss301_mobile/features/payment/data/models/payment_dto.dart';
 import 'package:mss301_mobile/features/payment/data/models/payment_enums.dart';
 import 'package:mss301_mobile/features/payment/data/repositories/mock_payment_repository.dart';
+import 'package:mss301_mobile/features/payment/application/payment_launcher.dart';
 import 'package:mss301_mobile/features/showtime/data/models/showtime_dto.dart';
 import 'package:mss301_mobile/features/showtime/presentation/models/showtime_models.dart';
 
 void main() {
   group('backend-shaped contracts', () {
+    test('keeps gateway config explicit while mock mode remains default', () {
+      const config = ApiGatewayConfig(
+        baseUrl: 'https://gateway.example.test',
+        useRemoteGateway: false,
+        connectTimeout: Duration(seconds: 3),
+        receiveTimeout: Duration(seconds: 5),
+      );
+
+      expect(config.useRemoteGateway, isFalse);
+      expect(
+        config.resolve('/api/v1/ticket-pricing/checkout-quote').toString(),
+        'https://gateway.example.test/api/v1/ticket-pricing/checkout-quote',
+      );
+    });
+
     test('parses ApiResponse and PageResponse wrappers', () {
       final response = ApiResponse<int>.fromJson({
         'success': true,
@@ -254,6 +271,7 @@ void main() {
           CreatePaymentRequestDto(bookingId: held.id),
         );
         expect(createdPayment.status, PaymentStatus.pending);
+        expect(createdPayment.paymentUrl, 'mock://vnpay/${createdPayment.id}');
         await payments.markSuccess(createdPayment.id);
         expect(
           (await bookings.getBooking(held.id))?.status,
@@ -268,6 +286,29 @@ void main() {
           paid?.seats.every((seat) => seat.status == BookingSeatStatus.booked),
           isTrue,
         );
+      },
+    );
+
+    test(
+      'payment launcher treats VNPay mock URL as a usable handoff',
+      () async {
+        const launcher = UrlPaymentLauncher();
+        final result = await launcher.open(
+          PaymentDto(
+            id: 1,
+            bookingId: 5001,
+            userId: DemoIds.user,
+            provider: PaymentProvider.vnpay,
+            amount: const VndMoney(269000),
+            status: PaymentStatus.pending,
+            paymentUrl: 'mock://vnpay/1',
+            refundAmount: VndMoney.zero,
+            createdAt: DateTime.utc(2026, 9, 25, 12),
+          ),
+        );
+
+        expect(result.status, PaymentLaunchStatus.simulated);
+        expect(result.isUsable, isTrue);
       },
     );
 

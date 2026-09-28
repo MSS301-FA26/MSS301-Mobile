@@ -65,6 +65,20 @@ void main() {
     },
   );
 
+  testWidgets('R5 opens VNPay mock handoff before callback verification', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openPayment(tester);
+
+    expect(find.byKey(const ValueKey('payment-url')), findsOneWidget);
+    expect(find.textContaining('mock://vnpay/'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('payment-open-webview')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Đã mở VNPay Mock'), findsOneWidget);
+    expect(find.byKey(const ValueKey('payment-success')), findsOneWidget);
+  });
+
   testWidgets('R5 payment failure can create a fresh retry payment', (
     tester,
   ) async {
