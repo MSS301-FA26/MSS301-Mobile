@@ -13,6 +13,8 @@ Current stack:
 - Flutter SDK / Dart `^3.13.3`
 - `flutter_riverpod` for state management and dependency injection
 - `go_router` for navigation
+- `dio` for API Gateway HTTP client scaffolding
+- `url_launcher` for VNPay/deep-link/in-app browser payment handoff
 - Native Flutter Material UI
 - Inter font from `assets/fonts/Inter-Variable.ttf`
 - Mock movie assets under `assets/mock/movies/`
@@ -34,6 +36,7 @@ lib/
     contracts/
     demo/
     money/
+    network/
     routing/
     theme/
     time/
@@ -169,6 +172,27 @@ When adding new behavior, first check whether a feature already has the correct 
 
 The project is backend-aligned but still mock-first.
 
+Current backend/mobile integration scaffold:
+
+- `lib/core/network/api_gateway_config.dart`
+  - reads `MSS301_API_GATEWAY_URL`
+  - reads `MSS301_USE_REMOTE_GATEWAY`
+  - defaults to Android emulator gateway base URL `http://10.0.2.2:8080`
+- `lib/core/network/api_gateway_client.dart`
+  - exposes a Riverpod `Dio` provider
+  - applies JSON headers and timeout configuration
+  - maps HTTP `401` to a token-expired/unauthorized exception
+- Existing feature repositories still bind to mock implementations by default.
+
+Current payment handoff scaffold:
+
+- `lib/features/payment/application/payment_launcher.dart`
+  - supports VNPay mock URLs
+  - supports in-app browser opening for real payment URLs
+  - supports external-app/deep-link opening for banking app handoff
+- `PaymentResultPage` shows the `paymentUrl`, opens VNPay handoff, then relies on backend/callback verification before issuing the QR ticket.
+- Mock callback buttons remain available for demo/test only.
+
 Existing repository examples:
 
 - `CatalogRepository`
@@ -195,7 +219,7 @@ Backend contract expectations:
 - Payment success must come from backend verification, not client-side URL query trust.
 - Idempotency keys are needed for hold, checkout, create payment, callback, and withdrawal flows.
 
-Do not add Dio or another HTTP dependency unless the task is specifically backend integration and the value is explained.
+Dio already exists as the project HTTP client scaffold. Do not add another HTTP dependency unless there is a clear, reviewed reason. Do not switch repositories from mock to remote unless the user explicitly asks for backend integration.
 
 ## UI And Design System Rules
 
@@ -270,6 +294,14 @@ If working on visual/navigation flows and the environment supports it, also run:
 ```bash
 flutter run -d chrome
 ```
+
+If working on native payment/deep-link/plugin integration and the environment supports it, also run:
+
+```bash
+flutter build apk --debug
+```
+
+On Windows, iOS builds cannot be validated locally. If Android SDK is not configured, report the exact SDK/`ANDROID_HOME` limitation instead of treating it as a code failure.
 
 Do not leave analyzer errors. If tests cannot run due to environment limitations, clearly report what was attempted and why it failed.
 
