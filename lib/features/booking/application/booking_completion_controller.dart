@@ -306,9 +306,15 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       PaymentStatus.failed => BookingCompletionPhase.paymentFailed,
       _ => BookingCompletionPhase.paymentPending,
     };
+    final booking = refreshed.bookingId == null
+        ? state.booking
+        : await ref
+              .read(seatHoldRepositoryProvider)
+              .getBooking(refreshed.bookingId!);
     state = state.copyWith(
       phase: phase,
       payment: refreshed,
+      booking: booking,
       clearMessage: true,
     );
     return refreshed.status == PaymentStatus.success;
@@ -423,5 +429,5 @@ final ticketBookingProvider = FutureProvider.family<BookingDto?, int>((
   ref,
   id,
 ) {
-  return ref.watch(bookingRepositoryProvider).getBooking(id);
+  return ref.watch(seatHoldRepositoryProvider).getBooking(id);
 });
