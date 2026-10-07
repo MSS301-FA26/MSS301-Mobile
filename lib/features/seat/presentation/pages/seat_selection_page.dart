@@ -14,6 +14,7 @@ import '../../../movie/data/models/catalog_enums.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../../../booking/presentation/widgets/booking_progress.dart';
 import '../../application/booking_entry_session.dart';
+import '../../data/repositories/seat_hold_providers.dart';
 import '../providers/seat_map_provider.dart';
 
 class SeatSelectionPage extends ConsumerStatefulWidget {
@@ -352,7 +353,19 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                           .holdSelectedSeats();
                       if (booking == null || !context.mounted) return;
                       _startTimer();
-                      context.go(AppRoutes.concessions(booking.id));
+                      if (ref
+                          .read(seatHoldRepositoryProvider)
+                          .canEnterMockCheckout) {
+                        context.go(AppRoutes.concessions(booking.id));
+                        return;
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Đã giữ ghế. Checkout thật sẽ được tích hợp ở Batch 06.',
+                          ),
+                        ),
+                      );
                     },
             ),
           ],

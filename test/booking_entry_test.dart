@@ -170,7 +170,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('booking-entry-message')), findsOneWidget);
     expect(
-      container.read(bookingEntryProvider).unavailableSeatIds,
+      container.read(bookingEntryProvider).selectedSeatIds,
       contains(DemoIds.seatC4),
     );
     expect(container.read(bookingEntryProvider).hasActiveHold, isFalse);

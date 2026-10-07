@@ -71,7 +71,10 @@ class RemoteCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<ShowtimeSeatMapDto> getSeatMap(int showtimeId) => _outOfScope();
+  Future<ShowtimeSeatMapDto> getSeatMap(int showtimeId) async =>
+      ShowtimeSeatMapDto.fromJson(
+        _data(await _get('/api/v1/showtimes/$showtimeId/seat-map')),
+      );
   @override
   Future<List<FoodProductDto>> getFoodItems() => _outOfScope();
   @override

@@ -7,5 +7,5 @@ final seatMapProvider = FutureProvider.family<ShowtimeSeatMapDto, int>((
   ref,
   showtimeId,
 ) {
-  return ref.watch(mockCatalogRepositoryProvider).getSeatMap(showtimeId);
+  return ref.watch(catalogRepositoryProvider).getSeatMap(showtimeId);
 });
