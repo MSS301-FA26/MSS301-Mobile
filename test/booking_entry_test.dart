@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mss301_mobile/app/app.dart';
 import 'package:mss301_mobile/core/demo/demo_scenario.dart';
-import 'package:mss301_mobile/core/routing/app_router.dart';
-import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/core/time/app_clock.dart';
-import 'package:mss301_mobile/features/auth/application/mock_auth_session.dart';
+import 'package:mss301_mobile/features/auth/application/auth_session.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/concessions_page.dart';
 import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
 import 'package:mss301_mobile/features/movie/data/models/catalog_enums.dart';
@@ -15,6 +12,9 @@ import 'package:mss301_mobile/features/orders/data/repositories/booking_provider
 import 'package:mss301_mobile/features/seat/application/booking_entry_session.dart';
 import 'package:mss301_mobile/features/seat/presentation/pages/seat_selection_page.dart';
 
+import 'support/fake_auth_session.dart';
+import 'support/pump_test_app.dart';
+
 void main() {
   Future<ProviderContainer> openAvengersSeat(
     WidgetTester tester, {
@@ -22,24 +22,14 @@ void main() {
     AppClock? clock,
     Size size = const Size(390, 844),
   }) async {
-    appRouter.go(AppRoutes.home);
-    await tester.binding.setSurfaceSize(size);
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          if (clock != null) appClockProvider.overrideWithValue(clock),
-        ],
-        child: const CinePremierApp(),
-      ),
+    final container = await pumpTestApp(
+      tester,
+      authState: guest ? unauthenticatedState : authenticatedCustomerState(),
+      size: size,
+      providerOverrides: [
+        if (clock != null) appClockProvider.overrideWithValue(clock),
+      ],
     );
-    await tester.pumpAndSettle();
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(CinePremierApp)),
-    );
-    if (guest) {
-      container.read(mockAuthSessionProvider.notifier).signOut();
-    }
 
     await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
@@ -119,18 +109,17 @@ void main() {
   ) async {
     final container = await openAvengersSeat(tester, guest: true);
 
-    expect(find.text('Đăng nhập để đặt vé'), findsOneWidget);
-    expect(
-      container.read(mockAuthSessionProvider).pendingBooking?.showtimeId,
-      1002,
+    expect(find.byKey(const ValueKey('auth-submit')), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextFormField).last,
+      'test-password',
     );
-    await tester.tap(find.byKey(const ValueKey('mock-auth-continue')));
+    await tester.tap(find.byKey(const ValueKey('auth-submit')));
     await tester.pumpAndSettle();
 
     expect(find.byType(SeatSelectionPage), findsOneWidget);
     expect(find.text('Avengers: Endgame'), findsOneWidget);
-    expect(container.read(mockAuthSessionProvider).isAuthenticated, isTrue);
-    expect(container.read(mockAuthSessionProvider).pendingBooking, isNull);
+    expect(container.read(authSessionProvider).isAuthenticated, isTrue);
   });
 
   testWidgets('R4 couple seat toggles as a pair and back asks confirmation', (

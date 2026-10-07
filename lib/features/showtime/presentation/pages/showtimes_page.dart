@@ -8,7 +8,7 @@ import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/cinema_info_sheet.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../discover/presentation/widgets/format_filter_chips.dart';
-import '../../../auth/application/mock_auth_session.dart';
+import '../../../auth/application/auth_session.dart';
 import '../../../booking/presentation/widgets/booking_progress.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
@@ -93,51 +93,12 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   }
 
   Future<void> _openSeatSelection(int movieId, ShowtimeSlot slot) async {
-    final auth = ref.read(mockAuthSessionProvider);
+    final auth = ref.read(authSessionProvider);
     if (auth.isAuthenticated) {
       context.push(AppRoutes.seatSelection(slot.id));
       return;
     }
-    ref
-        .read(mockAuthSessionProvider.notifier)
-        .requireBookingAuth(
-          PendingBookingAction(
-            movieId: movieId,
-            showtimeId: slot.id,
-            sourceRoute: AppRoutes.showtimesForMovie(movieId),
-          ),
-        );
-    final signIn = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Đăng nhập để đặt vé'),
-        content: const Text(
-          'Bản R4 dùng phiên đăng nhập mock và sẽ tiếp tục đúng suất chiếu bạn vừa chọn.',
-        ),
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Để sau'),
-          ),
-          FilledButton(
-            key: const ValueKey('mock-auth-continue'),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Đăng nhập mock'),
-          ),
-        ],
-      ),
-    );
-    if (signIn != true || !mounted) {
-      ref.read(mockAuthSessionProvider.notifier).clearPending();
-      return;
-    }
-    final pending = ref
-        .read(mockAuthSessionProvider.notifier)
-        .signInAndTakePending();
-    if (pending != null && mounted) {
-      context.push(AppRoutes.seatSelection(pending.showtimeId));
-    }
+    context.go(AppRoutes.loginWithRedirect(AppRoutes.seatSelection(slot.id)));
   }
 
   @override
