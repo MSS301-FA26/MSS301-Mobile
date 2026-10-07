@@ -24,12 +24,12 @@ void main() {
       await pumpTestApp(tester);
 
       expect(find.text('Phim đang chiếu'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('hero-open-2')));
+      await tester.tap(find.byKey(const ValueKey('hero-open-1')));
       await tester.pumpAndSettle();
 
       expect(find.text('Chi tiết phim'), findsOneWidget);
       expect(
-        find.textContaining('Dữ liệu đang chạy từ CatalogRepository'),
+        find.textContaining('Dữ liệu phim được tải từ CatalogRepository'),
         findsOneWidget,
       );
 
@@ -62,6 +62,8 @@ void main() {
 
     await pumpTestApp(tester);
 
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
 

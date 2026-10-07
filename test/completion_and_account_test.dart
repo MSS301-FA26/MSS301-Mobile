@@ -17,6 +17,8 @@ void main() {
   }
 
   Future<void> openPayment(WidgetTester tester) async {
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
     await tester.tap(

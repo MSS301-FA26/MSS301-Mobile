@@ -7,6 +7,6 @@ import 'mock_booking_repository.dart';
 final bookingRepositoryProvider = Provider<BookingRepository>(
   (ref) => MockBookingRepository(
     ref.watch(appClockProvider),
-    ref.watch(catalogRepositoryProvider),
+    ref.watch(mockCatalogRepositoryProvider),
   ),
 );

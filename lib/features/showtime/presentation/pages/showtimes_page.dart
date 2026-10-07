@@ -7,7 +7,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/cinema_info_sheet.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
-import '../../../discover/presentation/widgets/format_filter_chips.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../booking/presentation/widgets/booking_progress.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
@@ -31,23 +30,6 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   int? _selectedDate;
   int? _selectedMovieId;
   ShowtimeSlot? _selectedSlot;
-  String _selectedFormat = 'Tất cả';
-
-  static const _formats = [
-    'Tất cả',
-    'IMAX Laser',
-    'Dolby Atmos',
-    'VIP Suite',
-    '2D Phụ đề',
-  ];
-
-  bool _roomMatches(ShowtimeRoom room) {
-    if (_selectedFormat == 'Tất cả') return true;
-    return room.formatBadge.toLowerCase().contains(
-      _selectedFormat.toLowerCase().replaceAll('2d phụ đề', 'standard'),
-    );
-  }
-
   List<DateOption> _dates(DateTime now) => List.generate(7, (index) {
     final date = DateTime(now.year, now.month, now.day + index);
     const weekdays = [
@@ -73,7 +55,6 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   ) {
     final selected = _selectedDate == null ? null : dates[_selectedDate!].date;
     return movieShowtime.rooms
-        .where(_roomMatches)
         .map((room) {
           final slots = selected == null
               ? room.slots
@@ -104,7 +85,15 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   @override
   Widget build(BuildContext context) {
     final moviesState = ref.watch(moviesProvider);
-    final showtimesState = ref.watch(showtimesProvider);
+    final dates = _dates(ref.watch(appClockProvider).now());
+    final selectedDate = _selectedDate == null
+        ? null
+        : dates[_selectedDate!].date;
+    final showtimesQuery = ShowtimeQuery(
+      movieId: widget.movieId,
+      date: selectedDate,
+    );
+    final showtimesState = ref.watch(showtimesProvider(showtimesQuery));
     if (moviesState.isLoading || showtimesState.isLoading) {
       return const AppShell(
         currentIndex: 2,
@@ -117,7 +106,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
         body: RepositoryStatePane.error(
           onRetry: () {
             ref.invalidate(moviesProvider);
-            ref.invalidate(showtimesProvider);
+            ref.invalidate(showtimesProvider(showtimesQuery));
           },
         ),
       );
@@ -125,12 +114,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
 
     final movies = moviesState.requireValue;
     final allShowtimes = showtimesState.requireValue;
-    final dates = _dates(ref.watch(appClockProvider).now());
-    final showtimes = widget.movieId == null
-        ? allShowtimes
-        : allShowtimes
-              .where((showtime) => showtime.movieId == widget.movieId)
-              .toList(growable: false);
+    final showtimes = allShowtimes;
 
     return AppShell(
       currentIndex: 2,
@@ -178,20 +162,6 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                   dates: dates,
                   selectedIndex: _selectedDate,
                   onSelected: (index) => setState(() => _selectedDate = index),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.md,
-                    AppSpacing.md,
-                    AppSpacing.xs,
-                  ),
-                  child: FormatFilterChips(
-                    filters: _formats,
-                    selected: _selectedFormat,
-                    onSelected: (format) =>
-                        setState(() => _selectedFormat = format),
-                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(

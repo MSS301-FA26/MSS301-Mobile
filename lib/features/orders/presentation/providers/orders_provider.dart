@@ -7,7 +7,7 @@ import '../models/ticket_order.dart';
 
 final ordersProvider = FutureProvider<List<TicketOrder>>((ref) async {
   final bookingRepository = ref.watch(bookingRepositoryProvider);
-  final catalogRepository = ref.watch(catalogRepositoryProvider);
+  final catalogRepository = ref.watch(mockCatalogRepositoryProvider);
   final bookings = await bookingRepository.getBookings(DemoIds.user);
   final movies = await catalogRepository.getMovies();
   return bookings

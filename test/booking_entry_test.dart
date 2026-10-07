@@ -31,6 +31,8 @@ void main() {
       ],
     );
 
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -110,10 +112,7 @@ void main() {
     final container = await openAvengersSeat(tester, guest: true);
 
     expect(find.byKey(const ValueKey('auth-submit')), findsOneWidget);
-    await tester.enterText(
-      find.byType(TextFormField).last,
-      'test-password',
-    );
+    await tester.enterText(find.byType(TextFormField).last, 'test-password');
     await tester.tap(find.byKey(const ValueKey('auth-submit')));
     await tester.pumpAndSettle();
 

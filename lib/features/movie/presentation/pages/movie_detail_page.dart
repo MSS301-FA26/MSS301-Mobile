@@ -238,7 +238,7 @@ class MovieDetailPage extends ConsumerWidget {
                               ),
                               const SizedBox(height: 8),
                               const Text(
-                                'Dữ liệu đang chạy từ CatalogRepository mock theo contract backend.',
+                                'Dữ liệu phim được tải từ CatalogRepository.',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,

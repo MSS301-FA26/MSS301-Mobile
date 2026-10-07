@@ -5,6 +5,7 @@ import 'package:mss301_mobile/app/app.dart';
 import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/auth/application/auth_session.dart';
+import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
 
 import 'fake_auth_session.dart';
 
@@ -23,6 +24,9 @@ Future<ProviderContainer> pumpTestApp(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        catalogRepositoryProvider.overrideWith(
+          (ref) => ref.watch(mockCatalogRepositoryProvider),
+        ),
         authSessionProvider.overrideWith(
           () => FakeAuthSessionController(
             authState ?? authenticatedCustomerState(),

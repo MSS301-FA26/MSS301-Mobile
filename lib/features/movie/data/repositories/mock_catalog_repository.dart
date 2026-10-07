@@ -3,6 +3,7 @@ import '../../../../core/money/vnd_money.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../mock/catalog_fixtures.dart';
 import '../models/catalog_enums.dart';
+import '../models/cinema_dto.dart';
 import '../models/food_quote_dto.dart';
 import '../models/movie_dto.dart';
 import 'catalog_repository.dart';
@@ -47,6 +48,25 @@ class MockCatalogRepository implements CatalogRepository {
       if (movie.id == movieId) return movie;
     }
     return null;
+  }
+
+  @override
+  Future<List<CinemaDto>> getCinemas() async {
+    await _wait();
+    final cinemas = <int, CinemaDto>{};
+    for (final showtime in _fixtures.showtimes()) {
+      cinemas.putIfAbsent(
+        showtime.cinemaId,
+        () => CinemaDto(
+          id: showtime.cinemaId,
+          name: showtime.cinemaName ?? 'Cinema ${showtime.cinemaId}',
+          address: '',
+          city: '',
+          active: true,
+        ),
+      );
+    }
+    return cinemas.values.toList(growable: false);
   }
 
   @override

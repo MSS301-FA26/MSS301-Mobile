@@ -17,7 +17,7 @@ class ShowtimeSlot {
   final VndMoney price;
   final ShowtimeStatus status;
 
-  bool get isSoldOut => status != ShowtimeStatus.open;
+  bool get isBookable => status == ShowtimeStatus.open;
   String get time => _time(startAt);
   String get endTime => '~${_time(endAt)}';
   String get priceDisplay => price.format();
@@ -62,8 +62,8 @@ MovieShowtime mapShowtimesToPresentation(
           return ShowtimeRoom(
             id: entry.key,
             name: first.roomName ?? 'Phòng ${entry.key}',
-            formatBadge: _formatForRoom(entry.key),
-            screenDetail: _detailForRoom(entry.key),
+            formatBadge: '',
+            screenDetail: '',
             slots: entry.value
                 .map(
                   (item) => ShowtimeSlot(
@@ -80,18 +80,6 @@ MovieShowtime mapShowtimesToPresentation(
         .toList(growable: false),
   );
 }
-
-String _formatForRoom(int roomId) => switch (roomId) {
-  1 => 'IMAX Laser',
-  3 => 'Dolby Atmos',
-  _ => 'Standard 2D',
-};
-
-String _detailForRoom(int roomId) => switch (roomId) {
-  1 => 'Màn chiếu 22m • Laser 4K',
-  3 => 'Âm thanh 64 kênh 3D',
-  _ => 'Phụ đề tiếng Việt',
-};
 
 String _time(DateTime value) =>
     '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';

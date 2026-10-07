@@ -168,7 +168,7 @@ void main() {
       final presentation = mapShowtimesToPresentation(showtime.movieId, [
         showtime,
       ]);
-      expect(presentation.rooms.single.slots.single.isSoldOut, isTrue);
+      expect(presentation.rooms.single.slots.single.isBookable, isFalse);
     });
 
     test(

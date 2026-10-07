@@ -96,7 +96,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         );
         return;
       }
-      final catalog = ref.read(catalogRepositoryProvider);
+      final catalog = ref.read(mockCatalogRepositoryProvider);
       final products = <FoodProductDto>[
         ...await catalog.getFoodCombos(),
         ...await catalog.getFoodItems(),
@@ -169,7 +169,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         ),
       );
       final quote = await ref
-          .read(catalogRepositoryProvider)
+          .read(mockCatalogRepositoryProvider)
           .createCheckoutQuote(
             CheckoutQuoteRequestDto(
               showtimeId: updated.showtimeId,
