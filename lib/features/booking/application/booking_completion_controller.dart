@@ -10,6 +10,7 @@ import '../../payment/data/models/payment_dto.dart';
 import '../../payment/data/models/payment_enums.dart';
 import '../../payment/data/repositories/payment_providers.dart';
 import '../../seat/application/booking_entry_session.dart';
+import '../../seat/data/repositories/seat_hold_providers.dart';
 
 enum BookingCompletionPhase {
   idle,
@@ -84,9 +85,10 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     }
     state = const BookingCompletionState(phase: BookingCompletionPhase.loading);
     try {
-      final booking = await ref
-          .read(bookingRepositoryProvider)
-          .getBooking(bookingId);
+      final seatHold = ref.read(seatHoldRepositoryProvider);
+      final booking = seatHold.canEnterMockCheckout
+          ? await ref.read(bookingRepositoryProvider).getBooking(bookingId)
+          : await seatHold.getBooking(bookingId);
       if (booking == null) throw StateError('Không tìm thấy booking.');
       if (booking.status == BookingStatus.expired) {
         state = BookingCompletionState(
@@ -96,11 +98,12 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         );
         return;
       }
-      final catalog = ref.read(mockCatalogRepositoryProvider);
-      final products = <FoodProductDto>[
-        ...await catalog.getFoodCombos(),
-        ...await catalog.getFoodItems(),
-      ];
+      final products = <FoodProductDto>[];
+      if (seatHold.canEnterMockCheckout) {
+        final catalog = ref.read(mockCatalogRepositoryProvider);
+        products.addAll(await catalog.getFoodCombos());
+        products.addAll(await catalog.getFoodItems());
+      }
       state = BookingCompletionState(
         phase: BookingCompletionPhase.choosingFood,
         booking: booking,
@@ -155,21 +158,33 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
   Future<bool> prepareCheckout() async {
     final booking = state.booking;
     if (booking == null) return false;
+    final expiry = booking.holdExpiresAt;
+    if (expiry != null && !ref.read(appClockProvider).now().isBefore(expiry)) {
+      state = state.copyWith(
+        phase: BookingCompletionPhase.expired,
+        message: 'Thời gian giữ ghế đã hết.',
+      );
+      return false;
+    }
     state = state.copyWith(
       phase: BookingCompletionPhase.preparingCheckout,
       clearMessage: true,
     );
     try {
-      final repository = ref.read(bookingRepositoryProvider);
-      final updated = await repository.updateItems(
-        booking.id,
-        UpdateHoldingBookingRequestDto(
-          tickets: _ticketSelections,
-          foods: _foodSelections,
-        ),
-      );
+      final seatHold = ref.read(seatHoldRepositoryProvider);
+      final updated = seatHold.canEnterMockCheckout
+          ? await ref
+                .read(bookingRepositoryProvider)
+                .updateItems(
+                  booking.id,
+                  UpdateHoldingBookingRequestDto(
+                    tickets: _ticketSelections,
+                    foods: _foodSelections,
+                  ),
+                )
+          : booking;
       final quote = await ref
-          .read(mockCatalogRepositoryProvider)
+          .read(catalogRepositoryProvider)
           .createCheckoutQuote(
             CheckoutQuoteRequestDto(
               showtimeId: updated.showtimeId,

@@ -7,6 +7,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../movie/data/models/catalog_enums.dart';
+import '../../../movie/data/repositories/catalog_providers.dart';
+import '../../../movie/data/repositories/remote_catalog_repository.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_progress.dart';
 
@@ -20,6 +22,8 @@ class CheckoutPage extends ConsumerWidget {
     final state = ref.watch(bookingCompletionProvider);
     final booking = state.booking;
     final quote = state.quote;
+    final paymentEnabled =
+        ref.watch(catalogRepositoryProvider) is! RemoteCatalogRepository;
     if (booking == null || quote == null || booking.id != bookingId) {
       return AppShell(
         currentIndex: 2,
@@ -123,10 +127,12 @@ class CheckoutPage extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               child: AppButton(
                 key: const ValueKey('checkout-pay'),
-                label: state.isBusy
+                label: !paymentEnabled
+                    ? 'Thanh toán sẽ tích hợp ở Batch 07'
+                    : state.isBusy
                     ? 'Đang tạo giao dịch…'
                     : 'Thanh toán ${quote.total.format()}',
-                onPressed: state.isBusy
+                onPressed: !paymentEnabled || state.isBusy
                     ? null
                     : () async {
                         final payment = await ref

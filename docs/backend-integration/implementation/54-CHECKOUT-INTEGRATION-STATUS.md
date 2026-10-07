@@ -1,0 +1,5 @@
+# Checkout integration status
+
+`REAL_HOLD_TO_MOCK_CHECKOUT_TRANSITION_GAP`: RESOLVED_BY_BATCH_06.
+
+`REAL_CHECKOUT_TO_MOCK_PAYMENT_TRANSITION_GAP`: DOCUMENTED; Payment remains deferred to Batch 07.

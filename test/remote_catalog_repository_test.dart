@@ -9,6 +9,8 @@ import 'package:mss301_mobile/core/network/dio_client.dart';
 import 'package:mss301_mobile/core/network/network_providers.dart';
 import 'package:mss301_mobile/features/movie/data/repositories/remote_catalog_repository.dart';
 import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
+import 'package:mss301_mobile/features/movie/data/models/catalog_enums.dart';
+import 'package:mss301_mobile/features/movie/data/models/food_quote_dto.dart';
 import 'package:mss301_mobile/features/showtime/data/models/showtime_dto.dart';
 import 'package:mss301_mobile/features/showtime/presentation/models/showtime_models.dart';
 
@@ -85,6 +87,42 @@ void main() {
       expect(slot.isBookable, status == 'OPEN', reason: status);
     }
   });
+
+  test(
+    'posts the real checkout quote contract and preserves backend pricing',
+    () async {
+      final adapter = _CatalogAdapter();
+      final repository = RemoteCatalogRepository(
+        Dio()..httpClientAdapter = adapter,
+      );
+      final quote = await repository.createCheckoutQuote(
+        const CheckoutQuoteRequestDto(
+          showtimeId: 92831,
+          seatIds: [441],
+          tickets: [
+            QuoteTicketRequestDto(
+              seatId: 441,
+              ticketType: TicketType.student,
+              viewerAge: 20,
+            ),
+          ],
+          foods: [
+            QuoteFoodRequestDto(productId: 77, isCombo: true, quantity: 2),
+          ],
+          bookingSessionId: 741852,
+        ),
+      );
+      expect(adapter.method, 'POST');
+      expect(adapter.path, '/api/v1/catalog/checkout-quote');
+      expect(adapter.body!['showtimeId'], 92831);
+      expect(adapter.body!['seatIds'], [441]);
+      expect(adapter.body!['bookingSessionId'], 741852);
+      expect(adapter.body!.containsKey('userId'), isFalse);
+      expect(quote.quoteId, 'Q-1');
+      expect(quote.total.amount, 123456);
+      expect(quote.tickets.single.unitPrice.amount, 123456);
+    },
+  );
 }
 
 class _CatalogAdapter implements HttpClientAdapter {
@@ -94,6 +132,9 @@ class _CatalogAdapter implements HttpClientAdapter {
   final bool missingMovie;
   Map<String, String> showtimeQuery = const {};
   Map<String, String> movieQuery = const {};
+  String? method;
+  String? path;
+  Map<String, Object?>? body;
 
   @override
   void close({bool force = false}) {}
@@ -104,6 +145,55 @@ class _CatalogAdapter implements HttpClientAdapter {
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    method = options.method;
+    path = options.path;
+    body = options.data is Map
+        ? Map<String, Object?>.from(options.data as Map)
+        : null;
+    if (options.path == '/api/v1/catalog/checkout-quote') {
+      return _json({
+        'success': true,
+        'data': {
+          'quoteId': 'Q-1',
+          'validUntil': '2026-10-07T10:03:00Z',
+          'showtime': {
+            'showtimeId': 92831,
+            'movieId': 7,
+            'movieTitle': 'Dune',
+            'cinemaName': 'Cine Central',
+            'roomName': 'Room 5',
+            'startTime': '2026-10-07T10:00:00',
+          },
+          'seats': [
+            {
+              'seatId': 441,
+              'seatLabel': 'A1',
+              'seatType': 'STANDARD',
+              'unitPrice': 123456,
+            },
+          ],
+          'tickets': [
+            {
+              'seatId': 441,
+              'ticketType': 'STUDENT',
+              'quantity': 1,
+              'unitPrice': 123456,
+              'lineTotal': 123456,
+            },
+          ],
+          'foods': [],
+          'foodItems': [],
+          'ticketSubtotal': 123456,
+          'foodSubtotal': 0,
+          'subtotal': 123456,
+          'discount': 0,
+          'cinePointsDiscount': 0,
+          'fees': 0,
+          'tax': 0,
+          'total': 123456,
+        },
+      });
+    }
     if (options.path == '/api/v1/movies/404' && missingMovie) {
       return _json({'message': 'Movie not found'}, statusCode: 404);
     }

@@ -82,7 +82,40 @@ class RemoteCatalogRepository implements CatalogRepository {
   @override
   Future<CheckoutQuoteDto> createCheckoutQuote(
     CheckoutQuoteRequestDto request,
-  ) => _outOfScope();
+  ) async {
+    final response = await _post(
+      '/api/v1/catalog/checkout-quote',
+      data: {
+        'showtimeId': request.showtimeId,
+        'seatIds': request.seatIds,
+        'tickets': request.tickets
+            .map(
+              (ticket) => {
+                if (ticket.seatId != null) 'seatId': ticket.seatId,
+                'ticketType': ticket.ticketType.wireValue,
+                'viewerAge': ticket.viewerAge,
+                'quantity': ticket.quantity,
+              },
+            )
+            .toList(growable: false),
+        'foods': request.foods
+            .map(
+              (food) => {
+                'productId': food.productId,
+                'isCombo': food.isCombo,
+                'quantity': food.quantity,
+              },
+            )
+            .toList(growable: false),
+        if (request.voucherCode != null) 'voucherCode': request.voucherCode,
+        if (request.cinePointsToUse != null)
+          'cinePointsToUse': request.cinePointsToUse,
+        if (request.bookingSessionId != null)
+          'bookingSessionId': request.bookingSessionId,
+      },
+    );
+    return CheckoutQuoteDto.fromJson(_data(response));
+  }
 
   Future<T> _outOfScope<T>() => Future<T>.error(
     const ApiException(
@@ -97,6 +130,19 @@ class RemoteCatalogRepository implements CatalogRepository {
   }) async {
     try {
       return await _dio.get(path, queryParameters: queryParameters);
+    } on DioException catch (error) {
+      final mapped = error.error;
+      if (mapped is ApiException) throw mapped;
+      rethrow;
+    }
+  }
+
+  Future<Response<dynamic>> _post(
+    String path, {
+    required Map<String, Object?> data,
+  }) async {
+    try {
+      return await _dio.post(path, data: data);
     } on DioException catch (error) {
       final mapped = error.error;
       if (mapped is ApiException) throw mapped;

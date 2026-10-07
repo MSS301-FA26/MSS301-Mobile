@@ -1,3 +1,3 @@
 # Hold lifecycle
 
-Selection -> POST hold -> bookingId + holdExpiresAt -> active, conflict, expiry, or explicit cancel. `holdExpiresAt` is authoritative. Production stops after a real hold; Batch 06 owns Checkout.
+Selection -> POST hold -> bookingId + holdExpiresAt -> active, conflict, expiry, explicit cancel, or real checkout quote. `holdExpiresAt` is authoritative. Production now continues through the real quote and stops before Payment.
