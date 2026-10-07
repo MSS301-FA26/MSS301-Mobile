@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/demo/demo_scenario.dart';
 import '../../movie/data/models/food_quote_dto.dart';
 import '../../movie/data/repositories/catalog_providers.dart';
 import '../../orders/data/models/booking_dto.dart';
@@ -233,21 +232,21 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       clearMessage: true,
     );
     try {
-      final checkedOut = await ref
-          .read(bookingRepositoryProvider)
-          .checkout(
-            booking.id,
-            UpdateHoldingBookingRequestDto(
-              tickets: _ticketSelections,
-              foods: _foodSelections,
-            ),
-          );
+      final seatHold = ref.read(seatHoldRepositoryProvider);
+      final checkedOut = seatHold.canEnterMockCheckout
+          ? await ref
+                .read(bookingRepositoryProvider)
+                .checkout(
+                  booking.id,
+                  UpdateHoldingBookingRequestDto(
+                    tickets: _ticketSelections,
+                    foods: _foodSelections,
+                  ),
+                )
+          : booking;
       final payment = await ref
           .read(paymentRepositoryProvider)
-          .createPayment(
-            DemoIds.user,
-            CreatePaymentRequestDto(bookingId: checkedOut.id),
-          );
+          .createPayment(0, CreatePaymentRequestDto(bookingId: checkedOut.id));
       state = state.copyWith(
         phase: BookingCompletionPhase.paymentPending,
         booking: checkedOut,
@@ -272,11 +271,14 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       );
       return;
     }
+    final seatHold = ref.read(seatHoldRepositoryProvider);
     final booking = payment.bookingId == null
         ? null
-        : await ref
+        : seatHold.canEnterMockCheckout
+        ? await ref
               .read(bookingRepositoryProvider)
-              .getBooking(payment.bookingId!);
+              .getBooking(payment.bookingId!)
+        : await seatHold.getBooking(payment.bookingId!);
     state = state.copyWith(
       phase: payment.status == PaymentStatus.failed
           ? BookingCompletionPhase.paymentFailed
@@ -284,6 +286,32 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       payment: payment,
       booking: booking,
     );
+  }
+
+  Future<bool> refreshPaymentStatus() async {
+    final payment = state.payment;
+    if (payment == null) return false;
+    final refreshed = await ref
+        .read(paymentRepositoryProvider)
+        .getPayment(payment.id);
+    if (refreshed == null) {
+      state = state.copyWith(
+        phase: BookingCompletionPhase.error,
+        message: 'Không tìm thấy payment.',
+      );
+      return false;
+    }
+    final phase = switch (refreshed.status) {
+      PaymentStatus.success => BookingCompletionPhase.ticketReady,
+      PaymentStatus.failed => BookingCompletionPhase.paymentFailed,
+      _ => BookingCompletionPhase.paymentPending,
+    };
+    state = state.copyWith(
+      phase: phase,
+      payment: refreshed,
+      clearMessage: true,
+    );
+    return refreshed.status == PaymentStatus.success;
   }
 
   Future<bool> simulateSuccess() async {
@@ -353,10 +381,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       }
       final payment = await ref
           .read(paymentRepositoryProvider)
-          .createPayment(
-            DemoIds.user,
-            CreatePaymentRequestDto(bookingId: booking.id),
-          );
+          .createPayment(0, CreatePaymentRequestDto(bookingId: booking.id));
       state = state.copyWith(
         phase: BookingCompletionPhase.paymentPending,
         payment: payment,

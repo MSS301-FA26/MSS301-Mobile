@@ -13,6 +13,8 @@ import 'package:mss301_mobile/features/seat/data/repositories/seat_hold_provider
 import 'package:mss301_mobile/features/seat/data/repositories/seat_hold_repository.dart';
 import 'package:mss301_mobile/core/demo/demo_scenario.dart';
 import 'package:mss301_mobile/core/network/api_exception.dart';
+import 'package:mss301_mobile/features/payment/data/repositories/payment_providers.dart';
+import 'package:mss301_mobile/features/payment/data/repositories/mock_payment_repository.dart';
 
 import 'fake_auth_session.dart';
 
@@ -42,6 +44,12 @@ Future<ProviderContainer> pumpTestApp(
         seatHoldRepositoryProvider.overrideWith(
           (ref) =>
               _FakeSeatHoldRepository(ref.watch(bookingRepositoryProvider)),
+        ),
+        paymentRepositoryProvider.overrideWith(
+          (ref) => MockPaymentRepository(
+            ref.watch(appClockProvider),
+            ref.watch(bookingRepositoryProvider),
+          ),
         ),
         ...providerOverrides,
       ],
