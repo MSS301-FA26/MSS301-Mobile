@@ -31,7 +31,7 @@ class HeroCard extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: AppRadii.card,
         border: Border.all(color: AppColors.border),
       ),
@@ -116,7 +116,7 @@ class HeroCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 9),
+                      const SizedBox(height: AppSpacing.sm),
                       Text(
                         movie.title.toUpperCase(),
                         maxLines: 2,
@@ -133,7 +133,7 @@ class HeroCard extends StatelessWidget {
                           color: AppColors.textMuted,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: AppSpacing.md),
                       Row(
                         children: [
                           Expanded(

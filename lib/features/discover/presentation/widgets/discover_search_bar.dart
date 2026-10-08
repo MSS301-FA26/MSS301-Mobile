@@ -19,10 +19,12 @@ class DiscoverSearchBar extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: const TextStyle(fontSize: 12, color: AppColors.text),
+      style: AppTextStyles.body.copyWith(color: AppColors.text),
       decoration: InputDecoration(
         hintText: 'Tìm tên phim, diễn viên, đạo diễn Nolan...',
-        hintStyle: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+        hintStyle: AppTextStyles.caption.copyWith(
+          color: AppColors.textDisabled,
+        ),
         prefixIcon: const Icon(
           Icons.search_rounded,
           size: 20,
@@ -37,7 +39,7 @@ class DiscoverSearchBar extends StatelessWidget {
               ),
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         enabledBorder: const OutlineInputBorder(
           borderRadius: AppRadii.card,
           borderSide: BorderSide(color: AppColors.border),

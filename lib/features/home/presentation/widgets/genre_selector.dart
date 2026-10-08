@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_chip.dart';
 
 class GenreSelector extends StatelessWidget {
   const GenreSelector({
@@ -31,30 +32,10 @@ class GenreSelector extends StatelessWidget {
           for (final genre in genres)
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.xs),
-              child: ChoiceChip(
-                label: Text(genre),
+              child: AppChip(
+                label: genre,
                 selected: selectedGenre == genre,
-                onSelected: (_) => onSelected(genre),
-                showCheckmark: false,
-                backgroundColor: AppColors.surface,
-                selectedColor: AppColors.surfaceRaised,
-                side: BorderSide(
-                  color: selectedGenre == genre
-                      ? AppColors.gold.withValues(alpha: 0.5)
-                      : AppColors.border,
-                ),
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: selectedGenre == genre
-                      ? AppColors.text
-                      : AppColors.textMuted,
-                ),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: AppRadii.control,
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
-                visualDensity: VisualDensity.compact,
+                onPressed: () => onSelected(genre),
               ),
             ),
         ],
