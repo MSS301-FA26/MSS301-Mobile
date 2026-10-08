@@ -91,18 +91,16 @@ class _DatePill extends StatelessWidget {
               option.label.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: AppTextStyles.meta.copyWith(
                 color: selected ? AppColors.gold : AppColors.textDisabled,
-                fontSize: 9,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 3),
             Text(
               option.sub,
-              style: TextStyle(
+              style: AppTextStyles.label.copyWith(
                 color: selected ? AppColors.text : AppColors.textSecondary,
-                fontSize: 13,
                 fontWeight: FontWeight.w900,
               ),
             ),
