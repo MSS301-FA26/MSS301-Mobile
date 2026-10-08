@@ -8,6 +8,7 @@ import 'package:mss301_mobile/features/auth/application/auth_session.dart';
 import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_providers.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_repository.dart';
+import 'package:mss301_mobile/features/orders/data/repositories/mock_booking_repository.dart';
 import 'package:mss301_mobile/features/orders/data/models/booking_dto.dart';
 import 'package:mss301_mobile/features/seat/data/repositories/seat_hold_providers.dart';
 import 'package:mss301_mobile/features/seat/data/repositories/seat_hold_repository.dart';
@@ -39,6 +40,12 @@ Future<ProviderContainer> pumpTestApp(
         authSessionProvider.overrideWith(
           () => FakeAuthSessionController(
             authState ?? authenticatedCustomerState(),
+          ),
+        ),
+        bookingRepositoryProvider.overrideWith(
+          (ref) => MockBookingRepository(
+            ref.watch(appClockProvider),
+            ref.watch(mockCatalogRepositoryProvider),
           ),
         ),
         seatHoldRepositoryProvider.overrideWith(
