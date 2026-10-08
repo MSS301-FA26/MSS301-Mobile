@@ -11,6 +11,7 @@ abstract final class AppRoutes {
   static const security = '/account/security';
   static const wallet = '/account/wallet';
   static const points = '/account/points';
+  static const foodOrders = '/account/food-orders';
   static const cinemaInfo = '/information/cinema';
   static const policies = '/information/policies';
   static const support = '/support';
