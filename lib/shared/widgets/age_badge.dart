@@ -16,16 +16,26 @@ class AgeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAdult = rating == '18+';
-    final isAllAges = rating == 'P';
+    final normalizedRating = rating.trim().toUpperCase();
+    final isAdult = normalizedRating == '18+' || normalizedRating == 'T18';
+    final isAllAges = normalizedRating == 'P';
+    final isTeen = normalizedRating == '16+' || normalizedRating == 'T16';
+    final isChild = normalizedRating == '13+' || normalizedRating == 'T13';
     final color = isAdult
         ? AppColors.adultBadge
         : isAllAges
         ? AppColors.allAgesBadge
+        : isTeen
+        ? AppColors.warning
+        : isChild
+        ? AppColors.gold
         : AppColors.gold;
     final isHero = variant == AgeBadgeVariant.hero;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isHero ? 8 : 6, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: isHero ? AppSpacing.xs : 6,
+        vertical: 3,
+      ),
       decoration: BoxDecoration(
         color: isHero ? AppColors.goldSurface : color,
         borderRadius: BorderRadius.circular(4),
@@ -33,12 +43,9 @@ class AgeBadge extends StatelessWidget {
       ),
       child: Text(
         rating,
-        style: TextStyle(
-          fontSize: 10,
+        style: AppTextStyles.meta.copyWith(
           fontWeight: FontWeight.w800,
-          color: isHero
-              ? AppColors.gold
-              : (isAdult ? Colors.white : Colors.black),
+          color: isHero || isAdult ? AppColors.text : Colors.black,
         ),
       ),
     );

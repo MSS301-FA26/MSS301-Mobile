@@ -19,7 +19,7 @@ class AppSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageGutter),
       child: SizedBox(
         height: 28,
         child: Row(
@@ -32,7 +32,7 @@ class AppSectionHeader extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: Text(title, style: Theme.of(context).textTheme.titleLarge),
             ),
@@ -49,13 +49,7 @@ class AppSectionHeader extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      action!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                    Text(action!, style: AppTextStyles.label),
                     const Icon(Icons.chevron_right, size: 16),
                   ],
                 ),
