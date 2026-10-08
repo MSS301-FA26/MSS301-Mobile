@@ -8,6 +8,9 @@ abstract final class AppSpacing {
   static const lg = 20.0;
   static const xl = 24.0;
   static const xxl = 32.0;
+  static const section = 40.0;
+  static const pageGutter = 16.0;
+  static const cardGap = 12.0;
 
   static const headerHeight = 64.0;
   static const bottomBarHeight = 64.0;
