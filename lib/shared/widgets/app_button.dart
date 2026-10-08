@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
-enum AppButtonVariant { primary, secondary, purple }
+enum AppButtonVariant { primary, secondary, purple, danger, ghost }
 
 class AppButton extends StatelessWidget {
   const AppButton({
@@ -12,6 +12,7 @@ class AppButton extends StatelessWidget {
     this.icon,
     this.variant = AppButtonVariant.primary,
     this.height = 46,
+    this.loading = false,
   });
 
   final String label;
@@ -19,6 +20,7 @@ class AppButton extends StatelessWidget {
   final IconData? icon;
   final AppButtonVariant variant;
   final double height;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +28,13 @@ class AppButton extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (icon != null) ...[
+        if (loading)
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else if (icon != null) ...[
           Icon(icon, size: 18),
           const SizedBox(width: AppSpacing.xxs),
         ],
@@ -55,12 +63,12 @@ class AppButton extends StatelessWidget {
       height: height,
       child: switch (variant) {
         AppButtonVariant.primary => FilledButton(
-          onPressed: onPressed,
+          onPressed: loading ? null : onPressed,
           style: style,
           child: buttonChild,
         ),
         AppButtonVariant.purple => FilledButton(
-          onPressed: onPressed,
+          onPressed: loading ? null : onPressed,
           style: style.copyWith(
             backgroundColor: const WidgetStatePropertyAll(AppColors.purple),
             foregroundColor: const WidgetStatePropertyAll(AppColors.text),
@@ -68,7 +76,7 @@ class AppButton extends StatelessWidget {
           child: buttonChild,
         ),
         AppButtonVariant.secondary => OutlinedButton(
-          onPressed: onPressed,
+          onPressed: loading ? null : onPressed,
           style: style.copyWith(
             backgroundColor: const WidgetStatePropertyAll(
               AppColors.surfaceRaised,
@@ -76,6 +84,26 @@ class AppButton extends StatelessWidget {
             foregroundColor: const WidgetStatePropertyAll(AppColors.text),
             side: const WidgetStatePropertyAll(
               BorderSide(color: AppColors.border),
+            ),
+          ),
+          child: buttonChild,
+        ),
+        AppButtonVariant.danger => FilledButton(
+          onPressed: loading ? null : onPressed,
+          style: style.copyWith(
+            backgroundColor: const WidgetStatePropertyAll(AppColors.error),
+            foregroundColor: const WidgetStatePropertyAll(AppColors.text),
+          ),
+          child: buttonChild,
+        ),
+        AppButtonVariant.ghost => TextButton(
+          onPressed: loading ? null : onPressed,
+          style: style.copyWith(
+            foregroundColor: const WidgetStatePropertyAll(
+              AppColors.textSecondary,
+            ),
+            overlayColor: WidgetStatePropertyAll(
+              AppColors.text.withValues(alpha: 0.08),
             ),
           ),
           child: buttonChild,

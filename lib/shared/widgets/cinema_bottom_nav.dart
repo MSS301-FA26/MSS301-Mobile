@@ -40,8 +40,14 @@ class CinemaBottomNav extends StatelessWidget {
             unselectedFontSize: 10,
             selectedItemColor: AppColors.gold,
             unselectedItemColor: AppColors.textMuted,
-            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+            selectedLabelStyle: AppTextStyles.meta.copyWith(
+              color: AppColors.gold,
+              fontWeight: FontWeight.w800,
+            ),
+            unselectedLabelStyle: AppTextStyles.meta.copyWith(
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
             showUnselectedLabels: true,
             onTap: onTap,
             items: [

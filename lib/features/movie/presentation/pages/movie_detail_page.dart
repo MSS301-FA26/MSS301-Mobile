@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_chip.dart';
 import '../../../../shared/widgets/app_image.dart';
 import '../../../../shared/widgets/age_badge.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
@@ -135,9 +136,7 @@ class MovieDetailPage extends ConsumerWidget {
                                   const SizedBox(height: 8),
                                   Text(
                                     movie.title,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall,
+                                    style: AppTextStyles.screenTitle,
                                   ),
                                   const SizedBox(height: 8),
                                   Row(
@@ -162,12 +161,13 @@ class MovieDetailPage extends ConsumerWidget {
                         ),
                         const SizedBox(height: 20),
                         Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xs,
                           children: [
-                            _InfoPill(movie.genre),
-                            _InfoPill(movie.duration),
-                            _InfoPill(movie.format),
+                            AppChip(label: movie.genre),
+                            AppChip(label: movie.duration),
+                            if (movie.format.isNotEmpty)
+                              AppChip(label: movie.format),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -178,11 +178,7 @@ class MovieDetailPage extends ConsumerWidget {
                         const SizedBox(height: 10),
                         Text(
                           movie.description ?? movie.tagline,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                            height: 1.5,
-                          ),
+                          style: AppTextStyles.body,
                         ),
                         const SizedBox(height: 24),
                         AppButton(
@@ -202,18 +198,16 @@ class MovieDetailPage extends ConsumerWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: AppColors.surfaceRaised,
                             border: Border.all(color: AppColors.border),
                             borderRadius: AppRadii.card,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Chi tiết phim',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
+                                style: AppTextStyles.sectionTitle.copyWith(
                                   color: AppColors.gold,
                                 ),
                               ),
@@ -255,25 +249,6 @@ class MovieDetailPage extends ConsumerWidget {
             ),
     );
   }
-}
-
-class _InfoPill extends StatelessWidget {
-  const _InfoPill(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      border: Border.all(color: AppColors.border),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Text(
-      label,
-      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-    ),
-  );
 }
 
 class _DetailRow extends StatelessWidget {

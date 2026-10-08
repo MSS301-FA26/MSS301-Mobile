@@ -75,8 +75,7 @@ class ShowtimeMovieCard extends StatelessWidget {
                       movie.title.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.text,
+                      style: AppTextStyles.cardTitle.copyWith(
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
                       ),
@@ -135,11 +134,7 @@ class _RoomSection extends StatelessWidget {
               room.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
+              style: AppTextStyles.label.copyWith(color: AppColors.text),
             ),
             if (room.formatBadge.isNotEmpty)
               Container(
@@ -157,9 +152,8 @@ class _RoomSection extends StatelessWidget {
                 ),
                 child: Text(
                   room.formatBadge,
-                  style: TextStyle(
+                  style: AppTextStyles.meta.copyWith(
                     color: isImax ? AppColors.lavender : AppColors.gold,
-                    fontSize: 10,
                     fontWeight: FontWeight.w800,
                   ),
                 ),

@@ -13,7 +13,7 @@ class AccountProfileCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: const BorderRadius.all(Radius.circular(24)),
         border: Border.all(color: AppColors.border),
       ),
@@ -67,8 +67,7 @@ class AccountProfileCard extends StatelessWidget {
                         user.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.text,
+                        style: AppTextStyles.cardTitle.copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                         ),

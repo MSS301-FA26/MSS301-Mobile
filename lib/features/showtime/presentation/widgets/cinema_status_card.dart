@@ -32,7 +32,7 @@ class CinemaStatusCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -43,9 +43,8 @@ class CinemaStatusCard extends StatelessWidget {
                         'CineAI Central',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: AppTextStyles.label.copyWith(
                           color: AppColors.text,
-                          fontWeight: FontWeight.w800,
                           fontSize: 14,
                         ),
                       ),

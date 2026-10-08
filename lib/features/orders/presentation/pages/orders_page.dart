@@ -100,14 +100,7 @@ class _EmptyOrders extends StatelessWidget {
             color: AppColors.textDisabled,
           ),
           SizedBox(height: AppSpacing.sm),
-          Text(
-            'Chưa có vé sắp chiếu nào',
-            style: TextStyle(
-              color: AppColors.text,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          Text('Chưa có vé sắp chiếu nào', style: AppTextStyles.sectionTitle),
           SizedBox(height: AppSpacing.xs),
           Text(
             'Hãy chọn một bộ phim yêu thích và đặt chỗ ngay hôm nay!',

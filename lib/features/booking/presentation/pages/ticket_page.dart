@@ -6,6 +6,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../orders/data/models/booking_enums.dart';
 import '../../application/booking_completion_controller.dart';
@@ -22,8 +23,10 @@ class TicketPage extends ConsumerWidget {
       currentIndex: 3,
       showBottomNavigation: false,
       body: bookingState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text(error.toString())),
+        loading: () => const RepositoryStatePane.loading(),
+        error: (_, _) => RepositoryStatePane.error(
+          onRetry: () => ref.invalidate(ticketBookingProvider(bookingId)),
+        ),
         data: (booking) {
           if (booking == null || booking.status != BookingStatus.paid) {
             return Center(
@@ -73,8 +76,9 @@ class TicketPage extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surfaceRaised,
                     borderRadius: AppRadii.card,
+                    border: Border.all(color: AppColors.goldBorder),
                   ),
                   child: Column(
                     children: [
@@ -84,7 +88,7 @@ class TicketPage extends ConsumerWidget {
                             'Phim',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Colors.black,
+                          color: AppColors.text,
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
                         ),
@@ -93,8 +97,10 @@ class TicketPage extends ConsumerWidget {
                       Text(
                         booking.qrCode ?? booking.bookingCode,
                         textAlign: TextAlign.center,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Colors.black,
+                          color: AppColors.gold,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w700,
                         ),
@@ -103,7 +109,7 @@ class TicketPage extends ConsumerWidget {
                       Text(
                         booking.bookingCode,
                         style: const TextStyle(
-                          color: Colors.black,
+                          color: AppColors.text,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w800,
                         ),
@@ -230,6 +236,8 @@ class _TicketLine extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.end,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
         ),

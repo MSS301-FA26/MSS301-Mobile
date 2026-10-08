@@ -155,7 +155,7 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(AppSpacing.md),
     decoration: BoxDecoration(
-      color: AppColors.surface,
+      color: AppColors.surfaceRaised,
       borderRadius: AppRadii.card,
       border: Border.all(color: AppColors.border),
     ),
@@ -188,7 +188,7 @@ class _Line extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.end,
-            style: TextStyle(
+            style: AppTextStyles.body.copyWith(
               color: emphasized ? AppColors.gold : AppColors.text,
               fontWeight: emphasized ? FontWeight.w900 : FontWeight.w700,
             ),

@@ -123,7 +123,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text(title, style: AppTextStyles.heroTitle),
+            Text(title, style: AppTextStyles.screenTitle),
             const SizedBox(height: AppSpacing.xs),
             const Text(
               'Đăng nhập an toàn bằng tài khoản CinePremier',
@@ -208,7 +208,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               Text(
                 session.message!,
                 key: const ValueKey('auth-message'),
-                style: const TextStyle(color: AppColors.gold),
+                style: AppTextStyles.body.copyWith(color: AppColors.gold),
               ),
             ],
             const SizedBox(height: AppSpacing.lg),

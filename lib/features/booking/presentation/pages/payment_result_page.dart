@@ -99,7 +99,7 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(AppSpacing.sm),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: AppColors.surfaceRaised,
                       borderRadius: AppRadii.card,
                       border: Border.all(color: AppColors.border),
                     ),
@@ -112,7 +112,11 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
-                if (busy) const CircularProgressIndicator(),
+                if (busy)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    child: CircularProgressIndicator(),
+                  ),
                 if (realPayment &&
                     state.payment?.paymentUrl != null &&
                     !ready &&

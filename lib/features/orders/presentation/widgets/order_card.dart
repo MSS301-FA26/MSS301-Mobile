@@ -23,7 +23,7 @@ class UpcomingOrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: const BorderRadius.all(Radius.circular(24)),
         border: Border.all(color: AppColors.border),
       ),
@@ -38,15 +38,16 @@ class UpcomingOrderCard extends StatelessWidget {
                   order.statusLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: AppTextStyles.label.copyWith(
                     color: AppColors.gold,
-                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
               Text(
                 order.ticketCode,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.textDisabled,
                   fontSize: 11,
@@ -232,7 +233,7 @@ class CompletedOrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: AppRadii.card,
         border: Border.all(color: AppColors.border),
       ),
@@ -252,6 +253,8 @@ class CompletedOrderCard extends StatelessWidget {
               const Spacer(),
               Text(
                 order.ticketCode,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.textDisabled,
                   fontSize: 11,

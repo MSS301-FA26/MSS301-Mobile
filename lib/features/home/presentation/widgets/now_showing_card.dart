@@ -93,21 +93,14 @@ class NowShowingCard extends StatelessWidget {
                     movie.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
+                    style: AppTextStyles.cardTitle,
                   ),
                 ),
                 Text(
                   '${movie.genre} • ${movie.duration}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
+                  style: AppTextStyles.caption,
                 ),
                 const SizedBox(height: 8),
                 SizedBox(

@@ -89,12 +89,7 @@ class DiscoverMovieCard extends StatelessWidget {
                 movie.title.toUpperCase(),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  height: 1.18,
-                ),
+                style: AppTextStyles.label.copyWith(color: AppColors.text),
               ),
             ),
             const SizedBox(height: 2),
