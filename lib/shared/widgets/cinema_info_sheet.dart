@@ -11,7 +11,12 @@ class CinemaInfoSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.pageGutter,
+          AppSpacing.xl,
+          AppSpacing.pageGutter,
+          AppSpacing.md,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -20,7 +25,7 @@ class CinemaInfoSheet extends StatelessWidget {
               CinemaInfo.name,
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.lg),
             const _InfoRow(Icons.location_on_outlined, CinemaInfo.address),
             const SizedBox(height: AppSpacing.sm),
             const _InfoRow(Icons.schedule_outlined, CinemaInfo.operatingHours),
@@ -36,6 +41,7 @@ class CinemaInfoSheet extends StatelessWidget {
                     label: Text(feature),
                     backgroundColor: AppColors.surfaceRaised,
                     side: const BorderSide(color: AppColors.border),
+                    labelStyle: AppTextStyles.meta,
                   ),
               ],
             ),

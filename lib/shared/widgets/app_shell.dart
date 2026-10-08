@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/routing/app_routes.dart';
+import '../../core/theme/app_theme.dart';
 import '../../features/seat/application/booking_entry_session.dart';
 import 'cinema_bottom_nav.dart';
 import 'cinema_header.dart';
@@ -31,6 +32,7 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: CinemaHeader(
         onHome: () => _goHome(context, ref),
         onSearch: () => context.go(AppRoutes.discover),
@@ -42,7 +44,10 @@ class AppShell extends ConsumerWidget {
               onTap: (index) => context.go(_tabRoutes[index]),
             )
           : null,
-      body: SafeArea(top: false, child: body),
+      body: SafeArea(
+        top: false,
+        child: ColoredBox(color: AppColors.background, child: body),
+      ),
     );
   }
 

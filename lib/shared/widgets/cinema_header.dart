@@ -19,18 +19,21 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onNotifications;
 
   @override
-  Size get preferredSize => const Size.fromHeight(64);
+  Size get preferredSize => const Size.fromHeight(AppSpacing.headerHeight);
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      toolbarHeight: 64,
+      toolbarHeight: AppSpacing.headerHeight,
       automaticallyImplyLeading: false,
-      titleSpacing: 10,
+      titleSpacing: AppSpacing.xs,
+      backgroundColor: AppColors.background,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
       title: Row(
         children: [
           _BrandMark(onTap: onHome),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: InkWell(
               onTap: () => showModalBottomSheet<void>(
@@ -41,16 +44,16 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
                 ),
                 builder: (context) => const CinemaInfoSheet(),
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: AppRadii.control,
               child: Container(
                 height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(24),
+                  color: AppColors.surfaceHigh,
+                  borderRadius: AppRadii.control,
                   border: Border.all(color: AppColors.border),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(
                       Icons.location_on_outlined,
@@ -63,9 +66,9 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
                         CinemaInfo.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                        style: AppTextStyles.meta.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -111,7 +114,7 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: AppColors.border),
+        child: const Divider(height: 1, thickness: 1),
       ),
     );
   }
