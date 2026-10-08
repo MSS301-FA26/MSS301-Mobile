@@ -14,7 +14,7 @@ class WalletTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: AppRadii.card,
         border: Border.all(color: AppColors.border),
       ),
@@ -80,7 +80,7 @@ class AccountMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: AppRadii.card,
         border: Border.all(color: AppColors.border),
       ),
