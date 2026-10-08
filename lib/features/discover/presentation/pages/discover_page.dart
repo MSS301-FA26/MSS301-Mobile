@@ -8,24 +8,41 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
+import '../../../movie/data/models/catalog_enums.dart';
 import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
+import '../../../movie/data/repositories/catalog_providers.dart';
+import '../providers/discover_provider.dart';
 import '../widgets/discover_movie_card.dart';
 import '../widgets/discover_search_bar.dart';
 import '../widgets/discover_segmented_control.dart';
 
 class DiscoverPage extends ConsumerStatefulWidget {
   const DiscoverPage({super.key});
-
   @override
   ConsumerState<DiscoverPage> createState() => _DiscoverPageState();
 }
 
 class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   final _searchController = TextEditingController();
-  DiscoverMovieTab _tab = DiscoverMovieTab.now;
-  String _query = '';
   Timer? _searchDebounce;
+  String _query = '';
+  int? _genreId;
+  DiscoverMovieTab _tab = DiscoverMovieTab.now;
+  int _page = 0;
+  final _loaded = <Movie>[];
+  var _hasMore = false;
+  var _loadingMore = false;
+
+  MovieStatus get _status => _tab == DiscoverMovieTab.now
+      ? MovieStatus.nowShowing
+      : MovieStatus.upcoming;
+  DiscoverQuery get _request => DiscoverQuery(
+    keyword: _query,
+    status: _status,
+    genreId: _genreId,
+    page: _page,
+  );
 
   @override
   void dispose() {
@@ -34,124 +51,199 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
     super.dispose();
   }
 
+  void _resetResults() => setState(() {
+    _page = 0;
+    _loaded.clear();
+  });
   void _onSearchChanged(String value) {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) setState(() => _query = value.trim());
+      if (!mounted) return;
+      setState(() {
+        _query = value.trim();
+        _page = 0;
+        _loaded.clear();
+      });
     });
   }
 
-  bool _matches(Movie movie) {
-    final inTab = _tab == DiscoverMovieTab.now
-        ? movie.isNowShowing
-        : movie.isComingSoon;
-    if (!inTab) return false;
+  void _clearFilters() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    setState(() {
+      _query = '';
+      _genreId = null;
+      _tab = DiscoverMovieTab.now;
+      _page = 0;
+      _loaded.clear();
+    });
+  }
 
-    final query = _query.trim().toLowerCase();
-    if (query.isEmpty) return true;
-
-    return movie.title.toLowerCase().contains(query) ||
-        movie.genre.toLowerCase().contains(query) ||
-        movie.tagline.toLowerCase().contains(query);
+  Future<void> _loadMore() async {
+    if (!_hasMore || _loadingMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final next = await ref
+          .read(catalogRepositoryProvider)
+          .getMoviePage(
+            keyword: _query,
+            status: _status,
+            genreId: _genreId,
+            page: _page + 1,
+          );
+      if (!mounted) return;
+      setState(() {
+        _page = next.page;
+        _loaded.addAll(next.items.map(mapMovieToPresentation));
+        _hasMore = !next.last;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final moviesState = _query.isEmpty
-        ? ref.watch(moviesProvider)
-        : ref.watch(movieSearchProvider(_query));
-    if (moviesState.isLoading) {
-      return const AppShell(
-        currentIndex: 1,
-        body: RepositoryStatePane.loading(),
-      );
-    }
-    if (moviesState.hasError) {
-      return AppShell(
-        currentIndex: 1,
-        body: RepositoryStatePane.error(
-          onRetry: () => _query.isEmpty
-              ? ref.invalidate(moviesProvider)
-              : ref.invalidate(movieSearchProvider(_query)),
-        ),
-      );
-    }
-    final movies = moviesState.requireValue;
-    final filtered = movies.where(_matches).toList();
-    final nowCount = movies.where((movie) => movie.isNowShowing).length;
-    final soonCount = movies.where((movie) => movie.isComingSoon).length;
-
+    final state = ref.watch(discoverPageProvider(_request));
     return AppShell(
       currentIndex: 1,
-      body: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.sm,
-            ),
-            sliver: SliverList.list(
-              children: [
-                DiscoverSearchBar(
-                  controller: _searchController,
-                  onChanged: _onSearchChanged,
-                  onClear: () => setState(() {
-                    _searchDebounce?.cancel();
-                    _searchController.clear();
-                    _query = '';
-                  }),
+      body: state.when(
+        loading: () => const RepositoryStatePane.loading(),
+        error: (error, _) => RepositoryStatePane.error(
+          onRetry: () => ref.invalidate(discoverPageProvider(_request)),
+        ),
+        data: (page) {
+          if (_loaded.isEmpty ||
+              (_page == 0 && _loaded.length != page.items.length)) {
+            _loaded
+              ..clear()
+              ..addAll(page.items.map(mapMovieToPresentation));
+            _hasMore = !page.last;
+          }
+          final genres = ref.watch(discoverGenresProvider);
+          return CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.sm,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                DiscoverSegmentedControl(
-                  selected: _tab,
-                  nowCount: nowCount,
-                  soonCount: soonCount,
-                  onSelected: (tab) => setState(() => _tab = tab),
-                ),
-              ],
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              0,
-              AppSpacing.md,
-              AppSpacing.xl,
-            ),
-            sliver: filtered.isEmpty
-                ? const SliverToBoxAdapter(
-                    child: RepositoryStatePane.empty(
-                      title: 'Không tìm thấy phim',
-                      message: 'Hãy thử từ khóa hoặc bộ lọc khác.',
-                      icon: Icons.search_off_rounded,
+                sliver: SliverList.list(
+                  children: [
+                    DiscoverSearchBar(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      onClear: _clearFilters,
                     ),
-                  )
-                : SliverGrid.builder(
-                    itemCount: filtered.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: AppSpacing.sm,
-                          mainAxisSpacing: AppSpacing.sm,
-                          childAspectRatio: 0.48,
+                    const SizedBox(height: AppSpacing.md),
+                    DiscoverSegmentedControl(
+                      selected: _tab,
+                      nowCount: page.totalItems,
+                      soonCount: page.totalItems,
+                      onSelected: (tab) {
+                        setState(() => _tab = tab);
+                        _resetResults();
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    genres.when(
+                      data: (items) => Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xs,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Tất cả thể loại'),
+                            selected: _genreId == null,
+                            onSelected: (_) {
+                              setState(() => _genreId = null);
+                              _resetResults();
+                            },
+                          ),
+                          for (final genre in items)
+                            ChoiceChip(
+                              label: Text(genre.name),
+                              selected: _genreId == genre.id,
+                              onSelected: (_) {
+                                setState(() => _genreId = genre.id);
+                                _resetResults();
+                              },
+                            ),
+                        ],
+                      ),
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, _) => const SizedBox.shrink(),
+                    ),
+                    if (_query.isNotEmpty || _genreId != null)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _clearFilters,
+                          icon: const Icon(Icons.clear_all),
+                          label: const Text('Xóa bộ lọc'),
                         ),
-                    itemBuilder: (context, index) {
-                      final movie = filtered[index];
-                      return DiscoverMovieCard(
-                        movie: movie,
-                        onOpen: () => context.pushNamed(
-                          'movieDetail',
-                          pathParameters: {'id': '${movie.id}'},
+                      ),
+                    Text(
+                      '${page.totalItems} kết quả',
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  0,
+                  AppSpacing.md,
+                  AppSpacing.xl,
+                ),
+                sliver: _loaded.isEmpty
+                    ? const SliverToBoxAdapter(
+                        child: RepositoryStatePane.empty(
+                          title: 'Không tìm thấy phim',
+                          message: 'Hãy thử từ khóa hoặc bộ lọc khác.',
+                          icon: Icons.search_off_rounded,
                         ),
-                        onBook: () =>
-                            context.go(AppRoutes.showtimesForMovie(movie.id)),
-                      );
-                    },
+                      )
+                    : SliverGrid.builder(
+                        itemCount: _loaded.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: AppSpacing.sm,
+                              mainAxisSpacing: AppSpacing.sm,
+                              childAspectRatio: 0.48,
+                            ),
+                        itemBuilder: (context, index) {
+                          final movie = _loaded[index];
+                          return DiscoverMovieCard(
+                            movie: movie,
+                            onOpen: () => context.pushNamed(
+                              'movieDetail',
+                              pathParameters: {'id': '${movie.id}'},
+                            ),
+                            onBook: () => context.go(
+                              AppRoutes.showtimesForMovie(movie.id),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              if (_hasMore)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: OutlinedButton(
+                      onPressed: _loadingMore ? null : _loadMore,
+                      child: Text(_loadingMore ? 'Đang tải...' : 'Tải thêm'),
+                    ),
                   ),
-          ),
-        ],
+                ),
+            ],
+          );
+        },
       ),
     );
   }

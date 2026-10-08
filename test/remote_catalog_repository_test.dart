@@ -43,6 +43,29 @@ void main() {
   );
 
   test(
+    'maps supported Discover filters and pagination to the catalog contract',
+    () async {
+      final adapter = _CatalogAdapter();
+      final repository = RemoteCatalogRepository(
+        Dio()..httpClientAdapter = adapter,
+      );
+      final page = await repository.getMoviePage(
+        keyword: 'Dune',
+        status: MovieStatus.nowShowing,
+        genreId: 4,
+        page: 2,
+        size: 20,
+      );
+      expect(page.page, 2);
+      expect(adapter.movieQuery['keyword'], 'Dune');
+      expect(adapter.movieQuery['status'], 'NOW_SHOWING');
+      expect(adapter.movieQuery['genreId'], '4');
+      expect(adapter.movieQuery['page'], '2');
+      expect(adapter.movieQuery['size'], '20');
+    },
+  );
+
+  test(
     'handles an empty page and maps gateway errors to ApiException behavior',
     () async {
       final emptyAdapter = _CatalogAdapter(emptyMovies: true);
@@ -220,6 +243,12 @@ class _CatalogAdapter implements HttpClientAdapter {
       'success': true,
       'data': {
         'items': emptyMovies ? const [] : [_movie],
+        'page': 2,
+        'size': 20,
+        'totalItems': 41,
+        'totalPages': 3,
+        'first': false,
+        'last': false,
       },
     });
   }

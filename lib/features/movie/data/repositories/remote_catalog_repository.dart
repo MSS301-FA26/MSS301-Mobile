@@ -17,19 +17,46 @@ class RemoteCatalogRepository implements CatalogRepository {
     MovieStatus? status,
     String? keyword,
   }) async {
+    return (await getMoviePage(
+      status: status,
+      keyword: keyword,
+      size: 100,
+    )).items;
+  }
+
+  @override
+  Future<MoviePageDto> getMoviePage({
+    MovieStatus? status,
+    String? keyword,
+    int? genreId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    final queryParameters = <String, dynamic>{
+      if (status != null && status != MovieStatus.unknown)
+        'status': status.wireValue,
+      if (keyword != null && keyword.trim().isNotEmpty)
+        'keyword': keyword.trim(),
+      'page': page,
+      'size': size,
+    };
+    if (genreId != null) queryParameters['genreId'] = genreId;
     final response = await _get(
       '/api/v1/movies',
-      queryParameters: {
-        if (status != null && status != MovieStatus.unknown)
-          'status': status.wireValue,
-        if (keyword != null && keyword.trim().isNotEmpty)
-          'keyword': keyword.trim(),
-        'page': 0,
-        'size': 100,
-      },
+      queryParameters: queryParameters,
+    );
+    return MoviePageDto.fromJson(_data(response));
+  }
+
+  @override
+  Future<List<GenreDto>> getGenres({int page = 0, int size = 100}) async {
+    final response = await _get(
+      '/api/v1/genres',
+      queryParameters: {'page': page, 'size': size},
     );
     final data = _data(response);
-    return _list(data['items'], MovieDto.fromJson);
+    final items = data['items'];
+    return _list(items, GenreDto.fromJson);
   }
 
   @override

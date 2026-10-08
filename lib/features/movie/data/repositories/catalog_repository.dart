@@ -7,6 +7,16 @@ import '../models/movie_dto.dart';
 abstract interface class CatalogRepository {
   Future<List<MovieDto>> getMovies({MovieStatus? status, String? keyword});
 
+  Future<MoviePageDto> getMoviePage({
+    MovieStatus? status,
+    String? keyword,
+    int? genreId,
+    int page = 0,
+    int size = 20,
+  });
+
+  Future<List<GenreDto>> getGenres({int page = 0, int size = 100});
+
   Future<MovieDto?> getMovie(int movieId);
 
   Future<List<CinemaDto>> getCinemas();
