@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/demo/demo_scenario.dart';
+import '../../../core/network/api_exception.dart';
 import '../../movie/data/models/catalog_enums.dart';
 import '../../movie/data/repositories/catalog_providers.dart';
 import '../../orders/data/models/booking_dto.dart';
 import '../../orders/data/models/booking_enums.dart';
-import '../../orders/data/repositories/booking_providers.dart';
-import '../../orders/data/repositories/booking_repository.dart';
+import '../data/repositories/seat_hold_providers.dart';
+import '../presentation/providers/seat_map_provider.dart';
 
 enum BookingEntryPhase {
   idle,
@@ -177,6 +177,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
   }
 
   Future<BookingDto?> holdSelectedSeats() async {
+    if (state.phase == BookingEntryPhase.submittingHold) return null;
     final showtimeId = state.showtimeId;
     if (showtimeId == null || !state.assignmentComplete) {
       state = _copy(
@@ -198,9 +199,8 @@ class BookingEntryController extends Notifier<BookingEntryState> {
           )
           .toList(growable: false);
       final booking = await ref
-          .read(bookingRepositoryProvider)
-          .holdSeats(
-            DemoIds.user,
+          .read(seatHoldRepositoryProvider)
+          .hold(
             HoldSeatsRequestDto(
               showtimeId: showtimeId,
               seatIds: state.selectedSeatIds.toList(growable: false),
@@ -209,15 +209,35 @@ class BookingEntryController extends Notifier<BookingEntryState> {
           );
       state = _copy(phase: BookingEntryPhase.holding, booking: booking);
       return booking;
-    } on BookingConflictException catch (error) {
+    } on ApiException catch (error) {
+      final freshMap = error.type == ApiErrorType.conflict
+          ? await ref.refresh(seatMapProvider(showtimeId).future)
+          : null;
+      final availableIds = freshMap?.seats
+          .where((seat) => seat.selectable)
+          .map((seat) => seat.seatId)
+          .toSet();
+      final assignments = availableIds == null
+          ? state.assignments
+          : Map<int, SeatTicketAssignment>.fromEntries(
+              state.assignments.entries.where(
+                (entry) => availableIds.contains(entry.key),
+              ),
+            );
       state = _copy(
         phase: BookingEntryPhase.selectingSeats,
-        unavailableSeatIds: {
-          ...state.unavailableSeatIds,
-          ...state.selectedSeatIds,
-        },
-        assignments: const {},
-        message: error.message,
+        unavailableSeatIds: availableIds == null
+            ? state.unavailableSeatIds
+            : {
+                ...state.unavailableSeatIds,
+                ...state.selectedSeatIds.where(
+                  (id) => !availableIds.contains(id),
+                ),
+              },
+        assignments: assignments,
+        message: error.type == ApiErrorType.conflict
+            ? 'Ghế đã thay đổi trạng thái. Hãy chọn lại ghế còn trống.'
+            : error.message,
       );
       return null;
     }
@@ -226,10 +246,17 @@ class BookingEntryController extends Notifier<BookingEntryState> {
   Future<bool> refreshExpiry() async {
     final booking = state.booking;
     if (booking == null || !state.hasActiveHold) return false;
+    if (remainingHold() == Duration.zero) {
+      state = _copy(
+        phase: BookingEntryPhase.expired,
+        message: 'Thá»i gian giá»¯ gháº¿ Ä‘Ã£ háº¿t.',
+      );
+      return true;
+    }
     final refreshed = await ref
-        .read(bookingRepositoryProvider)
+        .read(seatHoldRepositoryProvider)
         .getBooking(booking.id);
-    if (refreshed?.status != BookingStatus.expired) return false;
+    if (refreshed.status != BookingStatus.expired) return false;
     state = _copy(
       phase: BookingEntryPhase.expired,
       booking: refreshed,
@@ -249,9 +276,10 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     final booking = state.booking;
     if (booking != null && state.hasActiveHold) {
       try {
-        await ref.read(bookingRepositoryProvider).cancel(booking.id);
-      } on BookingConflictException {
-        /* Already expired. */
+        await ref.read(seatHoldRepositoryProvider).cancel(booking.id);
+      } on ApiException catch (error) {
+        state = _copy(message: error.message);
+        return;
       }
     }
     state = const BookingEntryState.idle();
@@ -261,14 +289,14 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     final booking = state.booking;
     if (booking == null || !state.hasActiveHold) return true;
     try {
-      await ref.read(bookingRepositoryProvider).cancel(booking.id);
+      await ref.read(seatHoldRepositoryProvider).cancel(booking.id);
       state = _copy(
         phase: BookingEntryPhase.selectingSeats,
         clearBooking: true,
         clearMessage: true,
       );
       return true;
-    } on BookingConflictException catch (error) {
+    } on ApiException catch (error) {
       state = _copy(message: error.message);
       return false;
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -37,6 +38,8 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
     final ready = state.phase == BookingCompletionPhase.ticketReady;
     final expired = state.phase == BookingCompletionPhase.expired;
     final busy = state.isBusy;
+    final realPayment =
+        state.payment?.paymentUrl?.startsWith('mock://') != true;
     final icon = ready
         ? Icons.check_circle_rounded
         : failed
@@ -61,7 +64,9 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
         ? 'Đang mở VNPay'
         : state.phase == BookingCompletionPhase.verifyingBooking
         ? 'Đang xác minh booking'
-        : 'Cổng thanh toán VNPay';
+        : realPayment
+        ? 'VNPay'
+        : 'VNPay Mock';
 
     return AppShell(
       currentIndex: 2,
@@ -108,7 +113,36 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage> {
                   const SizedBox(height: AppSpacing.md),
                 ],
                 if (busy) const CircularProgressIndicator(),
-                if (!busy && !ready && !failed && !expired) ...[
+                if (realPayment &&
+                    state.payment?.paymentUrl != null &&
+                    !ready &&
+                    !failed &&
+                    !expired) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton(
+                      key: const ValueKey('payment-launch'),
+                      label: 'Mở cổng thanh toán',
+                      onPressed: () => launchUrl(
+                        Uri.parse(state.payment!.paymentUrl!),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton(
+                      key: const ValueKey('payment-refresh'),
+                      label: 'Kiểm tra trạng thái',
+                      variant: AppButtonVariant.secondary,
+                      onPressed: () => ref
+                          .read(bookingCompletionProvider.notifier)
+                          .refreshPaymentStatus(),
+                    ),
+                  ),
+                ],
+                if (!realPayment && !busy && !ready && !failed && !expired) ...[
                   SizedBox(
                     width: double.infinity,
                     child: AppButton(

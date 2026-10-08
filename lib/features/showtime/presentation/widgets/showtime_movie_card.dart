@@ -141,34 +141,39 @@ class _RoomSection extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: isImax
-                    ? AppColors.purple.withValues(alpha: 0.3)
-                    : AppColors.goldSurface,
-                borderRadius: AppRadii.small,
-                border: Border.all(
+            if (room.formatBadge.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
                   color: isImax
-                      ? AppColors.purple.withValues(alpha: 0.35)
-                      : AppColors.goldBorder,
+                      ? AppColors.purple.withValues(alpha: 0.3)
+                      : AppColors.goldSurface,
+                  borderRadius: AppRadii.small,
+                  border: Border.all(
+                    color: isImax
+                        ? AppColors.purple.withValues(alpha: 0.35)
+                        : AppColors.goldBorder,
+                  ),
+                ),
+                child: Text(
+                  room.formatBadge,
+                  style: TextStyle(
+                    color: isImax ? AppColors.lavender : AppColors.gold,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              child: Text(
-                room.formatBadge,
-                style: TextStyle(
-                  color: isImax ? AppColors.lavender : AppColors.gold,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+            if (room.screenDetail.isNotEmpty)
+              Text(
+                room.screenDetail,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
                 ),
               ),
-            ),
-            Text(
-              room.screenDetail,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-            ),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -187,7 +192,7 @@ class _RoomSection extends StatelessWidget {
             return _SlotPill(
               slot: slot,
               selected: selectedSlotId == slot.id,
-              onTap: slot.isSoldOut || onSlotSelected == null
+              onTap: !slot.isBookable || onSlotSelected == null
                   ? null
                   : () => onSlotSelected!(slot),
             );
@@ -211,13 +216,13 @@ class _SlotPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final soldOut = slot.isSoldOut;
+    final unavailable = !slot.isBookable;
     return InkWell(
       key: ValueKey('showtime-slot-${slot.id}'),
       onTap: onTap,
       borderRadius: AppRadii.control,
       child: Opacity(
-        opacity: soldOut ? 0.45 : 1,
+        opacity: unavailable ? 0.45 : 1,
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.xs),
           decoration: BoxDecoration(
@@ -248,12 +253,14 @@ class _SlotPill extends StatelessWidget {
                     Text(
                       slot.time,
                       style: TextStyle(
-                        color: soldOut
+                        color: unavailable
                             ? AppColors.textDisabled
                             : AppColors.text,
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
-                        decoration: soldOut ? TextDecoration.lineThrough : null,
+                        decoration: unavailable
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -268,11 +275,13 @@ class _SlotPill extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      soldOut ? 'Hết chỗ' : slot.priceDisplay,
+                      unavailable ? 'Không khả dụng' : slot.priceDisplay,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: soldOut ? AppColors.adultBadge : AppColors.gold,
+                        color: unavailable
+                            ? AppColors.adultBadge
+                            : AppColors.gold,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                       ),

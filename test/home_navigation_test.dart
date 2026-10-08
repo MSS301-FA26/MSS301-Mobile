@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mss301_mobile/app/app.dart';
 import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/account/presentation/pages/account_page.dart';
@@ -12,6 +11,8 @@ import 'package:mss301_mobile/features/showtime/presentation/pages/showtimes_pag
 import 'package:mss301_mobile/features/showtime/presentation/widgets/date_selector.dart';
 import 'package:mss301_mobile/features/movie/presentation/providers/movies_provider.dart';
 
+import 'support/pump_test_app.dart';
+
 void main() {
   setUp(() => appRouter.go(AppRoutes.home));
 
@@ -20,16 +21,15 @@ void main() {
       await tester.binding.setSurfaceSize(Size(width, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-      await tester.pumpAndSettle();
+      await pumpTestApp(tester);
 
       expect(find.text('Phim đang chiếu'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('hero-open-2')));
+      await tester.tap(find.byKey(const ValueKey('hero-open-1')));
       await tester.pumpAndSettle();
 
       expect(find.text('Chi tiết phim'), findsOneWidget);
       expect(
-        find.textContaining('Dữ liệu đang chạy từ CatalogRepository'),
+        find.textContaining('Dữ liệu phim được tải từ CatalogRepository'),
         findsOneWidget,
       );
 
@@ -43,8 +43,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(360, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-    await tester.pumpAndSettle();
+    await pumpTestApp(tester);
 
     await tester.tap(find.text('Xem trailer'));
     await tester.pumpAndSettle();
@@ -61,9 +60,10 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-    await tester.pumpAndSettle();
+    await pumpTestApp(tester);
 
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
 
@@ -82,8 +82,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-    await tester.pumpAndSettle();
+    await pumpTestApp(tester);
 
     final notification = tester.widget<IconButton>(
       find.widgetWithIcon(IconButton, Icons.notifications_none),
@@ -107,8 +106,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-    await tester.pumpAndSettle();
+    await pumpTestApp(tester);
 
     await tester.tap(
       find.byKey(const ValueKey('bottom-nav-icon-0')).hitTestable(),
@@ -128,8 +126,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-    await tester.pumpAndSettle();
+    await pumpTestApp(tester);
 
     final tabPages = [DiscoverPage, ShowtimesPage, OrdersPage, AccountPage];
 
@@ -154,8 +151,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-    await tester.pumpAndSettle();
+    await pumpTestApp(tester);
 
     await tester.tap(
       find.byKey(const ValueKey('bottom-nav-icon-3')).hitTestable(),

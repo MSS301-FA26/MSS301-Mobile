@@ -43,12 +43,12 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.orders,
       name: 'orders',
-      builder: (context, state) => const OrdersPage(),
+      builder: (context, state) => const AuthGuard(child: OrdersPage()),
     ),
     GoRoute(
       path: AppRoutes.account,
       name: 'account',
-      builder: (context, state) => const AccountPage(),
+      builder: (context, state) => const AuthGuard(child: AccountPage()),
     ),
     GoRoute(
       path: '/movie/:id',
@@ -112,29 +112,41 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.concessionsPattern,
       name: 'concessions',
-      builder: (context, state) => ConcessionsPage(
-        bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+      builder: (context, state) => AuthGuard(
+        child: ConcessionsPage(
+          bookingId:
+              int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+        ),
       ),
     ),
     GoRoute(
       path: AppRoutes.checkoutPattern,
       name: 'checkout',
-      builder: (context, state) => CheckoutPage(
-        bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+      builder: (context, state) => AuthGuard(
+        child: CheckoutPage(
+          bookingId:
+              int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+        ),
       ),
     ),
     GoRoute(
       path: AppRoutes.paymentPattern,
       name: 'payment',
-      builder: (context, state) => PaymentResultPage(
-        paymentId: int.tryParse(state.pathParameters['paymentId'] ?? '') ?? -1,
+      builder: (context, state) => AuthGuard(
+        child: PaymentResultPage(
+          paymentId:
+              int.tryParse(state.pathParameters['paymentId'] ?? '') ?? -1,
+        ),
       ),
     ),
     GoRoute(
       path: AppRoutes.ticketPattern,
       name: 'ticket',
-      builder: (context, state) => TicketPage(
-        bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+      builder: (context, state) => AuthGuard(
+        child: TicketPage(
+          bookingId:
+              int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+        ),
       ),
     ),
     GoRoute(

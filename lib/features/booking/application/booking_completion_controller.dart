@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/demo/demo_scenario.dart';
 import '../../movie/data/models/food_quote_dto.dart';
 import '../../movie/data/repositories/catalog_providers.dart';
 import '../../orders/data/models/booking_dto.dart';
@@ -11,6 +10,7 @@ import '../../payment/data/models/payment_dto.dart';
 import '../../payment/data/models/payment_enums.dart';
 import '../../payment/data/repositories/payment_providers.dart';
 import '../../seat/application/booking_entry_session.dart';
+import '../../seat/data/repositories/seat_hold_providers.dart';
 
 enum BookingCompletionPhase {
   idle,
@@ -87,9 +87,10 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     }
     state = const BookingCompletionState(phase: BookingCompletionPhase.loading);
     try {
-      final booking = await ref
-          .read(bookingRepositoryProvider)
-          .getBooking(bookingId);
+      final seatHold = ref.read(seatHoldRepositoryProvider);
+      final booking = seatHold.canEnterMockCheckout
+          ? await ref.read(bookingRepositoryProvider).getBooking(bookingId)
+          : await seatHold.getBooking(bookingId);
       if (booking == null) throw StateError('Không tìm thấy booking.');
       if (booking.status == BookingStatus.expired) {
         state = BookingCompletionState(
@@ -99,11 +100,12 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         );
         return;
       }
-      final catalog = ref.read(catalogRepositoryProvider);
-      final products = <FoodProductDto>[
-        ...await catalog.getFoodCombos(),
-        ...await catalog.getFoodItems(),
-      ];
+      final products = <FoodProductDto>[];
+      if (seatHold.canEnterMockCheckout) {
+        final catalog = ref.read(mockCatalogRepositoryProvider);
+        products.addAll(await catalog.getFoodCombos());
+        products.addAll(await catalog.getFoodItems());
+      }
       state = BookingCompletionState(
         phase: BookingCompletionPhase.choosingFood,
         booking: booking,
@@ -158,19 +160,31 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
   Future<bool> prepareCheckout() async {
     final booking = state.booking;
     if (booking == null) return false;
+    final expiry = booking.holdExpiresAt;
+    if (expiry != null && !ref.read(appClockProvider).now().isBefore(expiry)) {
+      state = state.copyWith(
+        phase: BookingCompletionPhase.expired,
+        message: 'Thời gian giữ ghế đã hết.',
+      );
+      return false;
+    }
     state = state.copyWith(
       phase: BookingCompletionPhase.preparingCheckout,
       clearMessage: true,
     );
     try {
-      final repository = ref.read(bookingRepositoryProvider);
-      final updated = await repository.updateItems(
-        booking.id,
-        UpdateHoldingBookingRequestDto(
-          tickets: _ticketSelections,
-          foods: _foodSelections,
-        ),
-      );
+      final seatHold = ref.read(seatHoldRepositoryProvider);
+      final updated = seatHold.canEnterMockCheckout
+          ? await ref
+                .read(bookingRepositoryProvider)
+                .updateItems(
+                  booking.id,
+                  UpdateHoldingBookingRequestDto(
+                    tickets: _ticketSelections,
+                    foods: _foodSelections,
+                  ),
+                )
+          : booking;
       final quote = await ref
           .read(catalogRepositoryProvider)
           .createCheckoutQuote(
@@ -221,21 +235,21 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       clearMessage: true,
     );
     try {
-      final checkedOut = await ref
-          .read(bookingRepositoryProvider)
-          .checkout(
-            booking.id,
-            UpdateHoldingBookingRequestDto(
-              tickets: _ticketSelections,
-              foods: _foodSelections,
-            ),
-          );
+      final seatHold = ref.read(seatHoldRepositoryProvider);
+      final checkedOut = seatHold.canEnterMockCheckout
+          ? await ref
+                .read(bookingRepositoryProvider)
+                .checkout(
+                  booking.id,
+                  UpdateHoldingBookingRequestDto(
+                    tickets: _ticketSelections,
+                    foods: _foodSelections,
+                  ),
+                )
+          : booking;
       final payment = await ref
           .read(paymentRepositoryProvider)
-          .createPayment(
-            DemoIds.user,
-            CreatePaymentRequestDto(bookingId: checkedOut.id),
-          );
+          .createPayment(0, CreatePaymentRequestDto(bookingId: checkedOut.id));
       state = state.copyWith(
         phase: BookingCompletionPhase.paymentPending,
         booking: checkedOut,
@@ -260,11 +274,14 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       );
       return;
     }
+    final seatHold = ref.read(seatHoldRepositoryProvider);
     final booking = payment.bookingId == null
         ? null
-        : await ref
+        : seatHold.canEnterMockCheckout
+        ? await ref
               .read(bookingRepositoryProvider)
-              .getBooking(payment.bookingId!);
+              .getBooking(payment.bookingId!)
+        : await seatHold.getBooking(payment.bookingId!);
     state = state.copyWith(
       phase: payment.status == PaymentStatus.failed
           ? BookingCompletionPhase.paymentFailed
@@ -281,18 +298,60 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
   }) async {
     final payment = state.payment;
     if (payment == null) return false;
+
     state = state.copyWith(
       phase: BookingCompletionPhase.openingPaymentGateway,
       clearMessage: true,
     );
+
     final result = await ref
         .read(paymentLauncherProvider)
         .open(payment, mode: mode);
+
     state = state.copyWith(
       phase: BookingCompletionPhase.paymentPending,
       message: result.message,
     );
+
     return result.isUsable;
+  }
+
+  Future<bool> refreshPaymentStatus() async {
+    final payment = state.payment;
+    if (payment == null) return false;
+
+    final refreshed = await ref
+        .read(paymentRepositoryProvider)
+        .getPayment(payment.id);
+
+    if (refreshed == null) {
+      state = state.copyWith(
+        phase: BookingCompletionPhase.error,
+        message: 'Không tìm thấy payment.',
+      );
+      return false;
+    }
+
+    final phase = switch (refreshed.status) {
+      PaymentStatus.success => BookingCompletionPhase.verifyingBooking,
+      PaymentStatus.failed => BookingCompletionPhase.paymentFailed,
+      _ => BookingCompletionPhase.paymentPending,
+    };
+
+    final booking = refreshed.bookingId == null
+        ? state.booking
+        : await ref
+              .read(seatHoldRepositoryProvider)
+              .getBooking(refreshed.bookingId!);
+
+    state = state.copyWith(
+      phase: phase,
+      payment: refreshed,
+      booking: booking,
+      clearMessage: true,
+    );
+
+    return refreshed.status == PaymentStatus.success;
   }
 
   Future<bool> simulateSuccess() async {
@@ -362,10 +421,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       }
       final payment = await ref
           .read(paymentRepositoryProvider)
-          .createPayment(
-            DemoIds.user,
-            CreatePaymentRequestDto(bookingId: booking.id),
-          );
+          .createPayment(0, CreatePaymentRequestDto(bookingId: booking.id));
       state = state.copyWith(
         phase: BookingCompletionPhase.paymentPending,
         payment: payment,
@@ -407,5 +463,5 @@ final ticketBookingProvider = FutureProvider.family<BookingDto?, int>((
   ref,
   id,
 ) {
-  return ref.watch(bookingRepositoryProvider).getBooking(id);
+  return ref.watch(seatHoldRepositoryProvider).getBooking(id);
 });

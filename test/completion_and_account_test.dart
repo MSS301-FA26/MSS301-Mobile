@@ -1,29 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mss301_mobile/app/app.dart';
 import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
-import 'package:mss301_mobile/features/auth/application/mock_auth_session.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/concessions_page.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/ticket_page.dart';
+
+import 'support/pump_test_app.dart';
 
 void main() {
   Future<ProviderContainer> pumpApp(
     WidgetTester tester, {
     Size size = const Size(390, 844),
   }) async {
-    appRouter.go(AppRoutes.home);
-    await tester.binding.setSurfaceSize(size);
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-    await tester.pumpAndSettle();
-    return ProviderScope.containerOf(
-      tester.element(find.byType(CinePremierApp)),
-    );
+    return pumpTestApp(tester, size: size);
   }
 
   Future<void> openPayment(WidgetTester tester) async {
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -92,22 +87,12 @@ void main() {
     expect(find.byKey(const ValueKey('payment-success')), findsOneWidget);
   });
 
-  testWidgets('R6 guest account signs in and opens account core actions', (
+  testWidgets('R6 authenticated customer opens account core actions', (
     tester,
   ) async {
-    final container = await pumpApp(tester, size: const Size(360, 800));
-    container.read(mockAuthSessionProvider.notifier).signOut();
+    await pumpApp(tester, size: const Size(360, 800));
     appRouter.go(AppRoutes.account);
     await tester.pumpAndSettle();
-    expect(find.text('Đăng nhập để quản lý vé và quyền lợi'), findsOneWidget);
-
-    appRouter.go(AppRoutes.wallet);
-    await tester.pumpAndSettle();
-    expect(find.text('Đăng nhập'), findsAtLeastNWidgets(1));
-
-    await tester.tap(find.byKey(const ValueKey('auth-submit')));
-    await tester.pumpAndSettle();
-    expect(container.read(mockAuthSessionProvider).isAuthenticated, isTrue);
     expect(find.text('Hồ sơ cá nhân'), findsOneWidget);
     expect(find.text('CinePoints'), findsOneWidget);
   });

@@ -1,5 +1,6 @@
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../models/catalog_enums.dart';
+import '../models/cinema_dto.dart';
 import '../models/food_quote_dto.dart';
 import '../models/movie_dto.dart';
 
@@ -7,6 +8,8 @@ abstract interface class CatalogRepository {
   Future<List<MovieDto>> getMovies({MovieStatus? status, String? keyword});
 
   Future<MovieDto?> getMovie(int movieId);
+
+  Future<List<CinemaDto>> getCinemas();
 
   Future<List<ShowtimeDto>> getShowtimes({int? movieId, DateTime? date});
 

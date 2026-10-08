@@ -7,7 +7,7 @@ import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
-import '../../../auth/application/mock_auth_session.dart';
+import '../../../auth/application/auth_session.dart';
 import '../providers/account_summary_provider.dart';
 import '../widgets/account_menu.dart';
 import '../widgets/account_profile_card.dart';
@@ -18,7 +18,7 @@ class AccountPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(mockAuthSessionProvider);
+    final session = ref.watch(authSessionProvider);
     if (!session.isAuthenticated) {
       return AppShell(
         currentIndex: 4,
@@ -212,7 +212,7 @@ class AccountPage extends ConsumerWidget {
                     ),
                   );
                   if (confirmed == true) {
-                    ref.read(mockAuthSessionProvider.notifier).signOut();
+                    ref.read(authSessionProvider.notifier).signOut();
                   }
                 },
               ),

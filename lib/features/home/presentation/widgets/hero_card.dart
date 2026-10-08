@@ -78,8 +78,10 @@ class HeroCard extends StatelessWidget {
                             variant: AgeBadgeVariant.hero,
                           ),
                           const SizedBox(width: 7),
-                          Flexible(child: _HeroTag(movie.format)),
-                          const SizedBox(width: 7),
+                          if (movie.format.isNotEmpty) ...[
+                            Flexible(child: _HeroTag(movie.format)),
+                            const SizedBox(width: 7),
+                          ],
                           const Icon(
                             Icons.schedule,
                             size: 14,

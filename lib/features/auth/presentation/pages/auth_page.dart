@@ -6,7 +6,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../../application/mock_auth_session.dart';
+import '../../application/auth_session.dart';
 
 enum AuthPageMode { login, register, forgotPassword }
 
@@ -23,7 +23,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _email = TextEditingController(text: 'demo@cinepremier.vn');
-  final _password = TextEditingController(text: '12345678');
+  final _password = TextEditingController();
   final _otp = TextEditingController();
   var _otpStep = false;
   var _hidePassword = true;
@@ -39,20 +39,16 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final controller = ref.read(mockAuthSessionProvider.notifier);
+    final controller = ref.read(authSessionProvider.notifier);
     if (widget.mode == AuthPageMode.login) {
-      final pending = await controller.signIn(
-        email: _email.text.trim(),
+      final signedIn = await controller.login(
+        username: _email.text.trim(),
         password: _password.text,
       );
-      if (!mounted || !ref.read(mockAuthSessionProvider).isAuthenticated) {
+      if (!mounted || !signedIn) {
         return;
       }
-      context.go(
-        pending == null
-            ? AppRoutes.account
-            : AppRoutes.seatSelection(pending.showtimeId),
-      );
+      context.go(_postLoginRoute(context));
       return;
     }
     if (widget.mode == AuthPageMode.register) {
@@ -64,7 +60,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         );
         if (sent && mounted) setState(() => _otpStep = true);
       } else {
-        final verified = await controller.verifyOtp(_otp.text.trim());
+        final verified = await controller.verifyEmail(
+          email: _email.text.trim(),
+          otp: _otp.text.trim(),
+        );
         if (verified && mounted) context.go(AppRoutes.account);
       }
       return;
@@ -74,6 +73,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       if (sent && mounted) setState(() => _otpStep = true);
     } else {
       final reset = await controller.resetPassword(
+        email: _email.text.trim(),
         otp: _otp.text.trim(),
         password: _password.text,
       );
@@ -81,9 +81,24 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     }
   }
 
+  String _postLoginRoute(BuildContext context) {
+    final route = GoRouterState.of(context).uri.queryParameters['continue'];
+    if (route != null && route.startsWith('/') && !route.startsWith('//')) {
+      return route;
+    }
+    return AppRoutes.home;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(mockAuthSessionProvider);
+    final session = ref.watch(authSessionProvider);
+    if (widget.mode == AuthPageMode.login && session.isAuthenticated) {
+      final route = _postLoginRoute(context);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go(route);
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final title = switch (widget.mode) {
       AuthPageMode.login => 'Đăng nhập',
       AuthPageMode.register => _otpStep ? 'Xác thực OTP' : 'Tạo tài khoản',
@@ -111,7 +126,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
             Text(title, style: AppTextStyles.heroTitle),
             const SizedBox(height: AppSpacing.xs),
             const Text(
-              'Phiên xác thực mock • Không gửi dữ liệu ra ngoài thiết bị',
+              'Đăng nhập an toàn bằng tài khoản CinePremier',
               style: AppTextStyles.caption,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -149,7 +164,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       maxLength: 6,
                       decoration: const InputDecoration(
                         labelText: 'OTP',
-                        helperText: 'Mã demo: 123456',
+                        helperText: 'Nhập mã OTP đã được gửi đến email',
                       ),
                       validator: (value) =>
                           value?.length != 6 ? 'OTP gồm 6 chữ số' : null,

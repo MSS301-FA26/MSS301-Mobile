@@ -90,7 +90,15 @@ class TicketPage extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      _MockQr(data: booking.qrCode ?? booking.bookingCode),
+                      Text(
+                        booking.qrCode ?? booking.bookingCode,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         booking.bookingCode,
@@ -169,6 +177,8 @@ String _ticketLabel(TicketType type) => switch (type) {
   _ => 'Vé người lớn',
 };
 
+// Legacy renderer retained for test fixtures; production displays backend QR payload text.
+// ignore: unused_element
 class _MockQr extends StatelessWidget {
   const _MockQr({required this.data});
 

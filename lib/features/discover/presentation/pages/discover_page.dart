@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +13,6 @@ import '../../../movie/presentation/providers/movies_provider.dart';
 import '../widgets/discover_movie_card.dart';
 import '../widgets/discover_search_bar.dart';
 import '../widgets/discover_segmented_control.dart';
-import '../widgets/format_filter_chips.dart';
 
 class DiscoverPage extends ConsumerStatefulWidget {
   const DiscoverPage({super.key});
@@ -23,20 +24,21 @@ class DiscoverPage extends ConsumerStatefulWidget {
 class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   final _searchController = TextEditingController();
   DiscoverMovieTab _tab = DiscoverMovieTab.now;
-  String _format = 'Tất cả định dạng';
   String _query = '';
-
-  static const _filters = [
-    'Tất cả định dạng',
-    'IMAX Laser',
-    'Dolby Atmos',
-    '3D Digital',
-  ];
+  Timer? _searchDebounce;
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _query = value.trim());
+    });
   }
 
   bool _matches(Movie movie) {
@@ -44,11 +46,6 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
         ? movie.isNowShowing
         : movie.isComingSoon;
     if (!inTab) return false;
-
-    if (_format != 'Tất cả định dạng' &&
-        !movie.format.toLowerCase().contains(_format.toLowerCase())) {
-      return false;
-    }
 
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return true;
@@ -60,7 +57,9 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
 
   @override
   Widget build(BuildContext context) {
-    final moviesState = ref.watch(moviesProvider);
+    final moviesState = _query.isEmpty
+        ? ref.watch(moviesProvider)
+        : ref.watch(movieSearchProvider(_query));
     if (moviesState.isLoading) {
       return const AppShell(
         currentIndex: 1,
@@ -71,7 +70,9 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
       return AppShell(
         currentIndex: 1,
         body: RepositoryStatePane.error(
-          onRetry: () => ref.invalidate(moviesProvider),
+          onRetry: () => _query.isEmpty
+              ? ref.invalidate(moviesProvider)
+              : ref.invalidate(movieSearchProvider(_query)),
         ),
       );
     }
@@ -95,8 +96,9 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
               children: [
                 DiscoverSearchBar(
                   controller: _searchController,
-                  onChanged: (value) => setState(() => _query = value),
+                  onChanged: _onSearchChanged,
                   onClear: () => setState(() {
+                    _searchDebounce?.cancel();
                     _searchController.clear();
                     _query = '';
                   }),
@@ -107,12 +109,6 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                   nowCount: nowCount,
                   soonCount: soonCount,
                   onSelected: (tab) => setState(() => _tab = tab),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                FormatFilterChips(
-                  filters: _filters,
-                  selected: _format,
-                  onSelected: (format) => setState(() => _format = format),
                 ),
               ],
             ),

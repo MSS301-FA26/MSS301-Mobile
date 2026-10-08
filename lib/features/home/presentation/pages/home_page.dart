@@ -76,11 +76,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         .where((movie) => movie.isNowShowing && _matchesGenre(movie))
         .toList();
     final comingSoon = movies.where((movie) => movie.isComingSoon).toList();
-    final heroes = [
-      movies.firstWhere((movie) => movie.id == 2),
-      movies.firstWhere((movie) => movie.id == 1),
-      movies.firstWhere((movie) => movie.id == 4),
-    ];
+    final heroes = movies.take(3).toList(growable: false);
 
     return AppShell(
       currentIndex: 0,

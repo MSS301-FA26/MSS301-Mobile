@@ -43,4 +43,7 @@ abstract final class AppRoutes {
   static String ticket(int bookingId) => '/ticket/$bookingId';
 
   static String previewRefund(int bookingId) => '/preview/refund/$bookingId';
+
+  static String loginWithRedirect(String route) =>
+      Uri(path: login, queryParameters: {'continue': route}).toString();
 }
