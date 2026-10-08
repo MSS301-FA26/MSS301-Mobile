@@ -10,7 +10,10 @@ import '../../../../shared/widgets/app_image.dart';
 import '../../../../shared/widgets/age_badge.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../models/movie.dart';
+import '../../data/models/recommendation_dto.dart';
+import '../../data/models/review_dto.dart';
 import '../providers/movies_provider.dart';
+import '../providers/movie_engagement_provider.dart';
 import '../widgets/trailer_preview_dialog.dart';
 
 class MovieDetailPage extends ConsumerWidget {
@@ -21,6 +24,9 @@ class MovieDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final movieState = ref.watch(movieProvider(movieId));
+    final reviewSummary = ref.watch(movieReviewSummaryProvider(movieId));
+    final reviews = ref.watch(movieReviewsProvider(movieId));
+    final recommendations = ref.watch(movieRecommendationsProvider(movieId));
     if (movieState.isLoading) {
       return const Scaffold(body: RepositoryStatePane.loading());
     }
@@ -241,6 +247,27 @@ class MovieDetailPage extends ConsumerWidget {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 24),
+                        reviewSummary.when(
+                          loading: () => const _SectionLoading(
+                            label: 'Đang tải đánh giá...',
+                          ),
+                          error: (_, _) => const SizedBox.shrink(),
+                          data: (summary) => _ReviewSection(
+                            summary: summary,
+                            reviews: reviews.maybeWhen(
+                              data: (items) => items,
+                              orElse: () => const [],
+                            ),
+                          ),
+                        ),
+                        recommendations.when(
+                          loading: () => const SizedBox.shrink(),
+                          error: (_, _) => const SizedBox.shrink(),
+                          data: (items) => items.isEmpty
+                              ? const SizedBox.shrink()
+                              : _RecommendationSection(items: items),
+                        ),
                       ],
                     ),
                   ),
@@ -249,6 +276,139 @@ class MovieDetailPage extends ConsumerWidget {
             ),
     );
   }
+}
+
+class _SectionLoading extends StatelessWidget {
+  const _SectionLoading({required this.label});
+  final String label;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    child: Text(label, style: AppTextStyles.caption),
+  );
+}
+
+class _ReviewSection extends StatelessWidget {
+  const _ReviewSection({required this.summary, required this.reviews});
+  final ReviewSummaryDto summary;
+  final List<ReviewDto> reviews;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceRaised,
+      border: Border.all(color: AppColors.border),
+      borderRadius: AppRadii.card,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Đánh giá từ khán giả',
+          style: AppTextStyles.sectionTitle.copyWith(color: AppColors.gold),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            const Icon(Icons.star_rounded, color: AppColors.gold),
+            const SizedBox(width: 6),
+            Text(
+              '${summary.averageRating.toStringAsFixed(1)}/10',
+              style: AppTextStyles.sectionTitle,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${summary.totalReviews} lượt đánh giá',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
+        if (reviews.isNotEmpty) ...[
+          const Divider(height: 24),
+          ...reviews
+              .take(3)
+              .map(
+                (review) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${review.userName} · ${review.rating}/10',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(review.content, style: AppTextStyles.body),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      ],
+    ),
+  );
+}
+
+class _RecommendationSection extends StatelessWidget {
+  const _RecommendationSection({required this.items});
+  final List<RecommendationDto> items;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: 24),
+      Text(
+        'Có thể bạn cũng thích',
+        style: AppTextStyles.sectionTitle.copyWith(color: AppColors.gold),
+      ),
+      const SizedBox(height: 10),
+      SizedBox(
+        height: 190,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: items.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 12),
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return SizedBox(
+              width: 132,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: AppRadii.control,
+                      child: AppImage(
+                        asset: item.posterUrl ?? '',
+                        width: 132,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  if (item.averageRating != null)
+                    Text(
+                      '★ ${item.averageRating!.toStringAsFixed(1)}',
+                      style: const TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    ],
+  );
 }
 
 class _DetailRow extends StatelessWidget {
