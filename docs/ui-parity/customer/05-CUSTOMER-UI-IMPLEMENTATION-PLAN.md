@@ -1,4 +1,6 @@
-# Customer UI Implementation Plan (No implementation in this audit)
+# Customer UI Implementation Plan (B01-B10 completed)
+
+All planned CUSTOMER presentation batches B01-B10 are complete. No further implementation batch is authorized by this plan. Remaining `PARTIAL` rows are intentional scope-limited parity differences or presentation differences that do not block the supported customer journey; `DEFER_BACKEND_UNSUPPORTED` rows must not be enabled without a confirmed backend contract.
 
 ## Batches
 
@@ -13,7 +15,7 @@
 | UI-B07 Checkout/Payment | Match summary, payment and result | concessions, checkout, payment | booking pages/widgets | booking completion, payment repositories/launcher, booking providers | Payment redirect and duplicate completion | Quote, payment initiation/result and retry remain contract-compatible. |
 | UI-B08 Tickets/History/Detail | Match ticket and history hierarchy | orders/ticket | orders/ticket pages/widgets | booking repositories/providers | QR/status/cancel semantics | Real booking list/detail and QR data preserved. |
 | UI-B09 Account/Profile/Auth | Match profile and auth entry | account/profile/security/auth | account/auth pages/widgets | auth session, token storage, account repositories | Guard/continuation and sensitive mutation | Login/register/reset/profile update preserve current remote calls. |
-| UI-B10 States/consistency | Final cross-screen visual QA | All | shared state widgets and affected pages | No contract changes | Inconsistent edge states | Loading/empty/error/success/disabled/focus states documented and tested visually. |
+| UI-B10 States/consistency | Final cross-screen visual QA | All | shared state widgets and affected pages | No contract changes | Inconsistent edge states | Loading/empty/error/success/disabled/focus states audited; remaining differences classified in the final parity matrix. **COMPLETED** |
 
 ## Recommended order
 
