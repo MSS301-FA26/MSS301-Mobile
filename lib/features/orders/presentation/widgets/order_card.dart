@@ -46,6 +46,8 @@ class UpcomingOrderCard extends StatelessWidget {
               ),
               Text(
                 order.ticketCode,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.textDisabled,
                   fontSize: 11,
@@ -251,6 +253,8 @@ class CompletedOrderCard extends StatelessWidget {
               const Spacer(),
               Text(
                 order.ticketCode,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.textDisabled,
                   fontSize: 11,
