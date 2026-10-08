@@ -73,8 +73,9 @@ class TicketPage extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surfaceRaised,
                     borderRadius: AppRadii.card,
+                    border: Border.all(color: AppColors.goldBorder),
                   ),
                   child: Column(
                     children: [
@@ -84,7 +85,7 @@ class TicketPage extends ConsumerWidget {
                             'Phim',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Colors.black,
+                          color: AppColors.text,
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
                         ),
@@ -94,7 +95,7 @@ class TicketPage extends ConsumerWidget {
                         booking.qrCode ?? booking.bookingCode,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: Colors.black,
+                          color: AppColors.gold,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w700,
                         ),
@@ -103,7 +104,7 @@ class TicketPage extends ConsumerWidget {
                       Text(
                         booking.bookingCode,
                         style: const TextStyle(
-                          color: Colors.black,
+                          color: AppColors.text,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w800,
                         ),
