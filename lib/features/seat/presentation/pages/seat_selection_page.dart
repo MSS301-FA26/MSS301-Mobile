@@ -497,7 +497,7 @@ class _AssignmentSummary extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.all(AppSpacing.md),
     decoration: BoxDecoration(
-      color: AppColors.surface,
+      color: AppColors.surfaceRaised,
       borderRadius: AppRadii.card,
       border: Border.all(color: AppColors.border),
     ),
@@ -541,7 +541,7 @@ class _ShowtimeSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: AppRadii.card,
         border: Border.all(color: AppColors.border),
       ),
@@ -574,7 +574,7 @@ class _ShowtimeSummary extends StatelessWidget {
               ),
               child: Text(
                 '${remaining!.inMinutes.toString().padLeft(2, '0')}:${(remaining!.inSeconds % 60).toString().padLeft(2, '0')}',
-                style: const TextStyle(
+                style: AppTextStyles.label.copyWith(
                   color: AppColors.gold,
                   fontWeight: FontWeight.w900,
                 ),
@@ -593,11 +593,13 @@ class _ScreenIndicator extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     children: [
       Container(
-        height: 6,
-        margin: const EdgeInsets.symmetric(horizontal: 36),
+        height: 8,
+        margin: const EdgeInsets.symmetric(horizontal: 28),
         decoration: BoxDecoration(
-          color: AppColors.textMuted,
-          borderRadius: BorderRadius.circular(999),
+          gradient: const LinearGradient(
+            colors: [AppColors.gold, AppColors.textMuted],
+          ),
+          borderRadius: AppRadii.control,
           boxShadow: const [BoxShadow(color: AppColors.gold, blurRadius: 12)],
         ),
       ),
@@ -736,9 +738,8 @@ class _SeatButton extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: TextStyle(
+            style: AppTextStyles.meta.copyWith(
               color: AppColors.text,
-              fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -753,8 +754,8 @@ class _SeatLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Wrap(
-    spacing: 12,
-    runSpacing: 8,
+    spacing: AppSpacing.sm,
+    runSpacing: AppSpacing.xs,
     children: [
       _LegendItem(label: 'Thường', color: AppColors.surfaceRaised),
       _LegendItem(label: 'VIP', color: AppColors.purple),
@@ -810,7 +811,7 @@ class _SeatActionBar extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Row(
@@ -830,9 +831,8 @@ class _SeatActionBar extends StatelessWidget {
                 ),
                 Text(
                   total.format(),
-                  style: const TextStyle(
+                  style: AppTextStyles.sectionTitle.copyWith(
                     color: AppColors.gold,
-                    fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
