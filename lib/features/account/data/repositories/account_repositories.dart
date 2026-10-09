@@ -26,6 +26,8 @@ abstract interface class LoyaltyRepository {
   Future<LoyaltyDto> getLoyalty(int userId);
 
   Future<LoyaltyConfigurationDto> getConfiguration();
+
+  Future<LoyaltyDto> redeemPoints(int points);
 }
 
 class AccountNotFoundException implements Exception {

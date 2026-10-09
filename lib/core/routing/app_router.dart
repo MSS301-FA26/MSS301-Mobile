@@ -10,6 +10,7 @@ import '../../features/booking/presentation/pages/concessions_page.dart';
 import '../../features/booking/presentation/pages/payment_result_page.dart';
 import '../../features/booking/presentation/pages/ticket_page.dart';
 import '../../features/discover/presentation/pages/discover_page.dart';
+import '../../features/food/presentation/pages/food_orders_history_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/movie/presentation/pages/movie_detail_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
@@ -93,6 +94,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.points,
       builder: (context, state) => const AuthGuard(child: PointsPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.foodOrders,
+      builder: (context, state) =>
+          const AuthGuard(child: FoodOrdersHistoryPage()),
     ),
     GoRoute(
       path: AppRoutes.cinemaInfo,

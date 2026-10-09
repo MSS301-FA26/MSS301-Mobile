@@ -42,6 +42,42 @@ class MockCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<MoviePageDto> getMoviePage({
+    MovieStatus? status,
+    String? keyword,
+    int? genreId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    final movies = await getMovies(status: status, keyword: keyword);
+    final start = page * size;
+    final items = start >= movies.length
+        ? <MovieDto>[]
+        : movies.skip(start).take(size).toList(growable: false);
+    return MoviePageDto(
+      items: items,
+      page: page,
+      size: size,
+      totalItems: movies.length,
+      totalPages: (movies.length / size).ceil(),
+      first: page == 0,
+      last: start + items.length >= movies.length,
+    );
+  }
+
+  @override
+  Future<List<GenreDto>> getGenres({int page = 0, int size = 100}) async {
+    await _wait();
+    final genres = <int, GenreDto>{};
+    for (final movie in _fixtures.movies()) {
+      for (final genre in movie.genres) {
+        genres[genre.id] = genre;
+      }
+    }
+    return genres.values.skip(page * size).take(size).toList(growable: false);
+  }
+
+  @override
   Future<MovieDto?> getMovie(int movieId) async {
     await _wait();
     for (final movie in _fixtures.movies()) {

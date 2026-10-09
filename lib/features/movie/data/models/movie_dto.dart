@@ -127,6 +127,36 @@ class MovieDto {
   );
 }
 
+class MoviePageDto {
+  const MoviePageDto({
+    required this.items,
+    required this.page,
+    required this.size,
+    required this.totalItems,
+    required this.totalPages,
+    required this.first,
+    required this.last,
+  });
+
+  final List<MovieDto> items;
+  final int page;
+  final int size;
+  final int totalItems;
+  final int totalPages;
+  final bool first;
+  final bool last;
+
+  factory MoviePageDto.fromJson(Map<String, Object?> json) => MoviePageDto(
+    items: listFromJson(json['items'], MovieDto.fromJson),
+    page: intFromJson(json['page'] ?? 0),
+    size: intFromJson(json['size'] ?? 0),
+    totalItems: intFromJson(json['totalItems'] ?? 0),
+    totalPages: intFromJson(json['totalPages'] ?? 0),
+    first: boolFromJson(json['first']),
+    last: boolFromJson(json['last']),
+  );
+}
+
 class MoviePresentationMetadata {
   const MoviePresentationMetadata({
     required this.movieId,

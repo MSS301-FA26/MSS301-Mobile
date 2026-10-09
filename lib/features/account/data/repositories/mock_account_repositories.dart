@@ -39,7 +39,7 @@ class MockAccountStore
   final Duration delay;
   UserProfileDto _profile;
   WalletDto _wallet;
-  final LoyaltyDto _loyalty;
+  LoyaltyDto _loyalty;
   final List<WalletTransactionDto> _transactions = [];
   final List<WithdrawalDto> _withdrawals = [];
   var _nextWithdrawalId = 8001;
@@ -162,6 +162,27 @@ class MockAccountStore
       expiryDay: 31,
       expiryTime: '23:59:59',
     );
+  }
+
+  @override
+  Future<LoyaltyDto> redeemPoints(int points) async {
+    await _wait();
+    if (points <= 0) {
+      throw const AccountConflictException('Sá»‘ Ä‘iá»ƒm pháº£i lá»›n hÆ¡n 0.');
+    }
+    if (points > _loyalty.points) {
+      throw const AccountConflictException(
+        'KhÃ´ng Ä‘á»§ Ä‘iá»ƒm thá»ƒ thá»±c hiá»‡n.',
+      );
+    }
+    _loyalty = LoyaltyDto(
+      userId: _loyalty.userId,
+      userEmail: _loyalty.userEmail,
+      points: _loyalty.points - points,
+      totalPoints: _loyalty.totalPoints,
+      status: _loyalty.status,
+    );
+    return _loyalty;
   }
 
   void _requireUser(int userId) {

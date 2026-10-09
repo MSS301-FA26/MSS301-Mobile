@@ -8,6 +8,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../data/models/account_dto.dart';
 import '../../data/repositories/account_providers.dart';
 import '../providers/account_summary_provider.dart';
@@ -282,8 +283,9 @@ class _WalletPageState extends ConsumerState<WalletPage> {
   );
 }
 
-class PointsPage extends ConsumerWidget {
-  const PointsPage({super.key});
+@Deprecated('Use PointsPage.')
+class LegacyPointsPage extends ConsumerWidget {
+  const LegacyPointsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => _AccountScaffold(
@@ -327,6 +329,139 @@ class PointsPage extends ConsumerWidget {
       },
     ),
   );
+}
+
+class PointsPage extends ConsumerStatefulWidget {
+  const PointsPage({super.key});
+
+  @override
+  ConsumerState<PointsPage> createState() => _PointsPageState();
+}
+
+class _PointsPageState extends ConsumerState<PointsPage> {
+  final _pointsController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _pointsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _redeem(LoyaltyDto loyalty) async {
+    ref.read(loyaltyRedeemControllerProvider.notifier).resetMessage();
+    if (!_formKey.currentState!.validate()) return;
+    final points = int.parse(_pointsController.text.trim());
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận đổi điểm'),
+        content: Text(
+          'Đổi $points điểm từ số dư hiện tại ${loyalty.points} điểm?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Quay lại'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xác nhận đổi'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(loyaltyRedeemControllerProvider.notifier).redeem(points);
+    if (!mounted) return;
+    if (ref.read(loyaltyRedeemControllerProvider).status ==
+        LoyaltyRedeemStatus.success) {
+      _pointsController.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final overview = ref.watch(loyaltyOverviewProvider);
+    final redeemState = ref.watch(loyaltyRedeemControllerProvider);
+    return _AccountScaffold(
+      title: 'CinePoints',
+      child: overview.when(
+        loading: () => const RepositoryStatePane.loading(),
+        error: (error, stack) => RepositoryStatePane.error(
+          onRetry: () => ref.invalidate(loyaltyOverviewProvider),
+        ),
+        data: (data) {
+          final (loyalty, config) = data;
+          return ListView(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              _BalanceCard(
+                label: 'Điểm khả dụng',
+                value: '${loyalty.points} điểm',
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text('Tổng điểm từng tích: ${loyalty.totalPoints}'),
+              Text('Tỷ lệ tích điểm: ${config.earningRatePercent}%'),
+              Text(
+                '${config.redemptionPoints} điểm = ${config.redemptionValueVnd.format()}',
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const Text('Đổi điểm thưởng', style: AppTextStyles.sectionTitle),
+              const SizedBox(height: AppSpacing.sm),
+              Form(
+                key: _formKey,
+                child: TextFormField(
+                  key: const ValueKey('loyalty-redeem-points'),
+                  controller: _pointsController,
+                  keyboardType: TextInputType.number,
+                  enabled: !redeemState.isSubmitting,
+                  decoration: const InputDecoration(
+                    labelText: 'Số điểm muốn đổi',
+                  ),
+                  validator: (value) {
+                    final points = int.tryParse(value?.trim() ?? '');
+                    if (points == null) return 'Nhập số điểm nguyên hợp lệ.';
+                    if (points <= 0) return 'Số điểm phải lớn hơn 0.';
+                    if (points > loyalty.points) {
+                      return 'Số điểm vượt quá số dư hiện tại.';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              AppButton(
+                key: const ValueKey('loyalty-redeem-submit'),
+                label: redeemState.isSubmitting ? 'Đang xử lý…' : 'Đổi điểm',
+                onPressed: redeemState.isSubmitting
+                    ? null
+                    : () => _redeem(loyalty),
+              ),
+              if (redeemState.message != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  redeemState.message!,
+                  key: const ValueKey('loyalty-redeem-message'),
+                  style: TextStyle(
+                    color: redeemState.status == LoyaltyRedeemStatus.error
+                        ? AppColors.error
+                        : AppColors.success,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              const Text('Lịch sử điểm', style: AppTextStyles.sectionTitle),
+              const ListTile(
+                leading: Icon(Icons.history_rounded),
+                title: Text('Backend chưa cung cấp API lịch sử điểm.'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 class SecurityPage extends StatefulWidget {
