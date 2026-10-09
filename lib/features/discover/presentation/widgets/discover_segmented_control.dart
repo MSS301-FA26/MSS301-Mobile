@@ -6,20 +6,16 @@ class DiscoverSegmentedControl extends StatelessWidget {
   const DiscoverSegmentedControl({
     super.key,
     required this.selected,
-    required this.nowCount,
-    required this.soonCount,
     required this.onSelected,
   });
 
   final DiscoverMovieTab selected;
-  final int nowCount;
-  final int soonCount;
   final ValueChanged<DiscoverMovieTab> onSelected;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpacing.xxs),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadii.card,
@@ -28,12 +24,12 @@ class DiscoverSegmentedControl extends StatelessWidget {
       child: Row(
         children: [
           _SegmentButton(
-            label: 'Phim đang chiếu ($nowCount)',
+            label: 'Đang chiếu',
             selected: selected == DiscoverMovieTab.now,
             onTap: () => onSelected(DiscoverMovieTab.now),
           ),
           _SegmentButton(
-            label: 'Phim sắp chiếu ($soonCount)',
+            label: 'Sắp chiếu',
             selected: selected == DiscoverMovieTab.soon,
             onTap: () => onSelected(DiscoverMovieTab.soon),
           ),
@@ -59,25 +55,28 @@ class _SegmentButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadii.control,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.gold : Colors.transparent,
-            borderRadius: AppRadii.control,
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: selected ? Colors.black : AppColors.textMuted,
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: InkWell(
+          key: ValueKey('discover-status-$label'),
+          onTap: onTap,
+          borderRadius: AppRadii.control,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            height: AppSizes.buttonHeight,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? AppColors.gold : Colors.transparent,
+              borderRadius: AppRadii.control,
+            ),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.emphasis.copyWith(
+                color: selected ? AppColors.background : AppColors.textMuted,
+              ),
             ),
           ),
         ),

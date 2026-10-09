@@ -11,6 +11,7 @@ class AppChip extends StatelessWidget {
     this.selected = false,
     this.enabled = true,
     this.icon,
+    this.maxLabelWidth,
   });
 
   final String label;
@@ -18,6 +19,7 @@ class AppChip extends StatelessWidget {
   final bool selected;
   final bool enabled;
   final IconData? icon;
+  final double? maxLabelWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -32,11 +34,17 @@ class AppChip extends StatelessWidget {
         ? AppColors.gold
         : AppColors.surfaceRaised;
 
-    return ActionChip(
+    final chip = ActionChip(
       onPressed: enabled ? onPressed : null,
       avatar: icon == null ? null : Icon(icon, size: 16, color: foreground),
-      label: Text(label),
+      label: maxLabelWidth == null
+          ? Text(label)
+          : ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxLabelWidth!),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
       labelStyle: AppTextStyles.meta.copyWith(
+        fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
         color: foreground,
         fontWeight: FontWeight.w700,
       ),
@@ -46,5 +54,6 @@ class AppChip extends StatelessWidget {
       shape: const RoundedRectangleBorder(borderRadius: AppRadii.small),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
     );
+    return maxLabelWidth == null ? chip : Tooltip(message: label, child: chip);
   }
 }

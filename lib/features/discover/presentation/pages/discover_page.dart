@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_chip.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/catalog_enums.dart';
@@ -14,6 +16,7 @@ import '../../../movie/presentation/providers/movies_provider.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../providers/discover_provider.dart';
 import '../widgets/discover_movie_card.dart';
+import '../widgets/discover_filter_summary.dart';
 import '../widgets/discover_search_bar.dart';
 import '../widgets/discover_segmented_control.dart';
 
@@ -122,6 +125,14 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
             _hasMore = !page.last;
           }
           final genres = ref.watch(discoverGenresProvider);
+          final selectedGenreName = genres.asData?.value
+              .where((genre) => genre.id == _genreId)
+              .map((genre) => genre.name)
+              .join();
+          final canClear =
+              _query.isNotEmpty ||
+              _genreId != null ||
+              _tab == DiscoverMovieTab.soon;
           return CustomScrollView(
             slivers: [
               SliverPadding(
@@ -133,6 +144,16 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                 ),
                 sliver: SliverList.list(
                   children: [
+                    const Text(
+                      'Khám phá phim',
+                      style: AppTextStyles.screenTitle,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    const Text(
+                      'Tìm bộ phim cho lần đến rạp tiếp theo.',
+                      style: AppTextStyles.body,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     DiscoverSearchBar(
                       controller: _searchController,
                       onChanged: _onSearchChanged,
@@ -141,8 +162,6 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                     const SizedBox(height: AppSpacing.md),
                     DiscoverSegmentedControl(
                       selected: _tab,
-                      nowCount: page.totalItems,
-                      soonCount: page.totalItems,
                       onSelected: (tab) {
                         setState(() => _tab = tab);
                         _resetResults();
@@ -150,43 +169,88 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     genres.when(
-                      data: (items) => Wrap(
-                        spacing: AppSpacing.xs,
-                        runSpacing: AppSpacing.xs,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('Tất cả thể loại'),
-                            selected: _genreId == null,
-                            onSelected: (_) {
-                              setState(() => _genreId = null);
-                              _resetResults();
-                            },
-                          ),
-                          for (final genre in items)
-                            ChoiceChip(
-                              label: Text(genre.name),
-                              selected: _genreId == genre.id,
-                              onSelected: (_) {
-                                setState(() => _genreId = genre.id);
-                                _resetResults();
-                              },
+                      data: (items) => LayoutBuilder(
+                        builder: (context, filterConstraints) =>
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  AppChip(
+                                    key: const ValueKey('discover-genre-all'),
+                                    label: 'Tất cả thể loại',
+                                    selected: _genreId == null,
+                                    onPressed: () {
+                                      setState(() => _genreId = null);
+                                      _resetResults();
+                                    },
+                                  ),
+                                  for (final genre in items)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: AppSpacing.xs,
+                                      ),
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: filterConstraints.maxWidth,
+                                        ),
+                                        child: AppChip(
+                                          key: ValueKey(
+                                            'discover-genre-${genre.id}',
+                                          ),
+                                          label: genre.name,
+                                          maxLabelWidth:
+                                              filterConstraints.maxWidth -
+                                              AppSpacing.xxl * 2,
+                                          selected: _genreId == genre.id,
+                                          onPressed: () {
+                                            setState(() => _genreId = genre.id);
+                                            _resetResults();
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
-                        ],
                       ),
                       loading: () => const SizedBox.shrink(),
                       error: (_, _) => const SizedBox.shrink(),
                     ),
-                    if (_query.isNotEmpty || _genreId != null)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: _clearFilters,
-                          icon: const Icon(Icons.clear_all),
-                          label: const Text('Xóa bộ lọc'),
-                        ),
+                    if (canClear) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      DiscoverFilterSummary(
+                        keyword: _query,
+                        statusLabel: _tab == DiscoverMovieTab.now
+                            ? 'Đang chiếu'
+                            : 'Sắp chiếu',
+                        genreLabel: _genreId == null
+                            ? null
+                            : selectedGenreName == null ||
+                                  selectedGenreName.isEmpty
+                            ? 'Thể loại #$_genreId'
+                            : selectedGenreName,
+                        onClear: canClear ? _clearFilters : null,
                       ),
+                    ],
+                    const SizedBox(height: AppSpacing.lg),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text(
+                          'Kết quả',
+                          style: AppTextStyles.sectionTitle,
+                        ),
+                        Text(
+                          '${page.totalItems} phim',
+                          key: const ValueKey('discover-result-count'),
+                          style: AppTextStyles.emphasis,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      '${page.totalItems} kết quả',
+                      'Đã hiển thị ${_loaded.length} / ${page.totalItems}',
                       style: AppTextStyles.caption,
                     ),
                   ],
@@ -207,26 +271,57 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                           icon: Icons.search_off_rounded,
                         ),
                       )
-                    : SliverGrid.builder(
-                        itemCount: _loaded.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: AppSpacing.sm,
-                              mainAxisSpacing: AppSpacing.sm,
-                              childAspectRatio: 0.48,
-                            ),
-                        itemBuilder: (context, index) {
-                          final movie = _loaded[index];
-                          return DiscoverMovieCard(
-                            movie: movie,
-                            onOpen: () => context.pushNamed(
-                              'movieDetail',
-                              pathParameters: {'id': '${movie.id}'},
-                            ),
-                            onBook: () => context.go(
-                              AppRoutes.showtimesForMovie(movie.id),
-                            ),
+                    : SliverLayoutBuilder(
+                        builder: (context, constraints) {
+                          final columns =
+                              (constraints.crossAxisExtent /
+                                      (AppSpacing.movieCardWidth +
+                                          AppSpacing.sm))
+                                  .floor()
+                                  .clamp(2, 4);
+                          final cardWidth =
+                              (constraints.crossAxisExtent -
+                                  AppSpacing.sm * (columns - 1)) /
+                              columns;
+                          final textScaler = MediaQuery.textScalerOf(context);
+                          final detailsHeight =
+                              AppSizes.buttonHeight +
+                              AppSpacing.sm * 4 +
+                              AppSpacing.xxs +
+                              textScaler.scale(
+                                    AppTextStyles.cardTitle.fontSize!,
+                                  ) *
+                                  AppTextStyles.cardTitle.height! *
+                                  2 +
+                              textScaler.scale(
+                                    AppTextStyles.caption.fontSize!,
+                                  ) *
+                                  AppTextStyles.caption.height! *
+                                  2;
+                          return SliverGrid.builder(
+                            itemCount: _loaded.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  crossAxisSpacing: AppSpacing.sm,
+                                  mainAxisSpacing: AppSpacing.sm,
+                                  mainAxisExtent:
+                                      cardWidth / AppSizes.posterAspectRatio +
+                                      detailsHeight,
+                                ),
+                            itemBuilder: (context, index) {
+                              final movie = _loaded[index];
+                              return DiscoverMovieCard(
+                                movie: movie,
+                                onOpen: () => context.pushNamed(
+                                  'movieDetail',
+                                  pathParameters: {'id': '${movie.id}'},
+                                ),
+                                onBook: () => context.go(
+                                  AppRoutes.showtimesForMovie(movie.id),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -235,9 +330,24 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    child: OutlinedButton(
+                    child: AppButton(
+                      key: const ValueKey('discover-load-more'),
+                      fullWidth: true,
+                      loading: _loadingMore,
+                      variant: AppButtonVariant.secondary,
                       onPressed: _loadingMore ? null : _loadMore,
-                      child: Text(_loadingMore ? 'Đang tải...' : 'Tải thêm'),
+                      label: _loadingMore ? 'Đang tải thêm…' : 'Tải thêm phim',
+                    ),
+                  ),
+                ),
+              if (!_hasMore && _loaded.isNotEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: AppSpacing.xl),
+                    child: Text(
+                      'Đã hiển thị hết kết quả.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.caption,
                     ),
                   ),
                 ),

@@ -24,8 +24,13 @@ class AppImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = Image.asset(
-      asset,
+    final uri = Uri.tryParse(asset);
+    final isRemote =
+        uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host.isNotEmpty;
+    final image = Image(
+      image: isRemote ? NetworkImage(asset) : AssetImage(asset),
       width: width,
       height: height,
       fit: fit,
