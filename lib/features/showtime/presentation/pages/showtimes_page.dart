@@ -16,6 +16,7 @@ import '../providers/showtimes_provider.dart';
 import '../widgets/cinema_status_card.dart';
 import '../widgets/date_selector.dart';
 import '../widgets/showtime_movie_card.dart';
+import '../widgets/showtime_selection_bar.dart';
 
 class ShowtimesPage extends ConsumerStatefulWidget {
   const ShowtimesPage({super.key, this.movieId});
@@ -67,6 +68,8 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
             formatBadge: room.formatBadge,
             screenDetail: room.screenDetail,
             slots: slots,
+            cinemaId: room.cinemaId,
+            cinemaName: room.cinemaName,
           );
         })
         .where((room) => room.slots.isNotEmpty)
@@ -115,138 +118,108 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
     final movies = moviesState.requireValue;
     final allShowtimes = showtimesState.requireValue;
     final showtimes = allShowtimes;
+    final scheduleControls = <Widget>[
+      const BookingProgress(currentStep: 0),
+      CinemaStatusCard(
+        selectedDate: _selectedDate == null ? null : dates[_selectedDate!],
+        onInfo: () => showModalBottomSheet<void>(
+          context: context,
+          backgroundColor: AppColors.surface,
+          shape: const RoundedRectangleBorder(borderRadius: AppRadii.card),
+          builder: (context) => const CinemaInfoSheet(),
+        ),
+      ),
+      DateSelector(
+        dates: dates,
+        selectedIndex: _selectedDate,
+        onSelected: (index) => setState(() => _selectedDate = index),
+      ),
+    ];
 
     return AppShell(
       currentIndex: 2,
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              children: [
-                const BookingProgress(currentStep: 0),
-                CinemaStatusCard(
-                  onInfo: () => showModalBottomSheet<void>(
-                    context: context,
-                    backgroundColor: AppColors.surface,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: AppRadii.card,
-                    ),
-                    builder: (context) => const CinemaInfoSheet(),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.sm,
-                    AppSpacing.md,
-                    0,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.lock_clock_outlined,
-                        size: 16,
-                        color: AppColors.textDisabled,
-                      ),
-                      SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          'Chọn ngày để lọc lịch chiếu, sau đó chọn một suất còn mở bán.',
-                          style: AppTextStyles.caption,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                DateSelector(
-                  dates: dates,
-                  selectedIndex: _selectedDate,
-                  onSelected: (index) => setState(() => _selectedDate = index),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.xs,
-                    AppSpacing.md,
-                    AppSpacing.xl,
-                  ),
-                  child: Column(
-                    children: [
-                      for (final movieShowtime in showtimes)
-                        Builder(
-                          builder: (context) {
-                            final movie = movies.firstWhere(
-                              (movie) => movie.id == movieShowtime.movieId,
-                            );
-                            final rooms = _visibleRooms(movieShowtime, dates);
-                            if (rooms.isEmpty) return const SizedBox.shrink();
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.md,
-                              ),
-                              child: ShowtimeMovieCard(
-                                movie: movie,
-                                rooms: rooms,
-                                selectedSlotId:
-                                    _selectedMovieId == movieShowtime.movieId
-                                    ? _selectedSlot?.id
-                                    : null,
-                                onSlotSelected: (slot) => setState(() {
-                                  _selectedMovieId = movieShowtime.movieId;
-                                  _selectedSlot = slot;
-                                }),
-                              ),
-                            );
-                          },
-                        ),
-                      if (showtimes.isEmpty)
-                        const RepositoryStatePane.empty(
-                          title: 'Chưa có lịch chiếu',
-                          message: 'Phim này chưa có suất chiếu đang mở bán.',
-                        ),
-                      if (showtimes.isNotEmpty &&
-                          showtimes.every(
-                            (item) => _visibleRooms(item, dates).isEmpty,
-                          ))
-                        const RepositoryStatePane.empty(
-                          title: 'Không có suất phù hợp',
-                          message: 'Hãy chọn ngày hoặc định dạng khác.',
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (_selectedSlot != null && _selectedMovieId != null)
-            SafeArea(
-              top: false,
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(top: BorderSide(color: AppColors.border)),
-                ),
-                child: Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+          final pinScheduleControls = constraints.maxHeight >= 480 * textScale;
+          return Column(
+            children: [
+              if (pinScheduleControls) ...scheduleControls,
+              Expanded(
+                child: ListView(
                   children: [
-                    Expanded(
-                      child: Text(
-                        'Đã chọn ${_selectedSlot!.time} • ${_selectedSlot!.priceDisplay}',
-                        style: AppTextStyles.cardTitle,
+                    if (!pinScheduleControls) ...scheduleControls,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.xs,
+                        AppSpacing.md,
+                        AppSpacing.xl,
                       ),
-                    ),
-                    FilledButton.icon(
-                      key: const ValueKey('showtime-continue'),
-                      onPressed: () =>
-                          _openSeatSelection(_selectedMovieId!, _selectedSlot!),
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                      label: const Text('Vé & Ghế'),
+                      child: Column(
+                        children: [
+                          for (final movieShowtime in showtimes)
+                            Builder(
+                              builder: (context) {
+                                final movie = movies.firstWhere(
+                                  (movie) => movie.id == movieShowtime.movieId,
+                                );
+                                final rooms = _visibleRooms(
+                                  movieShowtime,
+                                  dates,
+                                );
+                                if (rooms.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppSpacing.md,
+                                  ),
+                                  child: ShowtimeMovieCard(
+                                    movie: movie,
+                                    rooms: rooms,
+                                    selectedSlotId:
+                                        _selectedMovieId ==
+                                            movieShowtime.movieId
+                                        ? _selectedSlot?.id
+                                        : null,
+                                    onSlotSelected: (slot) => setState(() {
+                                      _selectedMovieId = movieShowtime.movieId;
+                                      _selectedSlot = slot;
+                                    }),
+                                  ),
+                                );
+                              },
+                            ),
+                          if (showtimes.isEmpty)
+                            const RepositoryStatePane.empty(
+                              title: 'Chưa có lịch chiếu',
+                              message: 'Chưa có suất chiếu cho lựa chọn hiện tại. Hãy thử một ngày khác.',
+                            ),
+                          if (showtimes.isNotEmpty &&
+                              showtimes.every(
+                                (item) => _visibleRooms(item, dates).isEmpty,
+                              ))
+                            const RepositoryStatePane.empty(
+                              title: 'Không có suất phù hợp',
+                              message:
+                                  'Hãy chọn một ngày khác để xem lịch chiếu.',
+                            ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
-        ],
+              if (_selectedSlot != null && _selectedMovieId != null)
+                ShowtimeSelectionBar(
+                  slot: _selectedSlot!,
+                  onContinue: () =>
+                      _openSeatSelection(_selectedMovieId!, _selectedSlot!),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

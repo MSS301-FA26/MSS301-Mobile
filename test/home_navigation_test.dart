@@ -79,8 +79,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ShowtimesPage), findsOneWidget);
-    expect(find.text('AVENGERS: ENDGAME'), findsOneWidget);
-    expect(find.text('INCEPTION'), findsNothing);
+    expect(tester.widget<ShowtimesPage>(find.byType(ShowtimesPage)).movieId, 2);
+    expect(find.text('Avengers: Endgame'), findsOneWidget);
+    expect(find.text('Inception'), findsNothing);
     expect(
       tester.widget<DateSelector>(find.byType(DateSelector)).selectedIndex,
       isNull,
