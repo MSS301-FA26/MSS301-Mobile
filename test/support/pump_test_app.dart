@@ -61,8 +61,6 @@ Future<ProviderContainer> pumpTestApp(
             ref.watch(bookingRepositoryProvider),
           ),
         ),
-        walletRepositoryProvider.overrideWith((ref) => ref.watch(mockAccountStoreProvider)),
-        loyaltyRepositoryProvider.overrideWith((ref) => ref.watch(mockAccountStoreProvider)),
         accountSummaryProvider.overrideWith((ref) async {
           final store = ref.watch(mockAccountStoreProvider);
           return mapAccountSummary(

@@ -9,47 +9,71 @@ class RemoteWalletRepository implements WalletRepository {
   final Dio _dio;
 
   @override
-  Future<WalletDto> getWallet(int userId) async =>
-      WalletDto.fromJson(_data(await _request(() => _dio.get('/api/v1/wallet'))));
+  Future<WalletDto> getWallet(int userId) async => WalletDto.fromJson(
+    _data(await _request(() => _dio.get('/api/v1/wallet'))),
+  );
 
   @override
   Future<List<WalletTransactionDto>> getTransactions(int userId) async {
-    final data = _data(await _request(() => _dio.get(
-      '/api/v1/wallet/transactions',
-      queryParameters: {'page': 0, 'size': 20},
-    )));
+    final data = _data(
+      await _request(
+        () => _dio.get(
+          '/api/v1/wallet/transactions',
+          queryParameters: {'page': 0, 'size': 20},
+        ),
+      ),
+    );
     final content = data['content'];
     if (content is! List) throw _invalid('wallet transaction response');
-    return content.map((item) => WalletTransactionDto.fromJson(
-      Map<String, Object?>.from(item as Map),
-    )).toList(growable: false);
+    return content
+        .map(
+          (item) => WalletTransactionDto.fromJson(
+            Map<String, Object?>.from(item as Map),
+          ),
+        )
+        .toList(growable: false);
   }
 
   @override
   Future<List<WithdrawalDto>> getWithdrawals(int userId) async {
-    final data = _data(await _request(() => _dio.get(
-      '/api/v1/wallet/withdrawals',
-      queryParameters: {'page': 0, 'size': 20},
-    )));
+    final data = _data(
+      await _request(
+        () => _dio.get(
+          '/api/v1/wallet/withdrawals',
+          queryParameters: {'page': 0, 'size': 20},
+        ),
+      ),
+    );
     final content = data['content'];
     if (content is! List) throw _invalid('withdrawal response');
-    return content.map((item) => WithdrawalDto.fromJson(
-      Map<String, Object?>.from(item as Map),
-    )).toList(growable: false);
+    return content
+        .map(
+          (item) =>
+              WithdrawalDto.fromJson(Map<String, Object?>.from(item as Map)),
+        )
+        .toList(growable: false);
   }
+
   @override
-  Future<WithdrawalDto> createWithdrawal(int userId, WithdrawalCreateRequestDto request) =>
-      _unsupported('Wallet withdrawals are outside B13 scope.');
+  Future<WithdrawalDto> createWithdrawal(
+    int userId,
+    WithdrawalCreateRequestDto request,
+  ) => _unsupported('Wallet withdrawals are outside B13 scope.');
 
   Future<T> _unsupported<T>(String message) => Future<T>.error(
     ApiException(type: ApiErrorType.unknown, message: message),
   );
-  Future<Response<dynamic>> _request(Future<Response<dynamic>> Function() call) async {
-    try { return await call(); } on DioException catch (error) {
+  Future<Response<dynamic>> _request(
+    Future<Response<dynamic>> Function() call,
+  ) async {
+    try {
+      return await call();
+    } on DioException catch (error) {
       if (error.error case final ApiException mapped) throw mapped;
       rethrow;
     }
   }
+
   Map<String, Object?> _data(Response<dynamic> response) {
     final body = response.data;
     if (body is! Map || body['success'] != true || body['data'] is! Map) {
@@ -57,9 +81,9 @@ class RemoteWalletRepository implements WalletRepository {
     }
     return Map<String, Object?>.from(body['data'] as Map);
   }
-  ApiException _invalid(String resource) => ApiException(
-    type: ApiErrorType.unknown, message: 'Invalid $resource.',
-  );
+
+  ApiException _invalid(String resource) =>
+      ApiException(type: ApiErrorType.unknown, message: 'Invalid $resource.');
 }
 
 class RemoteLoyaltyRepository implements LoyaltyRepository {
@@ -67,7 +91,7 @@ class RemoteLoyaltyRepository implements LoyaltyRepository {
   final Dio _dio;
 
   @override
-  Future<LoyaltyDto> getLoyalty(int userId) async => LoyaltyDto.fromJson(
+  Future<LoyaltyDto> getLoyalty(int userId) async => _parseLoyalty(
     _data(await _request(() => _dio.get('/api/v1/loyalty/me'))),
   );
 
@@ -77,19 +101,50 @@ class RemoteLoyaltyRepository implements LoyaltyRepository {
         _data(await _request(() => _dio.get('/api/v1/loyalty/config'))),
       );
 
-  Future<Response<dynamic>> _request(Future<Response<dynamic>> Function() call) async {
-    try { return await call(); } on DioException catch (error) {
+  @override
+  Future<LoyaltyDto> redeemPoints(int points) async => _parseLoyalty(
+    _data(
+      await _request(
+        () => _dio.post(
+          '/api/v1/loyalty/me/redeem',
+          queryParameters: {'points': points},
+        ),
+      ),
+    ),
+  );
+
+  Future<Response<dynamic>> _request(
+    Future<Response<dynamic>> Function() call,
+  ) async {
+    try {
+      return await call();
+    } on DioException catch (error) {
       if (error.error case final ApiException mapped) throw mapped;
       rethrow;
     }
   }
+
   Map<String, Object?> _data(Response<dynamic> response) {
     final body = response.data;
     if (body is! Map || body['success'] != true || body['data'] is! Map) {
       throw const ApiException(
-        type: ApiErrorType.unknown, message: 'Invalid loyalty API response.',
+        type: ApiErrorType.unknown,
+        message: 'Invalid loyalty API response.',
       );
     }
     return Map<String, Object?>.from(body['data'] as Map);
+  }
+
+  LoyaltyDto _parseLoyalty(Map<String, Object?> data) {
+    if (data['userId'] is! num ||
+        data['points'] is! num ||
+        data['totalPoints'] is! num ||
+        data['status'] is! String) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Invalid loyalty API response.',
+      );
+    }
+    return LoyaltyDto.fromJson(data);
   }
 }
