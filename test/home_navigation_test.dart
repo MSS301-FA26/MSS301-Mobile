@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/account/presentation/pages/account_page.dart';
 import 'package:mss301_mobile/features/discover/presentation/pages/discover_page.dart';
 import 'package:mss301_mobile/features/home/presentation/pages/home_page.dart';
+import 'package:mss301_mobile/features/movie/presentation/pages/movie_detail_page.dart';
 import 'package:mss301_mobile/features/orders/presentation/pages/orders_page.dart';
 import 'package:mss301_mobile/features/showtime/presentation/pages/showtimes_page.dart';
 import 'package:mss301_mobile/features/showtime/presentation/widgets/date_selector.dart';
@@ -27,10 +29,19 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('hero-open-1')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Chi tiết phim'), findsOneWidget);
+      expect(find.byType(MovieDetailPage), findsOneWidget);
+      expect(
+        tester.widget<MovieDetailPage>(find.byType(MovieDetailPage)).movieId,
+        1,
+      );
+      expect(
+        GoRouterState.of(tester.element(find.byType(MovieDetailPage))).uri.path,
+        AppRoutes.movieDetail(1),
+      );
+      expect(find.text('Thông tin phim'), findsOneWidget);
       expect(
         find.textContaining('Dữ liệu phim được tải từ CatalogRepository'),
-        findsOneWidget,
+        findsNothing,
       );
 
       await tester.tap(find.byTooltip('Quay lại'));

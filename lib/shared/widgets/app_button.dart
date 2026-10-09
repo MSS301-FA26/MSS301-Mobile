@@ -53,7 +53,9 @@ class AppButton extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.button,
+            style: AppTextStyles.button.copyWith(
+              fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
+            ),
           ),
         ),
       ],
