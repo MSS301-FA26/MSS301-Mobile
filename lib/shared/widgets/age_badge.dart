@@ -33,12 +33,12 @@ class AgeBadge extends StatelessWidget {
     final isHero = variant == AgeBadgeVariant.hero;
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isHero ? AppSpacing.xs : 6,
-        vertical: 3,
+        horizontal: isHero ? AppSpacing.xs : AppSizes.badgeHorizontalPadding,
+        vertical: AppSizes.badgeVerticalPadding,
       ),
       decoration: BoxDecoration(
         color: isHero ? AppColors.goldSurface : color,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.small,
         border: isHero ? Border.all(color: AppColors.goldBorder) : null,
       ),
       child: Text(

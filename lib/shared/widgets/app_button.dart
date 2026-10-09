@@ -11,8 +11,9 @@ class AppButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.variant = AppButtonVariant.primary,
-    this.height = 46,
+    this.height = AppSizes.buttonHeight,
     this.loading = false,
+    this.fullWidth = false,
   });
 
   final String label;
@@ -21,18 +22,27 @@ class AppButton extends StatelessWidget {
   final AppButtonVariant variant;
   final double height;
   final bool loading;
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
+    final foreground = switch (variant) {
+      AppButtonVariant.primary => AppColors.background,
+      AppButtonVariant.ghost => AppColors.textSecondary,
+      _ => AppColors.text,
+    };
     final buttonChild = Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (loading)
-          const SizedBox(
+          SizedBox(
             width: 18,
             height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(foreground),
+            ),
           )
         else if (icon != null) ...[
           Icon(icon, size: 18),
@@ -52,7 +62,7 @@ class AppButton extends StatelessWidget {
     final style = ButtonStyle(
       minimumSize: WidgetStatePropertyAll(Size(0, height)),
       padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        EdgeInsets.symmetric(horizontal: AppSpacing.md),
       ),
       shape: const WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: AppRadii.control),
@@ -61,6 +71,7 @@ class AppButton extends StatelessWidget {
 
     return SizedBox(
       height: height,
+      width: fullWidth ? double.infinity : null,
       child: switch (variant) {
         AppButtonVariant.primary => FilledButton(
           onPressed: loading ? null : onPressed,

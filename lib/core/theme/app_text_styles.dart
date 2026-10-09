@@ -16,6 +16,12 @@ abstract final class AppTextStyles {
     height: 1.2,
     color: AppColors.text,
   );
+  static const displayTitle = TextStyle(
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    height: 1.15,
+    color: AppColors.text,
+  );
   static const sectionTitle = TextStyle(
     fontSize: 18,
     fontWeight: FontWeight.w700,
@@ -32,6 +38,18 @@ abstract final class AppTextStyles {
     fontSize: 13,
     height: 1.45,
     color: AppColors.textSecondary,
+  );
+  static const emphasis = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    height: 1.35,
+    color: AppColors.text,
+  );
+  static const price = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    height: 1.15,
+    color: AppColors.text,
   );
   static const label = TextStyle(
     fontSize: 12,

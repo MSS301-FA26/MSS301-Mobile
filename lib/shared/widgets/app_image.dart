@@ -36,7 +36,7 @@ class AppImage extends StatelessWidget {
           child: Icon(
             Icons.movie_outlined,
             color: AppColors.textMuted,
-            size: 36,
+            size: AppSizes.iconFallback,
           ),
         ),
       ),

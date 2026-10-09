@@ -7,9 +7,9 @@ class AppSurface extends StatelessWidget {
   const AppSurface({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(AppSpacing.md),
+    this.padding = const EdgeInsets.all(AppSpacing.cardPadding),
     this.margin,
-    this.color = AppColors.surface,
+    this.color = AppColors.primarySurface,
     this.borderColor = AppColors.border,
     this.borderRadius = AppRadii.card,
   });

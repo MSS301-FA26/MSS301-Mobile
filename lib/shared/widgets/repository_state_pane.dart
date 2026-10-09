@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import 'app_button.dart';
 
 class RepositoryStatePane extends StatelessWidget {
   const RepositoryStatePane.loading({super.key})
@@ -41,9 +42,15 @@ class RepositoryStatePane extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isLoading)
-              const CircularProgressIndicator()
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+              )
             else if (icon != null)
-              Icon(icon, size: 42, color: AppColors.textMuted),
+              Icon(
+                icon,
+                size: AppSizes.stateIcon,
+                color: onRetry == null ? AppColors.textMuted : AppColors.error,
+              ),
             const SizedBox(height: AppSpacing.md),
             Text(
               title,
@@ -60,10 +67,11 @@ class RepositoryStatePane extends StatelessWidget {
             ],
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.md),
-              FilledButton.icon(
+              AppButton(
+                variant: AppButtonVariant.secondary,
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Thử lại'),
+                icon: Icons.refresh_rounded,
+                label: 'Thử lại',
               ),
             ],
           ],

@@ -30,6 +30,11 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       splashColor: AppColors.gold.withValues(alpha: 0.12),
       dividerColor: AppColors.border,
+      dividerTheme: const DividerThemeData(
+        color: AppColors.border,
+        thickness: 1,
+        space: 1,
+      ),
       cardTheme: const CardThemeData(
         color: AppColors.surface,
         surfaceTintColor: Colors.transparent,
@@ -38,6 +43,7 @@ abstract final class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: AppRadii.card),
       ),
       textTheme: const TextTheme(
+        displayMedium: AppTextStyles.displayTitle,
         displaySmall: AppTextStyles.heroTitle,
         headlineSmall: AppTextStyles.screenTitle,
         titleLarge: AppTextStyles.sectionTitle,
@@ -53,17 +59,49 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
       ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.surfaceRaised,
+        disabledColor: AppColors.disabled,
+        selectedColor: AppColors.gold,
+        labelStyle: AppTextStyles.meta,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        side: const BorderSide(color: AppColors.border),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadii.small),
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: AppColors.surfaceHigh,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.large),
+        titleTextStyle: AppTextStyles.sectionTitle,
+        contentTextStyle: AppTextStyles.body,
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surfaceHigh,
+        modalBackgroundColor: AppColors.surfaceHigh,
+        surfaceTintColor: Colors.transparent,
+        modalElevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.gold,
           foregroundColor: AppColors.background,
           shape: const RoundedRectangleBorder(borderRadius: AppRadii.control),
+          minimumSize: const Size(64, AppSizes.buttonHeight),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           textStyle: AppTextStyles.button,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceHigh,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         labelStyle: AppTextStyles.label,
         hintStyle: AppTextStyles.caption,
         enabledBorder: const OutlineInputBorder(
