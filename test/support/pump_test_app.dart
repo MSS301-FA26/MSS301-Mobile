@@ -16,6 +16,9 @@ import 'package:mss301_mobile/core/demo/demo_scenario.dart';
 import 'package:mss301_mobile/core/network/api_exception.dart';
 import 'package:mss301_mobile/features/payment/data/repositories/payment_providers.dart';
 import 'package:mss301_mobile/features/payment/data/repositories/mock_payment_repository.dart';
+import 'package:mss301_mobile/features/account/data/repositories/account_providers.dart';
+import 'package:mss301_mobile/features/account/presentation/providers/account_summary_provider.dart';
+import 'package:mss301_mobile/features/account/presentation/models/account_summary.dart';
 
 import 'fake_auth_session.dart';
 
@@ -58,6 +61,16 @@ Future<ProviderContainer> pumpTestApp(
             ref.watch(bookingRepositoryProvider),
           ),
         ),
+        walletRepositoryProvider.overrideWith((ref) => ref.watch(mockAccountStoreProvider)),
+        loyaltyRepositoryProvider.overrideWith((ref) => ref.watch(mockAccountStoreProvider)),
+        accountSummaryProvider.overrideWith((ref) async {
+          final store = ref.watch(mockAccountStoreProvider);
+          return mapAccountSummary(
+            await store.getProfile(DemoIds.user),
+            await store.getWallet(DemoIds.user),
+            await store.getLoyalty(DemoIds.user),
+          );
+        }),
         ...providerOverrides,
       ],
       child: const CinePremierApp(),
