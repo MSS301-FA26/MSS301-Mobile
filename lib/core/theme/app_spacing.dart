@@ -31,6 +31,7 @@ abstract final class AppSizes {
   static const iconDisplay = 32.0;
   static const iconFallback = 36.0;
   static const stateIcon = 44.0;
+  static const seatTouchTarget = 44.0;
   static const badgeHorizontalPadding = 6.0;
   static const badgeVerticalPadding = 3.0;
 

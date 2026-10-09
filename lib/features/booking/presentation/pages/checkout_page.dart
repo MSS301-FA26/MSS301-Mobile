@@ -6,6 +6,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/app_surface.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_progress.dart';
@@ -97,6 +98,11 @@ class CheckoutPage extends ConsumerWidget {
                     _Line('Bắp nước', quote.foodSubtotal.format()),
                     if (quote.discount.amount > 0)
                       _Line('Giảm giá', '-${quote.discount.format()}'),
+                    if (quote.cinePointsDiscount.amount > 0)
+                      _Line(
+                        'Quy đổi CinePoints',
+                        '-${quote.cinePointsDiscount.format()}',
+                      ),
                     const _Line('Phương thức', 'VNPay Mock'),
                     _Line('Tổng cộng', quote.total.format(), emphasized: true),
                   ],
@@ -123,6 +129,8 @@ class CheckoutPage extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               child: AppButton(
                 key: const ValueKey('checkout-pay'),
+                fullWidth: true,
+                loading: state.isBusy,
                 label: state.isBusy
                     ? 'Đang tạo giao dịch…'
                     : 'Thanh toán ${quote.total.format()}',
@@ -152,13 +160,7 @@ class _Section extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(AppSpacing.md),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceRaised,
-      borderRadius: AppRadii.card,
-      border: Border.all(color: AppColors.border),
-    ),
+  Widget build(BuildContext context) => AppSurface(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -188,10 +190,9 @@ class _Line extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.end,
-            style: AppTextStyles.body.copyWith(
-              color: emphasized ? AppColors.gold : AppColors.text,
-              fontWeight: emphasized ? FontWeight.w900 : FontWeight.w700,
-            ),
+            style: emphasized
+                ? AppTextStyles.price.copyWith(color: AppColors.gold)
+                : AppTextStyles.emphasis,
           ),
         ),
       ],

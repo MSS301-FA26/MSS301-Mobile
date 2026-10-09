@@ -9,6 +9,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/app_surface.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
@@ -293,24 +294,36 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.lg),
-                    const _ScreenIndicator(),
-                    const SizedBox(height: AppSpacing.lg),
-                    InteractiveViewer(
-                      minScale: 0.8,
-                      maxScale: 2.2,
-                      boundaryMargin: const EdgeInsets.all(24),
-                      child: _SeatGrid(
-                        seatMap: seatMap,
-                        assignments: session.assignments,
-                        unavailableSeatIds: session.unavailableSeatIds,
-                        enabled: !holding && !submitting,
-                        onSeat: (seat) => ref
-                            .read(bookingEntryProvider.notifier)
-                            .toggleSeatIds(_seatGroup(seat, seatMap.seats)),
+                    const _SeatLegend(key: ValueKey('seat-map-legend')),
+                    const SizedBox(height: AppSpacing.md),
+                    LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        key: const ValueKey('seat-map-horizontal-scroll'),
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: constraints.maxWidth,
+                          ),
+                          child: Column(
+                            children: [
+                              const _ScreenIndicator(),
+                              const SizedBox(height: AppSpacing.md),
+                              _SeatGrid(
+                                seatMap: seatMap,
+                                assignments: session.assignments,
+                                unavailableSeatIds: session.unavailableSeatIds,
+                                enabled: !holding && !submitting,
+                                onSeat: (seat) => ref
+                                    .read(bookingEntryProvider.notifier)
+                                    .toggleSeatIds(
+                                      _seatGroup(seat, seatMap.seats),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                    const _SeatLegend(),
                     if (session.assignments.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.md),
                       _AssignmentSummary(
@@ -538,13 +551,7 @@ class _ShowtimeSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showtime = seatMap.showtime;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: AppRadii.card,
-        border: Border.all(color: AppColors.border),
-      ),
+    return AppSurface(
       child: Row(
         children: [
           Expanded(
@@ -557,7 +564,7 @@ class _ShowtimeSummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${showtime.cinemaName} • ${showtime.roomName} • ${_dateTime(showtime.startTime)}',
+                  '${showtime.cinemaName} • ${showtime.roomName}\n${_dateTime(showtime.startTime)}',
                   style: AppTextStyles.caption,
                 ),
               ],
@@ -600,7 +607,7 @@ class _ScreenIndicator extends StatelessWidget {
             colors: [AppColors.gold, AppColors.textMuted],
           ),
           borderRadius: AppRadii.control,
-          boxShadow: const [BoxShadow(color: AppColors.gold, blurRadius: 12)],
+          boxShadow: const [BoxShadow(color: AppColors.gold, blurRadius: 5)],
         ),
       ),
       const SizedBox(height: 6),
@@ -714,19 +721,31 @@ class _SeatButton extends StatelessWidget {
             _ => AppColors.surfaceRaised,
           };
     final label = '${seat.rowLabel}${seat.seatNumber}';
+    final availabilityLabel = switch ((seat.seatStatus, seat.runtimeStatus)) {
+      (SeatStatus.maintenance, _) => 'bảo trì',
+      (_, SeatRuntimeStatus.holding) => 'đang được giữ',
+      (_, SeatRuntimeStatus.booked) => 'đã đặt',
+      (_, SeatRuntimeStatus.checkedIn) => 'đã làm thủ tục',
+      (SeatStatus.available, SeatRuntimeStatus.available)
+          when !forcedUnavailable =>
+        'có thể chọn',
+      _ => 'không khả dụng',
+    };
     return Semantics(
       button: true,
       enabled: available && enabled,
       selected: selected,
       label:
-          'Ghế $label, ${seat.seatType.normalized.wireValue}, ${available ? 'có thể chọn' : 'không khả dụng'}',
+          'Ghế $label, ${seat.seatType.normalized.wireValue}, $availabilityLabel${selected ? ', đang chọn' : ''}',
       child: InkWell(
         key: ValueKey('seat-${seat.seatId}'),
         onTap: available && enabled ? onTap : null,
         borderRadius: AppRadii.small,
         child: Container(
-          width: seat.seatType.normalized == CatalogSeatType.couple ? 48 : 34,
-          height: 34,
+          width: seat.seatType.normalized == CatalogSeatType.couple
+              ? AppSizes.seatTouchTarget + 8
+              : AppSizes.seatTouchTarget,
+          height: AppSizes.seatTouchTarget,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color,
@@ -750,7 +769,7 @@ class _SeatButton extends StatelessWidget {
 }
 
 class _SeatLegend extends StatelessWidget {
-  const _SeatLegend();
+  const _SeatLegend({super.key});
 
   @override
   Widget build(BuildContext context) => const Wrap(
@@ -761,7 +780,7 @@ class _SeatLegend extends StatelessWidget {
       _LegendItem(label: 'VIP', color: AppColors.purple),
       _LegendItem(label: 'Ghế đôi', color: AppColors.adultBadge),
       _LegendItem(label: 'Đang chọn', color: AppColors.gold),
-      _LegendItem(label: 'Đã giữ/đặt/bảo trì', color: AppColors.border),
+      _LegendItem(label: 'Không khả dụng', color: AppColors.border),
     ],
   );
 }
@@ -814,42 +833,38 @@ class _SeatActionBar extends StatelessWidget {
         color: AppColors.surfaceRaised,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   selectedSeats.isEmpty
                       ? 'Chưa chọn ghế'
                       : selectedSeats
                             .map((seat) => '${seat.rowLabel}${seat.seatNumber}')
                             .join(', '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption,
                 ),
-                Text(
-                  total.format(),
-                  style: AppTextStyles.sectionTitle.copyWith(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              Text(total.format(), style: AppTextStyles.price),
+            ],
           ),
-          SizedBox(
-            width: 170,
-            child: AppButton(
-              key: const ValueKey('seat-continue'),
-              label: holding
-                  ? 'Tiếp tục • Bắp nước'
-                  : submitting
-                  ? 'Đang giữ ghế...'
-                  : 'Tiếp tục',
-              onPressed: onContinue,
-            ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            key: const ValueKey('seat-continue'),
+            fullWidth: true,
+            loading: submitting,
+            label: holding
+                ? 'Tiếp tục • Bắp nước'
+                : submitting
+                ? 'Đang giữ ghế...'
+                : 'Tiếp tục',
+            onPressed: onContinue,
           ),
         ],
       ),

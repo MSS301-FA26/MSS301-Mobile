@@ -106,6 +106,29 @@ void main() {
     expect(find.text('Phim đang chiếu'), findsOneWidget);
   });
 
+  testWidgets(
+    'R4 seat map puts legend first and preserves usable tap targets',
+    (tester) async {
+      await openAvengersSeat(tester, size: const Size(320, 844));
+
+      final legendY = tester
+          .getTopLeft(find.byKey(const ValueKey('seat-map-legend')))
+          .dy;
+      final mapY = tester
+          .getTopLeft(find.byKey(const ValueKey('seat-map-horizontal-scroll')))
+          .dy;
+      expect(legendY, lessThan(mapY));
+
+      await addAdultTickets(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
+      expect(
+        tester.getSize(find.byKey(const ValueKey('seat-3001'))).height,
+        44,
+      );
+      expect(tester.getSize(find.byKey(const ValueKey('seat-3001'))).width, 44);
+    },
+  );
+
   testWidgets('R4 guest auth resumes the exact selected showtime', (
     tester,
   ) async {
