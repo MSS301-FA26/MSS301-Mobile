@@ -7,7 +7,9 @@ import '../../../../core/money/vnd_money.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/app_surface.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../data/models/account_dto.dart';
 import '../../data/repositories/account_providers.dart';
@@ -87,61 +89,126 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
           ? const Center(child: CircularProgressIndicator())
           : Form(
               key: _formKey,
-              child: ListView(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                children: [
-                  const CircleAvatar(
-                    radius: 42,
-                    child: Icon(Icons.person_rounded, size: 44),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextFormField(
-                    controller: _name,
-                    decoration: const InputDecoration(labelText: 'Họ và tên'),
-                    validator: (value) => (value?.trim().length ?? 0) < 2
-                        ? 'Họ tên không hợp lệ'
-                        : null,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextFormField(
-                    controller: _phone,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Số điện thoại',
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const ExcludeSemantics(
+                              child: CircleAvatar(
+                                radius: AppSpacing.xl,
+                                backgroundColor: AppColors.surfaceRaised,
+                                foregroundColor: AppColors.textSecondary,
+                                child: Icon(Icons.person_outline_rounded),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Semantics(
+                                    header: true,
+                                    child: const Text(
+                                      'Chỉnh sửa hồ sơ',
+                                      style: AppTextStyles.sectionTitle,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.xs),
+                                  const Text(
+                                    'Cập nhật họ tên và thông tin liên hệ của bạn.',
+                                    style: AppTextStyles.body,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        AppSurface(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const AppSectionHeader(
+                                title: 'Thông tin cá nhân',
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                              TextFormField(
+                                controller: _name,
+                                decoration: const InputDecoration(
+                                  labelText: 'Họ và tên',
+                                  errorMaxLines: 4,
+                                ),
+                                validator: (value) =>
+                                    (value?.trim().length ?? 0) < 2
+                                    ? 'Họ tên không hợp lệ'
+                                    : null,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              TextFormField(
+                                controller: _phone,
+                                keyboardType: TextInputType.phone,
+                                decoration: const InputDecoration(
+                                  labelText: 'Số điện thoại',
+                                  errorMaxLines: 4,
+                                ),
+                                validator: (value) {
+                                  final phone = value?.trim() ?? '';
+                                  return phone.isNotEmpty && phone.length < 9
+                                      ? 'Số điện thoại không hợp lệ'
+                                      : null;
+                                },
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              TextFormField(
+                                controller: _birthYear,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Năm sinh',
+                                  errorMaxLines: 4,
+                                ),
+                                validator: (value) {
+                                  final year = int.tryParse(value ?? '');
+                                  return year != null &&
+                                          (year < 1900 || year > 2020)
+                                      ? 'Năm sinh không hợp lệ'
+                                      : null;
+                                },
+                              ),
+                              if (_message != null) ...[
+                                const SizedBox(height: AppSpacing.md),
+                                Semantics(
+                                  container: true,
+                                  liveRegion: true,
+                                  child: Text(
+                                    _message!,
+                                    style: AppTextStyles.body.copyWith(
+                                      color: AppColors.gold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: AppSpacing.lg),
+                              AppButton(
+                                key: const ValueKey('profile-save'),
+                                label: _saving ? 'Đang lưu…' : 'Lưu thay đổi',
+                                fullWidth: true,
+                                loading: _saving,
+                                onPressed: _saving ? null : _save,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    validator: (value) {
-                      final phone = value?.trim() ?? '';
-                      return phone.isNotEmpty && phone.length < 9
-                          ? 'Số điện thoại không hợp lệ'
-                          : null;
-                    },
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextFormField(
-                    controller: _birthYear,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Năm sinh'),
-                    validator: (value) {
-                      final year = int.tryParse(value ?? '');
-                      return year != null && (year < 1900 || year > 2020)
-                          ? 'Năm sinh không hợp lệ'
-                          : null;
-                    },
-                  ),
-                  if (_message != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      _message!,
-                      style: const TextStyle(color: AppColors.gold),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
-                  AppButton(
-                    key: const ValueKey('profile-save'),
-                    label: _saving ? 'Đang lưu…' : 'Lưu thay đổi',
-                    onPressed: _saving ? null : _save,
-                  ),
-                ],
+                ),
               ),
             ),
     );

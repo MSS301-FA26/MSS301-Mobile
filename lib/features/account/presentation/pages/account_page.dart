@@ -6,6 +6,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../auth/application/auth_session.dart';
 import '../providers/account_summary_provider.dart';
@@ -22,10 +23,9 @@ class AccountPage extends ConsumerWidget {
     if (!session.isAuthenticated) {
       return AppShell(
         currentIndex: 4,
-        body: ListView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+        body: _AccountContent(
           children: [
-            const SizedBox(height: 48),
+            const SizedBox(height: AppSpacing.xl),
             const Icon(
               Icons.account_circle_outlined,
               size: 76,
@@ -33,7 +33,7 @@ class AccountPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             const Text(
-              'Đăng nhập để quản lý vé và quyền lợi',
+              'Tài khoản CinePremier',
               textAlign: TextAlign.center,
               style: AppTextStyles.sectionTitle,
             ),
@@ -41,13 +41,14 @@ class AccountPage extends ConsumerWidget {
             const Text(
               'Bạn vẫn có thể xem phim, thông tin rạp, chính sách và liên hệ CSKH khi chưa đăng nhập.',
               textAlign: TextAlign.center,
-              style: AppTextStyles.caption,
+              style: AppTextStyles.body,
             ),
             const SizedBox(height: AppSpacing.lg),
             FilledButton(
               onPressed: () => context.go(AppRoutes.login),
               child: const Text('Đăng nhập'),
             ),
+            const SizedBox(height: AppSpacing.xs),
             OutlinedButton(
               onPressed: () => context.go(AppRoutes.register),
               child: const Text('Đăng ký'),
@@ -94,15 +95,25 @@ class AccountPage extends ConsumerWidget {
     final user = accountState.requireValue;
     return AppShell(
       currentIndex: 4,
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      body: _AccountContent(
         children: [
           AccountProfileCard(user: user),
-          const SizedBox(height: AppSpacing.md),
-          MembershipCard(user: user, onQr: null),
-          const SizedBox(height: AppSpacing.md),
-          WalletTile(user: user, onManage: () => context.go(AppRoutes.wallet)),
-          const SizedBox(height: AppSpacing.md),
+          const _AccountHeading('Tài khoản của bạn'),
+          AccountMenu(
+            items: [
+              AccountMenuItemData(
+                icon: Icons.person_outline_rounded,
+                label: 'Hồ sơ cá nhân',
+                onTap: () => context.go(AppRoutes.profile),
+              ),
+              AccountMenuItemData(
+                icon: Icons.lock_outline_rounded,
+                label: 'Bảo mật & mật khẩu',
+                onTap: () => context.go(AppRoutes.security),
+              ),
+            ],
+          ),
+          const _AccountHeading('Vé & đơn bắp nước'),
           AccountMenu(
             items: [
               AccountMenuItemData(
@@ -115,65 +126,80 @@ class AccountPage extends ConsumerWidget {
                 label: 'Lịch sử đơn bắp nước',
                 onTap: () => context.go(AppRoutes.foodOrders),
               ),
+            ],
+          ),
+          const _AccountHeading('Ví & điểm thưởng'),
+          WalletTile(user: user, onManage: () => context.go(AppRoutes.wallet)),
+          const SizedBox(height: AppSpacing.sm),
+          MembershipCard(user: user, onQr: null),
+          const SizedBox(height: AppSpacing.sm),
+          AccountMenu(
+            items: [
               AccountMenuItemData(
                 icon: Icons.stars_rounded,
                 label: 'CinePoints',
                 trailing: '${user.points}',
                 onTap: () => context.go(AppRoutes.points),
               ),
-              AccountMenuItemData(
-                icon: Icons.person_outline_rounded,
-                label: 'Hồ sơ cá nhân',
-                onTap: () => context.go(AppRoutes.profile),
-              ),
-              AccountMenuItemData(
-                icon: Icons.lock_outline_rounded,
-                label: 'Bảo mật & mật khẩu',
-                onTap: () => context.go(AppRoutes.security),
-              ),
-              if (FeatureFlags.popBotPreview)
-                AccountMenuItemData(
-                  icon: Icons.smart_toy_outlined,
-                  label: 'Trợ lý điện ảnh PopBot AI',
-                  iconColor: AppColors.lavender,
-                  status: 'Preview',
-                  onTap: () => context.go(AppRoutes.popBot),
-                ),
-              if (FeatureFlags.voucherPreview)
-                AccountMenuItemData(
-                  icon: Icons.local_activity_outlined,
-                  label: 'Ưu đãi & Voucher cá nhân',
-                  status: 'Preview',
-                  onTap: () => context.go(AppRoutes.vouchers),
-                ),
-              if (FeatureFlags.vipPreview)
-                AccountMenuItemData(
-                  icon: Icons.workspace_premium_outlined,
-                  label: 'CinePremier VIP',
-                  status: 'Preview',
-                  onTap: () => context.go(AppRoutes.vip),
-                ),
-              if (FeatureFlags.socialMoviePreview)
-                AccountMenuItemData(
-                  icon: Icons.favorite_outline_rounded,
-                  label: 'Yêu thích',
-                  status: 'Preview',
-                  onTap: () => context.go(AppRoutes.favorites),
-                ),
-              if (FeatureFlags.socialMoviePreview)
-                AccountMenuItemData(
-                  icon: Icons.notifications_none_rounded,
-                  label: 'Thông báo',
-                  status: 'Preview',
-                  onTap: () => context.go(AppRoutes.notifications),
-                ),
-              if (FeatureFlags.independentFoodOrderPreview)
-                AccountMenuItemData(
-                  icon: Icons.fastfood_outlined,
-                  label: 'Đặt bắp nước độc lập',
-                  status: 'Preview',
-                  onTap: () => context.go(AppRoutes.previewFood),
-                ),
+            ],
+          ),
+          if (FeatureFlags.popBotPreview ||
+              FeatureFlags.voucherPreview ||
+              FeatureFlags.vipPreview ||
+              FeatureFlags.socialMoviePreview ||
+              FeatureFlags.independentFoodOrderPreview) ...[
+            const _AccountHeading('Tính năng Preview'),
+            AccountMenu(
+              items: [
+                if (FeatureFlags.popBotPreview)
+                  AccountMenuItemData(
+                    icon: Icons.smart_toy_outlined,
+                    label: 'Trợ lý điện ảnh PopBot AI',
+                    iconColor: AppColors.lavender,
+                    status: 'Preview',
+                    onTap: () => context.go(AppRoutes.popBot),
+                  ),
+                if (FeatureFlags.voucherPreview)
+                  AccountMenuItemData(
+                    icon: Icons.local_activity_outlined,
+                    label: 'Ưu đãi & Voucher cá nhân',
+                    status: 'Preview',
+                    onTap: () => context.go(AppRoutes.vouchers),
+                  ),
+                if (FeatureFlags.vipPreview)
+                  AccountMenuItemData(
+                    icon: Icons.workspace_premium_outlined,
+                    label: 'CinePremier VIP',
+                    status: 'Preview',
+                    onTap: () => context.go(AppRoutes.vip),
+                  ),
+                if (FeatureFlags.socialMoviePreview)
+                  AccountMenuItemData(
+                    icon: Icons.favorite_outline_rounded,
+                    label: 'Yêu thích',
+                    status: 'Preview',
+                    onTap: () => context.go(AppRoutes.favorites),
+                  ),
+                if (FeatureFlags.socialMoviePreview)
+                  AccountMenuItemData(
+                    icon: Icons.notifications_none_rounded,
+                    label: 'Thông báo',
+                    status: 'Preview',
+                    onTap: () => context.go(AppRoutes.notifications),
+                  ),
+                if (FeatureFlags.independentFoodOrderPreview)
+                  AccountMenuItemData(
+                    icon: Icons.fastfood_outlined,
+                    label: 'Đặt bắp nước độc lập',
+                    status: 'Preview',
+                    onTap: () => context.go(AppRoutes.previewFood),
+                  ),
+              ],
+            ),
+          ],
+          const _AccountHeading('Thông tin & trợ giúp'),
+          AccountMenu(
+            items: [
               AccountMenuItemData(
                 icon: Icons.apartment_rounded,
                 label: 'Thông tin rạp',
@@ -192,17 +218,22 @@ class AccountPage extends ConsumerWidget {
                 iconColor: AppColors.textMuted,
                 onTap: () => context.go(AppRoutes.support),
               ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          AccountMenu(
+            items: [
               AccountMenuItemData(
                 icon: Icons.logout_rounded,
                 label: 'Đăng xuất',
-                iconColor: AppColors.adultBadge,
+                iconColor: AppColors.error,
                 onTap: () async {
                   final confirmed = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Đăng xuất?'),
                       content: const Text(
-                        'Bạn có chắc muốn kết thúc phiên mock?',
+                        'Bạn có chắc muốn kết thúc phiên đăng nhập?',
                       ),
                       actions: [
                         TextButton(
@@ -223,9 +254,9 @@ class AccountPage extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
           const Text(
-            'Phiên bản 3.4.0 • Bản quyền CinePremier & PopBot AI',
+            'CinePremier',
             textAlign: TextAlign.center,
             style: AppTextStyles.caption,
           ),
@@ -233,4 +264,36 @@ class AccountPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _AccountContent extends StatelessWidget {
+  const _AccountContent({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    padding: const EdgeInsets.all(AppSpacing.pageGutter),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      ),
+    ),
+  );
+}
+
+class _AccountHeading extends StatelessWidget {
+  const _AccountHeading(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: AppSpacing.xl, bottom: AppSpacing.sm),
+    child: Semantics(header: true, child: AppSectionHeader(title: title)),
+  );
 }
