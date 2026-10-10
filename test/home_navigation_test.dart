@@ -170,7 +170,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('CP-MOCK-5101'), findsOneWidget);
-    expect(find.text('INCEPTION'), findsOneWidget);
+    // History preserves the supplied booking title instead of uppercasing it.
+    expect(find.text('Inception'), findsOneWidget);
 
     await tester.tap(
       find.byKey(const ValueKey('bottom-nav-icon-4')).hitTestable(),

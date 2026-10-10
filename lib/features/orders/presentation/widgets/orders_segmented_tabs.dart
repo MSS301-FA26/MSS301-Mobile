@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_surface.dart';
 
 enum OrdersTab { upcoming, completed }
 
@@ -19,32 +20,43 @@ class OrdersSegmentedTabs extends StatelessWidget {
   final ValueChanged<OrdersTab> onSelected;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: AppRadii.card,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          _TabButton(
-            label: 'Sắp chiếu',
-            count: upcomingCount,
-            selected: selected == OrdersTab.upcoming,
-            onTap: () => onSelected(OrdersTab.upcoming),
-          ),
-          _TabButton(
-            label: 'Lịch sử đã xem',
-            count: completedCount,
-            selected: selected == OrdersTab.completed,
-            onTap: () => onSelected(OrdersTab.completed),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppSurface(
+    padding: const EdgeInsets.all(AppSpacing.xxs),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
+        final vertical = constraints.maxWidth < 360 * textScale;
+        final upcoming = _TabButton(
+          label: 'Sắp chiếu',
+          count: upcomingCount,
+          selected: selected == OrdersTab.upcoming,
+          onTap: () => onSelected(OrdersTab.upcoming),
+        );
+        final completed = _TabButton(
+          label: 'Lịch sử đã xem',
+          count: completedCount,
+          selected: selected == OrdersTab.completed,
+          onTap: () => onSelected(OrdersTab.completed),
+        );
+        return vertical
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  upcoming,
+                  const SizedBox(height: AppSpacing.xxs),
+                  completed,
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: upcoming),
+                  const SizedBox(width: AppSpacing.xxs),
+                  Expanded(child: completed),
+                ],
+              );
+      },
+    ),
+  );
 }
 
 class _TabButton extends StatelessWidget {
@@ -61,56 +73,51 @@ class _TabButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadii.control,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          height: 38,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.gold : Colors.transparent,
-            borderRadius: AppRadii.control,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: selected ? Colors.black : AppColors.textMuted,
-                  ),
-                ),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: selected,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: AppRadii.control,
+      child: AnimatedContainer(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 160),
+        constraints: const BoxConstraints(minHeight: AppSizes.buttonHeight),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.gold : Colors.transparent,
+          borderRadius: AppRadii.control,
+        ),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xxs,
+          children: [
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.label.copyWith(
+                color: selected
+                    ? AppColors.background
+                    : AppColors.textSecondary,
               ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? Colors.black.withValues(alpha: 0.18)
-                      : AppColors.surfaceRaised,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    color: selected ? Colors.black : AppColors.textMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+            ),
+            Text(
+              '$count',
+              style: AppTextStyles.label.copyWith(
+                color: selected
+                    ? AppColors.background
+                    : AppColors.textSecondary,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }

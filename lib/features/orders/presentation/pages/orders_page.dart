@@ -6,6 +6,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../providers/orders_provider.dart';
 import '../widgets/order_card.dart';
@@ -48,6 +49,8 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
+          const AppSectionHeader(title: 'Vé của tôi'),
+          const SizedBox(height: AppSpacing.md),
           OrdersSegmentedTabs(
             selected: _tab,
             upcomingCount: upcoming.length,
@@ -56,7 +59,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
           ),
           const SizedBox(height: AppSpacing.md),
           if (visible.isEmpty)
-            const _EmptyOrders()
+            _EmptyOrders(tab: _tab)
           else
             for (final order in visible)
               Padding(
@@ -86,29 +89,18 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
 }
 
 class _EmptyOrders extends StatelessWidget {
-  const _EmptyOrders();
+  const _EmptyOrders({required this.tab});
+
+  final OrdersTab tab;
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 64),
-      child: Column(
-        children: [
-          Icon(
-            Icons.confirmation_number_outlined,
-            size: 48,
-            color: AppColors.textDisabled,
-          ),
-          SizedBox(height: AppSpacing.sm),
-          Text('Chưa có vé sắp chiếu nào', style: AppTextStyles.sectionTitle),
-          SizedBox(height: AppSpacing.xs),
-          Text(
-            'Hãy chọn một bộ phim yêu thích và đặt chỗ ngay hôm nay!',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.caption,
-          ),
-        ],
-      ),
+    return RepositoryStatePane.empty(
+      title: tab == OrdersTab.upcoming
+          ? 'Chưa có vé sắp chiếu nào'
+          : 'Chưa có lịch sử đã xem',
+      message: 'Hãy chọn một bộ phim yêu thích và đặt chỗ ngay hôm nay!',
+      icon: Icons.confirmation_number_outlined,
     );
   }
 }

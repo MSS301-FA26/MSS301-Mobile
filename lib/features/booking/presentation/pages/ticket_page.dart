@@ -6,10 +6,13 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/app_surface.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../orders/data/models/booking_enums.dart';
 import '../../application/booking_completion_controller.dart';
+import '../widgets/ticket_payload_card.dart';
+import '../widgets/ticket_receipt_summary.dart';
 
 class TicketPage extends ConsumerWidget {
   const TicketPage({super.key, required this.bookingId});
@@ -30,7 +33,7 @@ class TicketPage extends ConsumerWidget {
         data: (booking) {
           if (booking == null || booking.status != BookingStatus.paid) {
             return Center(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -52,123 +55,168 @@ class TicketPage extends ConsumerWidget {
             );
           }
           return SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: [
-                Row(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: ListView(
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   children: [
-                    IconButton(
-                      tooltip: 'Đóng vé',
-                      onPressed: () => context.go(AppRoutes.orders),
-                      icon: const Icon(Icons.close_rounded),
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Đóng vé',
+                          constraints: const BoxConstraints(
+                            minWidth: AppSizes.buttonHeight,
+                            minHeight: AppSizes.buttonHeight,
+                          ),
+                          onPressed: () => context.go(AppRoutes.orders),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Semantics(
+                            header: true,
+                            child: const Text(
+                              'Vé xem phim',
+                              style: AppTextStyles.screenTitle,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const Expanded(
-                      child: Text(
-                        'Vé xem phim',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.sectionTitle,
+                    const SizedBox(height: AppSpacing.md),
+                    AppSurface(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      borderColor: AppColors.goldBorder,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('MÃ ĐẶT VÉ', style: AppTextStyles.eyebrow),
+                          const SizedBox(height: AppSpacing.sm),
+                          SelectableText(
+                            booking.bookingCode,
+                            style: AppTextStyles.emphasis.copyWith(
+                              fontFamily: 'monospace',
+                              color: AppColors.gold,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Semantics(
+                            header: true,
+                            child: Text(
+                              booking.movieTitleSnapshot ??
+                                  booking.movieTitle ??
+                                  'Phim',
+                              style: AppTextStyles.screenTitle,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    const SizedBox(height: AppSpacing.md),
+                    AppSurface(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _TicketLine(
+                            'Rạp',
+                            booking.cinemaNameSnapshot ??
+                                booking.cinemaName ??
+                                '—',
+                          ),
+                          _TicketLine(
+                            'Phòng',
+                            booking.roomNameSnapshot ?? booking.roomName ?? '—',
+                          ),
+                          _TicketLine(
+                            'Ghế',
+                            booking.seats
+                                .map((seat) => seat.seatLabel)
+                                .join(', '),
+                          ),
+                          for (final type in const [
+                            TicketType.adult,
+                            TicketType.student,
+                            TicketType.child,
+                          ])
+                            if (booking.tickets.any(
+                              (ticket) => ticket.ticketType == type,
+                            ))
+                              _TicketLine(
+                                _ticketLabel(type),
+                                booking.tickets
+                                    .where(
+                                      (ticket) => ticket.ticketType == type,
+                                    )
+                                    .map(
+                                      (ticket) => booking.seats
+                                          .firstWhere(
+                                            (seat) =>
+                                                seat.seatId == ticket.seatId,
+                                          )
+                                          .seatLabel,
+                                    )
+                                    .join(', '),
+                              ),
+                          _TicketLine(
+                            'Suất chiếu',
+                            booking.showtimeStartSnapshot == null &&
+                                    booking.showtimeStart == null
+                                ? '—'
+                                : _dateTime(
+                                    booking.showtimeStartSnapshot ??
+                                        booking.showtimeStart!,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TicketPayloadCard(
+                      payload: booking.qrCode ?? booking.bookingCode,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Wrap(
+                      children: [
+                        AppSurface(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: AppSpacing.xs,
+                          ),
+                          borderRadius: AppRadii.small,
+                          child: Semantics(
+                            container: true,
+                            child: const Wrap(
+                              spacing: AppSpacing.xs,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                ExcludeSemantics(
+                                  child: Icon(
+                                    Icons.check_circle_outline_rounded,
+                                    size: AppSizes.iconMedium,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                                Text(
+                                  'Đã thanh toán',
+                                  style: AppTextStyles.emphasis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TicketReceiptSummary(booking: booking),
+                    const SizedBox(height: AppSpacing.sm),
+                    const Text(
+                      'Không chia sẻ mã vé cho người khác. Giữ mã đặt vé để đối chiếu với nhân viên rạp.',
+                      style: AppTextStyles.body,
+                    ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceRaised,
-                    borderRadius: AppRadii.card,
-                    border: Border.all(color: AppColors.goldBorder),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        booking.movieTitleSnapshot ??
-                            booking.movieTitle ??
-                            'Phim',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        booking.qrCode ?? booking.bookingCode,
-                        textAlign: TextAlign.center,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.gold,
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        booking.bookingCode,
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _TicketLine(
-                  'Rạp',
-                  booking.cinemaNameSnapshot ?? booking.cinemaName ?? '—',
-                ),
-                _TicketLine(
-                  'Phòng',
-                  booking.roomNameSnapshot ?? booking.roomName ?? '—',
-                ),
-                _TicketLine(
-                  'Ghế',
-                  booking.seats.map((seat) => seat.seatLabel).join(', '),
-                ),
-                for (final type in const [
-                  TicketType.adult,
-                  TicketType.student,
-                  TicketType.child,
-                ])
-                  if (booking.tickets.any(
-                    (ticket) => ticket.ticketType == type,
-                  ))
-                    _TicketLine(
-                      _ticketLabel(type),
-                      booking.tickets
-                          .where((ticket) => ticket.ticketType == type)
-                          .map(
-                            (ticket) => booking.seats
-                                .firstWhere(
-                                  (seat) => seat.seatId == ticket.seatId,
-                                )
-                                .seatLabel,
-                          )
-                          .join(', '),
-                    ),
-                _TicketLine(
-                  'Suất chiếu',
-                  booking.showtimeStartSnapshot == null &&
-                          booking.showtimeStart == null
-                      ? '—'
-                      : _dateTime(
-                          booking.showtimeStartSnapshot ??
-                              booking.showtimeStart!,
-                        ),
-                ),
-                _TicketLine('Trạng thái', 'Đã thanh toán'),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Đưa mã QR này tại cổng soát vé. Không chia sẻ mã vé cho người khác.',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.caption,
-                ),
-              ],
+              ),
             ),
           );
         },
@@ -229,18 +277,12 @@ class _TicketLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Text(label, style: AppTextStyles.caption)),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-        ),
+        Text(label, style: AppTextStyles.caption),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(value, style: AppTextStyles.emphasis),
       ],
     ),
   );
