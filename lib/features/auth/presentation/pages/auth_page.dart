@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../application/auth_session.dart';
 import '../widgets/auth_form_layout.dart';
@@ -129,36 +128,104 @@ class _AuthPageState extends ConsumerState<AuthPage> {
             context.canPop() ? context.pop() : context.go(AppRoutes.account),
         form: _buildForm(),
         message: session.message,
-        submitButton: AppButton(
-          key: const ValueKey('auth-submit'),
-          label: session.isSubmitting ? 'Đang xử lý…' : actionLabel,
-          loading: session.isSubmitting,
-          fullWidth: true,
-          onPressed: session.isSubmitting ? null : _submit,
-        ),
+        useLoginMapping: widget.mode == AuthPageMode.login,
+        onLoginTabPressed: () => context.go(AppRoutes.login),
+        onRegisterTabPressed: () => context.go(AppRoutes.register),
+        submitButton: _buildSubmitButton(session.isSubmitting, actionLabel),
         secondaryActions: [
-          if (widget.mode == AuthPageMode.login) ...[
-            TextButton(
-              onPressed: () => context.go(AppRoutes.forgotPassword),
-              child: const Text('Quên mật khẩu?'),
-            ),
-            TextButton(
-              onPressed: () => context.go(AppRoutes.register),
-              child: const Text('Chưa có tài khoản? Đăng ký'),
-            ),
-            TextButton(
-              onPressed: () => context.go(AppRoutes.home),
-              child: const Text('Tiếp tục với tư cách khách'),
-            ),
-          ],
+          if (widget.mode == AuthPageMode.login) _buildLoginActions(),
         ],
       ),
+    );
+  }
+
+  Widget _buildSubmitButton(bool isSubmitting, String actionLabel) => SizedBox(
+    width: double.infinity,
+    height: AppSizes.buttonHeight + AppSpacing.xs,
+    child: FilledButton(
+      key: const ValueKey('auth-submit'),
+      onPressed: isSubmitting ? null : _submit,
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.text,
+        foregroundColor: AppColors.background,
+        disabledBackgroundColor: AppColors.disabled,
+        disabledForegroundColor: AppColors.textMuted,
+        shape: const RoundedRectangleBorder(borderRadius: AppRadii.small),
+      ),
+      child: isSubmitting
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.mode == AuthPageMode.login
+                        ? 'ĐĂNG NHẬP'
+                        : actionLabel.toUpperCase(),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  const Icon(Icons.arrow_forward_rounded),
+                ],
+              ),
+            ),
+    ),
+  );
+
+  Widget _buildLoginActions() => Column(
+    children: [
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final accountPrompt = Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('Chưa có tài khoản?', style: AppTextStyles.meta),
+              TextButton(
+                onPressed: () => context.go(AppRoutes.register),
+                child: const Text('Đăng Ký Ngay'),
+              ),
+            ],
+          );
+          final forgotButton = TextButton(
+            onPressed: () => context.go(AppRoutes.forgotPassword),
+            child: const Text('Quên mật khẩu?'),
+          );
+          if (constraints.maxWidth < 600) {
+            return Column(children: [accountPrompt, forgotButton]);
+          }
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [accountPrompt, forgotButton],
+          );
+        },
+      ),
+      TextButton(
+        onPressed: () => context.go(AppRoutes.home),
+        child: const Text('Tiếp tục với tư cách khách'),
+      ),
+    ],
+  );
+
+  Widget _buildLabeledField({String? label, required Widget child}) {
+    if (label == null) return child;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(label, style: AppTextStyles.eyebrow),
+        const SizedBox(height: AppSpacing.xs),
+        child,
+      ],
     );
   }
 
   Widget _buildForm() => Form(
     key: _formKey,
     child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.mode == AuthPageMode.register && !_otpStep) ...[
           TextFormField(
@@ -175,18 +242,27 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           const SizedBox(height: AppSpacing.md),
         ],
         if (!_otpStep)
-          TextFormField(
-            key: const ValueKey('auth-email'),
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            autofillHints: const [AutofillHints.email],
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              errorMaxLines: 3,
+          _buildLabeledField(
+            label: widget.mode == AuthPageMode.login ? 'ĐỊA CHỈ EMAIL' : null,
+            child: TextFormField(
+              key: const ValueKey('auth-email'),
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.email],
+              decoration: InputDecoration(
+                labelText: widget.mode == AuthPageMode.login ? null : 'Email',
+                hintText: widget.mode == AuthPageMode.login
+                    ? 'Nhập email'
+                    : null,
+                prefixIcon: widget.mode == AuthPageMode.login
+                    ? const Icon(Icons.mail_outline_rounded)
+                    : null,
+                errorMaxLines: 3,
+              ),
+              validator: (value) =>
+                  !(value ?? '').contains('@') ? 'Email không hợp lệ' : null,
             ),
-            validator: (value) =>
-                !(value ?? '').contains('@') ? 'Email không hợp lệ' : null,
           ),
         if (_otpStep)
           TextFormField(
@@ -207,29 +283,47 @@ class _AuthPageState extends ConsumerState<AuthPage> {
             widget.mode == AuthPageMode.register ||
             _otpStep) ...[
           const SizedBox(height: AppSpacing.md),
-          TextFormField(
-            key: const ValueKey('auth-password'),
-            controller: _password,
-            obscureText: _hidePassword,
-            autofillHints: const [AutofillHints.password],
-            decoration: InputDecoration(
-              labelText: widget.mode == AuthPageMode.forgotPassword
-                  ? 'Mật khẩu mới'
-                  : 'Mật khẩu',
-              errorMaxLines: 3,
-              suffixIcon: IconButton(
-                tooltip: _hidePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                onPressed: () => setState(() => _hidePassword = !_hidePassword),
-                icon: Icon(
-                  _hidePassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
+          _buildLabeledField(
+            label: widget.mode == AuthPageMode.login
+                ? 'MẬT KHẨU BẢO MẬT'
+                : null,
+            child: TextFormField(
+              key: const ValueKey('auth-password'),
+              controller: _password,
+              obscureText: _hidePassword,
+              autofillHints: const [AutofillHints.password],
+              decoration: InputDecoration(
+                labelText: widget.mode == AuthPageMode.login
+                    ? null
+                    : widget.mode == AuthPageMode.forgotPassword
+                    ? 'Mật khẩu mới'
+                    : 'Mật khẩu',
+                hintText: widget.mode == AuthPageMode.login
+                    ? 'Nhập mật khẩu'
+                    : null,
+                prefixIcon: widget.mode == AuthPageMode.login
+                    ? const Icon(Icons.lock_outline_rounded)
+                    : null,
+                errorMaxLines: 3,
+                suffixIcon: IconButton(
+                  tooltip: _hidePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  onPressed: () =>
+                      setState(() => _hidePassword = !_hidePassword),
+                  icon: Icon(
+                    _hidePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
                 ),
               ),
+              validator: (value) => (value?.length ?? 0) < 6
+                  ? 'Mật khẩu tối thiểu 6 ký tự'
+                  : null,
             ),
-            validator: (value) =>
-                (value?.length ?? 0) < 6 ? 'Mật khẩu tối thiểu 6 ký tự' : null,
           ),
         ],
       ],

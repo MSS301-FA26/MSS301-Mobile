@@ -8,7 +8,6 @@ import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/core/theme/app_theme.dart';
 import 'package:mss301_mobile/features/auth/application/auth_session.dart';
 import 'package:mss301_mobile/features/auth/presentation/pages/auth_page.dart';
-import 'package:mss301_mobile/shared/widgets/app_button.dart';
 
 import 'support/fake_auth_session.dart';
 
@@ -20,6 +19,35 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('auth-form-panel'))).width,
       lessThanOrEqualTo(560),
     );
+  });
+
+  testWidgets('login maps the CinePremier brand, tabs and trust row', (
+    tester,
+  ) async {
+    await _pumpAuth(tester, _RecordingAuth());
+
+    expect(find.text('CINEPREMIER'), findsOneWidget);
+    expect(find.text('ĐĂNG NHẬP'), findsNWidgets(2));
+    expect(find.text('ĐĂNG KÝ'), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-login-tab')), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-register-tab')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('auth-google-unavailable')),
+      findsOneWidget,
+    );
+    expect(find.text('AN TOÀN'), findsOneWidget);
+    expect(find.text('CINEPREMIER CLUB'), findsOneWidget);
+  });
+
+  testWidgets('login register tab keeps the existing register navigation', (
+    tester,
+  ) async {
+    final router = await _pumpAuth(tester, _RecordingAuth());
+
+    await tester.tap(find.byKey(const ValueKey('auth-register-tab')));
+    await tester.pumpAndSettle();
+
+    expect(router.routeInformationProvider.value.uri.path, AppRoutes.register);
   });
 
   testWidgets('login keeps trimmed email, raw password and continue route', (
@@ -104,14 +132,14 @@ void main() {
     await tester.tap(_submitButton);
     await tester.pump();
     expect(auth.loginCalls, 1);
-    expect(tester.widget<AppButton>(_submitButton).onPressed, isNull);
+    expect(tester.widget<FilledButton>(_submitButton).onPressed, isNull);
     await tester.tap(_submitButton);
     await tester.pump();
     expect(auth.loginCalls, 1);
     pending.complete(false);
     await tester.pumpAndSettle();
     expect(find.text('Không thể đăng nhập. Vui lòng thử lại.'), findsOneWidget);
-    expect(tester.widget<AppButton>(_submitButton).onPressed, isNotNull);
+    expect(tester.widget<FilledButton>(_submitButton).onPressed, isNotNull);
   });
 
   testWidgets('register preserves its existing fields and OTP transition', (
@@ -188,8 +216,8 @@ void main() {
     );
     router.go(AppRoutes.login);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Chưa có tài khoản? Đăng ký'));
-    await tester.tap(find.text('Chưa có tài khoản? Đăng ký'));
+    await tester.ensureVisible(find.text('Đăng Ký Ngay'));
+    await tester.tap(find.text('Đăng Ký Ngay'));
     await tester.pumpAndSettle();
     expect(router.routeInformationProvider.value.uri.path, AppRoutes.register);
     router.go(AppRoutes.login);
@@ -239,7 +267,10 @@ void main() {
             ),
             findsWidgets,
           );
-          expect(find.textContaining('Google'), findsNothing);
+          expect(
+            find.byKey(const ValueKey('auth-google-unavailable')),
+            route == AppRoutes.login ? findsOneWidget : findsNothing,
+          );
           expect(find.textContaining('Thiết lập mật khẩu'), findsNothing);
         },
       );
@@ -258,8 +289,13 @@ Future<void> _submit(WidgetTester tester) async {
 }
 
 Future<void> _revealSubmit(WidgetTester tester) async {
-  if (_submitButton.evaluate().isEmpty) {
-    await tester.scrollUntilVisible(_submitButton, 200);
+  for (
+    var attempt = 0;
+    attempt < 8 && _submitButton.evaluate().isEmpty;
+    attempt++
+  ) {
+    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    await tester.pump();
   }
   await tester.ensureVisible(_submitButton);
 }
