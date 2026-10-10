@@ -15,11 +15,13 @@ class AppShell extends ConsumerWidget {
     required this.body,
     required this.currentIndex,
     this.showBottomNavigation = true,
+    this.compactHeader = false,
   });
 
   final Widget body;
   final int currentIndex;
   final bool showBottomNavigation;
+  final bool compactHeader;
 
   static const _tabRoutes = [
     AppRoutes.home,
@@ -34,6 +36,7 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: CinemaHeader(
+        compact: compactHeader,
         onHome: () => _goHome(context, ref),
         onSearch: () => context.go(AppRoutes.discover),
         onAccount: () => context.go(AppRoutes.account),

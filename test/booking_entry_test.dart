@@ -135,6 +135,10 @@ void main() {
     final container = await openAvengersSeat(tester, guest: true);
 
     expect(find.byKey(const ValueKey('auth-submit')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('auth-email')),
+      'customer@example.test',
+    );
     await tester.enterText(find.byType(TextFormField).last, 'test-password');
     await tester.tap(find.byKey(const ValueKey('auth-submit')));
     await tester.pumpAndSettle();

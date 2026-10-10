@@ -30,12 +30,16 @@ class RemoteAuthRepository implements AuthRepository {
     required String fullName,
     String? phone,
     int? birthYear,
+    String? username,
+    String? identityNumber,
   }) => _remote.register(
     email: email,
     password: password,
     fullName: fullName,
     phone: phone,
     birthYear: birthYear,
+    username: username,
+    identityNumber: identityNumber,
   );
 
   @override

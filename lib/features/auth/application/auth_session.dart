@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/network_providers.dart';
+import '../../../core/network/api_exception.dart';
 import '../data/auth_models.dart';
 import '../data/auth_remote_data_source.dart';
 import '../data/auth_repository.dart';
@@ -71,33 +72,65 @@ class AuthSessionController extends Notifier<AuthState> {
     }
   }
 
-  Future<bool> register({
+  Future<RegistrationResult?> register({
     required String email,
     required String password,
     required String fullName,
+    String? phone,
+    int? birthYear,
+    String? username,
+    String? identityNumber,
   }) async {
     try {
-      await ref
+      final registration = await ref
           .read(authRepositoryProvider)
-          .register(email: email, password: password, fullName: fullName);
+          .register(
+            email: email,
+            password: password,
+            fullName: fullName,
+            phone: phone,
+            birthYear: birthYear,
+            username: username,
+            identityNumber: identityNumber,
+          );
       state = const AuthState(status: AuthStatus.unauthenticated);
-      return true;
+      return registration;
     } catch (error) {
       state = state.copyWith(message: _message(error));
-      return false;
+      return null;
     }
   }
 
   Future<bool> verifyEmail({required String email, required String otp}) async {
+    state = state.copyWith(clearMessage: true);
     try {
       await ref
           .read(authRepositoryProvider)
           .verifyEmail(email: email, otp: otp);
       return true;
     } catch (error) {
-      state = state.copyWith(message: _message(error));
+      state = state.copyWith(
+        message: error is ApiException ? error.message : _message(error),
+      );
       return false;
     }
+  }
+
+  Future<bool> resendVerification(String email) async {
+    try {
+      await ref.read(authRepositoryProvider).resendVerification(email);
+      state = state.copyWith(clearMessage: true);
+      return true;
+    } catch (error) {
+      state = state.copyWith(
+        message: error is ApiException ? error.message : _message(error),
+      );
+      return false;
+    }
+  }
+
+  void clearVerificationMessage() {
+    state = state.copyWith(clearMessage: true);
   }
 
   Future<bool> requestPasswordReset(String email) async {

@@ -5,6 +5,7 @@ class Movie {
     required this.id,
     required this.title,
     required this.ageRating,
+    this.hasAgeRating = true,
     required this.duration,
     required this.rating,
     this.ratingCount = '',
@@ -27,6 +28,7 @@ class Movie {
   final int id;
   final String title;
   final String ageRating;
+  final bool hasAgeRating;
   final String duration;
   final double rating;
   final String ratingCount;

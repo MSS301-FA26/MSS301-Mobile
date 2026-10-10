@@ -11,6 +11,8 @@ abstract interface class AuthRepository {
     required String fullName,
     String? phone,
     int? birthYear,
+    String? username,
+    String? identityNumber,
   });
   Future<void> verifyEmail({required String email, required String otp});
   Future<void> resendVerification(String email);

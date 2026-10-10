@@ -4,185 +4,147 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
+import '../../../auth/application/auth_session.dart';
 import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
-import '../../../movie/presentation/widgets/trailer_preview_dialog.dart';
-import '../widgets/coming_soon_card.dart';
-import '../widgets/genre_selector.dart';
-import '../widgets/hero_card.dart';
-import '../widgets/now_showing_card.dart';
-import '../widgets/popbot_banner.dart';
-import '../widgets/quick_actions.dart';
+import '../widgets/home_cinemas_section.dart';
+import '../widgets/home_hero_carousel.dart';
+import '../widgets/home_movie_carousel.dart';
+import '../widgets/home_quick_booking.dart';
+import '../widgets/home_section_heading.dart';
 
-class HomePage extends ConsumerStatefulWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
-  @override
-  ConsumerState<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends ConsumerState<HomePage> {
-  final PageController _heroController = PageController();
-  int _activeHero = 0;
-  String _genre = 'Tất cả';
-
-  @override
-  void dispose() {
-    _heroController.dispose();
-    super.dispose();
-  }
-
-  void _openMovie(Movie movie) =>
+  void _openMovie(BuildContext context, Movie movie) =>
       context.pushNamed('movieDetail', pathParameters: {'id': '${movie.id}'});
 
-  void _bookMovie(Movie movie) =>
+  void _bookMovie(BuildContext context, Movie movie) =>
       context.go(AppRoutes.showtimesForMovie(movie.id));
 
-  bool _matchesGenre(Movie movie) {
-    return _genre == 'Tất cả' || movie.genreTags.contains(_genre);
+  void _openSeats(BuildContext context, WidgetRef ref, int showtimeId) {
+    final route = AppRoutes.seatSelection(showtimeId);
+    // Use the same existing session boundary as the Showtimes entry CTA.
+    if (ref.read(authSessionProvider).isAuthenticated) {
+      context.push(route);
+    } else {
+      context.go(AppRoutes.loginWithRedirect(route));
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final moviesState = ref.watch(moviesProvider);
-    if (moviesState.isLoading) {
-      return const AppShell(
-        currentIndex: 0,
-        body: RepositoryStatePane.loading(),
-      );
-    }
-    if (moviesState.hasError) {
-      return AppShell(
-        currentIndex: 0,
-        body: RepositoryStatePane.error(
-          onRetry: () => ref.invalidate(moviesProvider),
-        ),
-      );
-    }
-    final movies = moviesState.requireValue;
-    if (movies.isEmpty) {
-      return const AppShell(
-        currentIndex: 0,
-        body: RepositoryStatePane.empty(
-          title: 'Chưa có phim',
-          message: 'Danh sách phim sẽ được cập nhật sớm.',
-        ),
-      );
-    }
-    final nowShowing = movies
-        .where((movie) => movie.isNowShowing && _matchesGenre(movie))
-        .toList();
-    final comingSoon = movies.where((movie) => movie.isComingSoon).toList();
-    final heroes = movies.take(3).toList(growable: false);
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    final movies = ref.watch(moviesProvider);
     return AppShell(
       currentIndex: 0,
+      compactHeader: true,
       body: SingleChildScrollView(
+        key: const ValueKey('home-scroll'),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: AppSpacing.xxs),
-            SizedBox(
-              height: AppSpacing.heroHeight,
-              child: PageView.builder(
-                controller: _heroController,
-                itemCount: heroes.length,
-                onPageChanged: (index) => setState(() => _activeHero = index),
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ),
-                  child: HeroCard(
-                    movie: heroes[index],
-                    activeIndex: _activeHero,
-                    count: heroes.length,
-                    onOpen: () => _openMovie(heroes[index]),
-                    onBook: () => _bookMovie(heroes[index]),
-                    onTrailer: () => showDialog<void>(
-                      context: context,
-                      builder: (context) =>
-                          TrailerPreviewDialog(movie: heroes[index]),
-                    ),
-                    onDot: (page) => _heroController.animateToPage(
-                      page,
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOut,
-                    ),
-                  ),
-                ),
+            if (movies.isLoading)
+              const RepositoryStatePane.loading()
+            else if (movies.hasError)
+              RepositoryStatePane.error(
+                onRetry: () => ref.invalidate(moviesProvider),
+              )
+            else if (movies.requireValue.isEmpty)
+              const RepositoryStatePane.empty(
+                title: 'Chưa có phim',
+                message: 'Danh sách phim sẽ được cập nhật sớm.',
+              )
+            else
+              HomeHeroCarousel(
+                movies: movies.requireValue.take(3).toList(growable: false),
+                onOpen: (movie) => _openMovie(context, movie),
               ),
+            HomeQuickBooking(
+              movies: movies.hasError || movies.isLoading
+                  ? const []
+                  : movies.requireValue,
+              onBook: (id) => _openSeats(context, ref, id),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            const QuickActions(),
-            const SizedBox(height: AppSpacing.xl),
-            AppSectionHeader(
-              title: 'Phim đang chiếu',
-              action: 'Xem tất cả',
+            HomeSectionHeading(
+              eyebrow: 'PHÒNG VÉ CINEPREMIER',
+              title: 'PHIM ĐANG CHIẾU',
+              subtitle:
+                  'Những siêu phẩm điện ảnh đang khuấy đảo phòng vé tuần này',
+              action: 'XEM TẤT CẢ',
               onAction: () => context.go(AppRoutes.discover),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              height: 338,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                itemCount: nowShowing.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: AppSpacing.sm),
-                itemBuilder: (context, index) => NowShowingCard(
-                  movie: nowShowing[index],
-                  onOpen: () => _openMovie(nowShowing[index]),
-                  onBook: () => _bookMovie(nowShowing[index]),
-                ),
-              ),
+            _MovieSection(
+              state: movies,
+              upcoming: false,
+              retry: () => ref.invalidate(moviesProvider),
+              onOpen: (movie) => _openMovie(context, movie),
+              onBook: (movie) => _bookMovie(context, movie),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            const PopBotBanner(onOpen: null),
-            const SizedBox(height: AppSpacing.xl),
-            const AppSectionHeader(
-              title: 'Thể loại thịnh hành',
+            HomeSectionHeading(
+              eyebrow: 'SẮP KHỞI CHIẾU',
+              title: 'PHIM SẮP CHIẾU',
+              subtitle: 'Đón chờ những bom tấn tiếp theo sắp đổ bộ phòng vé',
               accent: AppColors.lavender,
+              action: 'XEM TOÀN BỘ',
+              onAction: () => context.go(AppRoutes.discover),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            GenreSelector(
-              selectedGenre: _genre,
-              onSelected: (genre) => setState(() => _genre = genre),
+            _MovieSection(
+              state: movies,
+              upcoming: true,
+              retry: () => ref.invalidate(moviesProvider),
+              onOpen: (movie) => _openMovie(context, movie),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            AppSectionHeader(
-              title: 'Phim sắp chiếu VIP',
-              action: 'Xem lịch',
-              onAction: () => context.go(AppRoutes.showtimes),
+            HomeCinemasSection(onBook: (id) => _openSeats(context, ref, id)),
+            const HomeSectionHeading(
+              eyebrow: 'ẨM THỰC ĐIỆN ẢNH',
+              title: 'BẮP NƯỚC & COMBO',
+              subtitle: 'Không thể thiếu cho một buổi xem phim trọn vẹn và bùng nổ vị giác',
             ),
-            const Padding(
-              padding: EdgeInsets.only(left: 30, right: 16, bottom: 12),
-              child: Text(
-                'Lưu trước thời khắc khởi chiếu và đặt chỗ tiên phong',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-              ),
+            // No live food catalog/purchase repository exists in the current
+            // Mobile scope. Never substitute Web curated data or mock checkout.
+            const RepositoryStatePane.empty(
+              key: ValueKey('home-food-unavailable'),
+              title: 'Danh mục bắp nước chưa được hỗ trợ',
+              message: 'Ứng dụng hiện chưa có danh mục bắp nước production. Không thể đặt bắp nước từ Trang chủ.',
+              icon: Icons.fastfood_outlined,
             ),
-            for (final movie in comingSoon)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  0,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                ),
-                child: ComingSoonCard(
-                  movie: movie,
-                  reminded: false,
-                  onOpen: () => _openMovie(movie),
-                  onReminder: null,
-                ),
-              ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 32),
           ],
         ),
       ),
     );
+  }
+}
+
+class _MovieSection extends StatelessWidget {
+  const _MovieSection({
+    required this.state,
+    required this.upcoming,
+    required this.retry,
+    required this.onOpen,
+    this.onBook,
+  });
+  final AsyncValue<List<Movie>> state;
+  final bool upcoming;
+  final VoidCallback retry;
+  final ValueChanged<Movie> onOpen;
+  final ValueChanged<Movie>? onBook;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.isLoading) return const RepositoryStatePane.loading();
+    if (state.hasError) return RepositoryStatePane.error(onRetry: retry);
+    final movies = state.requireValue
+        .where((m) => upcoming ? m.isComingSoon : m.isNowShowing)
+        .take(20)
+        .toList(growable: false);
+    if (movies.isEmpty)
+      return RepositoryStatePane.empty(
+        title: upcoming ? 'Chưa có phim sắp chiếu' : 'Chưa có phim đang chiếu',
+        message: 'Danh sách phim sẽ được cập nhật sớm.',
+      );
+    return HomeMovieCarousel(movies: movies, onOpen: onOpen, onBook: onBook);
   }
 }
