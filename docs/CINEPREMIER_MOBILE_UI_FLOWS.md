@@ -4,7 +4,7 @@
 > Phạm vi: ứng dụng Flutter dành cho khách hàng  
 > Trạng thái: tám quyết định flow lõi đã chốt; dùng cùng các tài liệu kiến trúc và mapping hiện có
 
-> Luồng Vé & Ghế V2 và CTA chọn suất đã được triển khai trong backend-aligned mock UI. `BOOKING_FLOW_V2_REWORK_PLAN.md` là nguồn chi tiết cho mapping vé–ghế, giới hạn mock và các blocker trước khi nối API thật.
+> Luồng Vé & Ghế V2 và CTA chọn suất đã được triển khai trong backend-aligned mock UI. `plans/legacy/BOOKING_FLOW_V2_REWORK_PLAN.md` là nguồn chi tiết cho mapping vé–ghế, giới hạn mock và các blocker trước khi nối API thật.
 
 ## 1. Mục đích
 
@@ -34,7 +34,7 @@ Nếu thay đổi một luồng đã được chốt, phải cập nhật tài l
 
 ### 1.2. Giai đoạn backend-contract-aligned mock UI
 
-Giai đoạn hiện tại chuẩn hóa Flutter theo contract đang tồn tại trong `BE/MSS301-Backend/cinema-services`, nhưng **vẫn chạy hoàn toàn bằng mock data**. Kế hoạch triển khai chi tiết nằm tại `BACKEND_ALIGNED_MOCK_UI_PLAN.md`.
+Giai đoạn hiện tại chuẩn hóa Flutter theo contract đang tồn tại trong `BE/MSS301-Backend/cinema-services`, nhưng **vẫn chạy hoàn toàn bằng mock data**. Kế hoạch triển khai chi tiết nằm tại `done/BACKEND_ALIGNED_MOCK_UI_PLAN.md`.
 
 - Không gọi HTTP, không dùng token thật, không mở VNPay thật và không phụ thuộc backend đang chạy.
 - DTO, enum, ID, thời gian, tiền và trạng thái trong lớp data của Flutter phải ánh xạ được với request/response Java hiện tại.
@@ -810,7 +810,7 @@ Một màn hình chỉ được xem là hoàn thành khi:
 
 ## 18. Roadmap hoàn thành UI flow
 
-F1–F8 là quyết định sản phẩm/UI, không phải phase code tuần tự. Thứ tự implementation duy nhất áp dụng cho giai đoạn hiện tại là R0–R8 dưới đây; task kỹ thuật và gate chi tiết nằm ở mục 12 của `BACKEND_ALIGNED_MOCK_UI_PLAN.md`.
+F1–F8 là quyết định sản phẩm/UI, không phải phase code tuần tự. Thứ tự implementation duy nhất áp dụng cho giai đoạn hiện tại là R0–R8 dưới đây; task kỹ thuật và gate chi tiết nằm ở mục 12 của `done/BACKEND_ALIGNED_MOCK_UI_PLAN.md`.
 
 | Thứ tự | Phạm vi | Kết quả flow cần đạt |
 | --- | --- | --- |

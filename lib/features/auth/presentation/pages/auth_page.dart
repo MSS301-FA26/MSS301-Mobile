@@ -118,7 +118,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 tooltip: 'Quay lại',
                 onPressed: () => context.canPop()
                     ? context.pop()
-                    : context.go(AppRoutes.account),
+                    : context.go(AppRoutes.home),
                 icon: const Icon(Icons.arrow_back_rounded),
               ),
             ),
