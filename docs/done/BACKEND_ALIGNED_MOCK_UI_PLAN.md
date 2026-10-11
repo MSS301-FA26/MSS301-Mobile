@@ -5,13 +5,13 @@
 > Phạm vi: `Mobile/MSS301-Mobile` đối chiếu với `BE/MSS301-Backend/cinema-services`  
 > Trạng thái: R0–R8 hoàn thành ở phạm vi backend-aligned mock UI; chưa cho phép kết nối API thật
 
-> Luồng đặt vé V2.1–V2.5 đã được triển khai trong phạm vi mock; chi tiết, giới hạn tuổi mock và các quyết định còn chờ backend/product nằm tại `BOOKING_FLOW_V2_REWORK_PLAN.md`.
+> Luồng đặt vé V2.1–V2.5 đã được triển khai trong phạm vi mock; chi tiết, giới hạn tuổi mock và các quyết định còn chờ backend/product nằm tại `../plans/legacy/BOOKING_FLOW_V2_REWORK_PLAN.md`.
 
 ## 1. Mục tiêu
 
 Mục tiêu của giai đoạn này là làm cho code Flutter có thể ánh xạ trực tiếp sang contract backend hiện tại nhưng vẫn chạy hoàn toàn bằng mock data. Sau giai đoạn này, nhóm có thể đánh giá và điều chỉnh toàn bộ UI/UX trước, rồi thay từng mock repository bằng remote repository mà không phải viết lại presentation flow.
 
-Mọi implementation trong kế hoạch này phải tuân theo tám quyết định F1–F8 đã chốt tại mục 1.3 của `CINEPREMIER_MOBILE_UI_FLOWS.md`. Khi plan và flow khác nhau về hành vi người dùng, flow specification được ưu tiên và plan phải được cập nhật theo.
+Mọi implementation trong kế hoạch này phải tuân theo tám quyết định F1–F8 đã chốt tại mục 1.3 của `../CINEPREMIER_MOBILE_UI_FLOWS.md`. Khi plan và flow khác nhau về hành vi người dùng, flow specification được ưu tiên và plan phải được cập nhật theo.
 
 Kết quả cần đạt:
 
@@ -49,8 +49,8 @@ Thứ tự ưu tiên khi có khác biệt:
 
 1. Request/response DTO và enum public trong backend là nguồn sự thật cho contract tích hợp.
 2. Business rule đang chạy trong service backend là nguồn sự thật tạm thời cho state transition và timeout.
-3. `CINEPREMIER_MOBILE_UI_FLOWS.md` là nguồn sự thật cho hành vi UI và navigation.
-4. `Flutter_UI_Feature_Mapping.md` là nguồn sự thật cho phạm vi màn hình/trạng thái implementation.
+3. `../CINEPREMIER_MOBILE_UI_FLOWS.md` là nguồn sự thật cho hành vi UI và navigation.
+4. `../Flutter_UI_Feature_Mapping.md` là nguồn sự thật cho phạm vi màn hình/trạng thái implementation.
 5. AI Studio/prototype là nguồn tham chiếu visual, không phải API contract.
 
 Flutter không ánh xạ trực tiếp JPA entity vào widget. Dart DTO bám public request/response; mapper chuyển DTO sang presentation model. Chỉ dùng entity để hiểu quan hệ và trạng thái khi public DTO chưa diễn đạt đủ.
@@ -84,7 +84,7 @@ Nếu backend thay đổi contract, phải cập nhật theo thứ tự: fixture
 - Booking, payment và seat runtime là các state machine tách biệt; QR chỉ mở khi booking `PAID`.
 - Account có guest/session, auth mock, profile, security, wallet/withdrawal và CinePoints; không có top-up hoặc wallet payment.
 - Các flow chưa có public contract dùng model/repository `provisional`, route sau feature flag và mặc định ẩn trong release-like build.
-- `Flutter_UI_Feature_Mapping.md` phản ánh code hiện tại nhưng không xem bất kỳ màn nào là backend-integrated.
+- `../Flutter_UI_Feature_Mapping.md` phản ánh code hiện tại nhưng không xem bất kỳ màn nào là backend-integrated.
 
 ## 5. Kiến trúc Flutter mục tiêu của giai đoạn mock
 
@@ -538,7 +538,7 @@ Kết quả thực thi:
 2. Kiểm tra width 360/390/412, text scale, keyboard, safe area, scroll và accessibility label.
 3. Kiểm tra toàn bộ CTA registry, feature flag matrix và auth resume.
 4. Kiểm tra snapshot data xuyên suốt movie → booking → payment → ticket/order.
-5. Cập nhật `Flutter_UI_Feature_Mapping.md` theo trạng thái code thực tế.
+5. Cập nhật `../Flutter_UI_Feature_Mapping.md` theo trạng thái code thực tế.
 6. Cập nhật hai tài liệu này nếu implementation buộc thay đổi quyết định đã chốt.
 7. Lập API-readiness report từ blocker mục 15; không tự bắt đầu remote integration.
 
@@ -549,7 +549,7 @@ Kết quả thực thi:
 - regression bao phủ width 360/390/412, navigation, repository state, booking entry/completion, auth/account và feature flag isolation;
 - seat/food/QR có semantic label; form dùng keyboard type, safe area và scroll để tránh che input;
 - snapshot movie → showtime → booking → payment → ticket/order dùng cùng ID typed và repository store;
-- `Flutter_UI_Feature_Mapping.md`, CTA registry và flow roadmap được cập nhật theo code;
+- `../Flutter_UI_Feature_Mapping.md`, CTA registry và flow roadmap được cập nhật theo code;
 - blocker tích hợp thật được bàn giao tại `MOBILE_API_READINESS_REPORT.md`.
 
 ### 12.11. Ma trận F → work package
@@ -602,7 +602,7 @@ Build dành cho review nội bộ có thể bật từng flag. Release-like buil
 - Booking, payment và seat state là ba state machine tách biệt.
 - Fixture liên kết đúng movie → showtime → seat → booking → payment → ticket.
 - Tất cả test liên quan pass và `flutter analyze` không có lỗi mới.
-- `Flutter_UI_Feature_Mapping.md` được cập nhật khi trạng thái màn hình thực sự thay đổi.
+- `../Flutter_UI_Feature_Mapping.md` được cập nhật khi trạng thái màn hình thực sự thay đổi.
 
 ## 15. Blocker phải xử lý trước khi tích hợp API thật
 
@@ -633,4 +633,4 @@ Mỗi slice thêm remote repository và contract test, sau đó đổi Riverpod 
 
 ---
 
-Tài liệu này quyết định cách tổ chức giai đoạn mock mapping. Hành vi người dùng chi tiết tiếp tục theo `CINEPREMIER_MOBILE_UI_FLOWS.md`; trạng thái implementation của từng màn hình tiếp tục theo `Flutter_UI_Feature_Mapping.md`.
+Tài liệu này quyết định cách tổ chức giai đoạn mock mapping. Hành vi người dùng chi tiết tiếp tục theo `../CINEPREMIER_MOBILE_UI_FLOWS.md`; trạng thái implementation của từng màn hình tiếp tục theo `../Flutter_UI_Feature_Mapping.md`.
