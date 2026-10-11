@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/money/vnd_money.dart';
 import '../../../../shared/widgets/app_surface.dart';
-import '../models/account_summary.dart';
 
 class WalletTile extends StatelessWidget {
-  const WalletTile({super.key, required this.user, required this.onManage});
+  const WalletTile({super.key, required this.balance, required this.onManage});
 
-  final AccountSummary user;
+  final VndMoney balance;
   final VoidCallback? onManage;
 
   @override
@@ -30,7 +30,7 @@ class WalletTile extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(user.walletBalance.format(), style: AppTextStyles.price),
+        Text(balance.format(), style: AppTextStyles.price),
         const SizedBox(height: AppSpacing.md),
         FilledButton(
           key: const ValueKey('account-wallet-manage'),

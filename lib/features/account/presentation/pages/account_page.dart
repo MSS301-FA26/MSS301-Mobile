@@ -12,7 +12,7 @@ import '../../../auth/application/auth_session.dart';
 import '../providers/account_summary_provider.dart';
 import '../widgets/account_menu.dart';
 import '../widgets/account_profile_card.dart';
-import '../widgets/membership_card.dart';
+import '../widgets/account_remote_sections.dart';
 
 class AccountPage extends ConsumerWidget {
   const AccountPage({super.key});
@@ -129,20 +129,9 @@ class AccountPage extends ConsumerWidget {
             ],
           ),
           const _AccountHeading('Ví & điểm thưởng'),
-          WalletTile(user: user, onManage: () => context.go(AppRoutes.wallet)),
+          const AccountWalletSection(),
           const SizedBox(height: AppSpacing.sm),
-          MembershipCard(user: user, onQr: null),
-          const SizedBox(height: AppSpacing.sm),
-          AccountMenu(
-            items: [
-              AccountMenuItemData(
-                icon: Icons.stars_rounded,
-                label: 'CinePoints',
-                trailing: '${user.points}',
-                onTap: () => context.go(AppRoutes.points),
-              ),
-            ],
-          ),
+          const AccountLoyaltySection(),
           if (FeatureFlags.popBotPreview ||
               FeatureFlags.voucherPreview ||
               FeatureFlags.vipPreview ||

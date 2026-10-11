@@ -4,17 +4,43 @@ import '../../../../core/demo/demo_scenario.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../data/models/account_dto.dart';
 import '../../data/repositories/account_providers.dart';
+import '../../../auth/application/auth_session.dart';
 import '../models/account_summary.dart';
 
 final accountSummaryProvider = FutureProvider<AccountSummary>((ref) async {
   final profileRepository = ref.watch(profileRepositoryProvider);
-  final walletRepository = ref.watch(walletRepositoryProvider);
-  final loyaltyRepository = ref.watch(loyaltyRepositoryProvider);
   final profile = await profileRepository.getProfile(DemoIds.user);
-  final wallet = await walletRepository.getWallet(DemoIds.user);
-  final loyalty = await loyaltyRepository.getLoyalty(DemoIds.user);
-  return mapAccountSummary(profile, wallet, loyalty);
+  return mapAccountSummary(profile);
 });
+
+// Each remote section owns its failure/retry. No balance or points are invented
+// when the corresponding API fails. Manual retry avoids repeated failing GETs.
+// https://riverpod.dev/docs/concepts2/retry#disabling-retry
+final accountWalletProvider = FutureProvider.autoDispose<WalletDto>((ref) {
+  final userId = ref.watch(
+    authSessionProvider.select((state) => state.session?.user.id),
+  );
+  if (userId == null) {
+    throw const ApiException(
+      type: ApiErrorType.unauthorized,
+      message: 'Authentication required.',
+    );
+  }
+  return ref.watch(walletRepositoryProvider).getWallet(userId);
+}, retry: (retryCount, error) => null);
+
+final accountLoyaltyProvider = FutureProvider.autoDispose<LoyaltyDto>((ref) {
+  final userId = ref.watch(
+    authSessionProvider.select((state) => state.session?.user.id),
+  );
+  if (userId == null) {
+    throw const ApiException(
+      type: ApiErrorType.unauthorized,
+      message: 'Authentication required.',
+    );
+  }
+  return ref.watch(loyaltyRepositoryProvider).getLoyalty(userId);
+}, retry: (retryCount, error) => null);
 
 final loyaltyOverviewProvider =
     FutureProvider<(LoyaltyDto, LoyaltyConfigurationDto)>((ref) async {
@@ -53,6 +79,8 @@ class LoyaltyRedeemController extends Notifier<LoyaltyRedeemState> {
       await ref.read(loyaltyRepositoryProvider).redeemPoints(points);
       ref.invalidate(loyaltyOverviewProvider);
       ref.invalidate(accountSummaryProvider);
+      ref.invalidate(accountWalletProvider);
+      ref.invalidate(accountLoyaltyProvider);
       state = const LoyaltyRedeemState(
         status: LoyaltyRedeemStatus.success,
         message: 'Đổi điểm thành công. Số dư đã được cập nhật từ hệ thống.',

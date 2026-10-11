@@ -22,7 +22,7 @@ class HomeSectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 32, 16, 20),
+    padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -46,39 +46,52 @@ class HomeSectionHeading extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: AppTextStyles.screenTitle.copyWith(
-            fontWeight: FontWeight.w900,
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
-        ),
-        if (action != null && onAction != null) ...[
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onAction,
-            iconAlignment: IconAlignment.end,
-            icon: const Icon(Icons.arrow_forward, size: 16),
-            label: Text(action!),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.text,
-              foregroundColor: AppColors.background,
-              textStyle: AppTextStyles.meta.copyWith(
-                fontWeight: FontWeight.w800,
+        const SizedBox(height: 4),
+        Builder(
+          builder: (context) {
+            final heading = Text(
+              title,
+              style: AppTextStyles.sectionTitle.copyWith(
+                fontWeight: FontWeight.w900,
               ),
-              minimumSize: const Size(48, 48),
-              shape: const StadiumBorder(),
-            ),
+            );
+            if (action == null || onAction == null) return heading;
+            final button = TextButton.icon(
+              key: ValueKey('home-section-action-$title'),
+              onPressed: onAction,
+              iconAlignment: IconAlignment.end,
+              icon: const Icon(Icons.arrow_forward, size: 16),
+              label: Text(action!),
+              style: TextButton.styleFrom(
+                foregroundColor: accent,
+                textStyle: Theme.of(context).textTheme.labelMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+                minimumSize: const Size(48, 48),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+              ),
+            );
+            if (MediaQuery.textScalerOf(context).scale(12) > 18) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [heading, button],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: heading),
+                const SizedBox(width: 8),
+                button,
+              ],
+            );
+          },
+        ),
+        if (subtitle.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
           ),
         ],
-        const SizedBox(height: 16),
-        const Divider(),
       ],
     ),
   );

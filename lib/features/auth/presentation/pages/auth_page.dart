@@ -9,6 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../application/auth_session.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../widgets/auth_form_layout.dart';
+import '../widgets/google_login_button.dart';
 import '../widgets/email_verification_form.dart';
 import '../widgets/register_form_fields.dart';
 
@@ -136,6 +137,11 @@ class _AuthPageState extends ConsumerState<AuthPage>
 
   Future<void> _handleSubmitTap() async {
     if (_isSubmitting) return;
+    if (widget.mode == AuthPageMode.login &&
+        (ref.read(authSessionProvider).isSubmitting ||
+            ref.read(authSessionProvider).status == AuthStatus.initializing)) {
+      return;
+    }
     setState(() => _isSubmitting = true);
     try {
       await _submit();
@@ -255,6 +261,14 @@ class _AuthPageState extends ConsumerState<AuthPage>
           }
         },
         form: _buildForm(),
+        googleButton: widget.mode == AuthPageMode.login
+            ? GoogleLoginButton(
+                busy:
+                    session.isSubmitting ||
+                    _isSubmitting ||
+                    session.status == AuthStatus.initializing,
+              )
+            : null,
         message: session.message,
         activeTab: switch (widget.mode) {
           AuthPageMode.login => AuthLayoutTab.login,
@@ -268,7 +282,10 @@ class _AuthPageState extends ConsumerState<AuthPage>
             ? (_isSubmitting ? null : _returnToRegistration)
             : () => context.go(AppRoutes.register),
         submitButton: _buildSubmitButton(
-          session.isSubmitting || _isSubmitting,
+          session.isSubmitting ||
+              _isSubmitting ||
+              (widget.mode == AuthPageMode.login &&
+                  session.status == AuthStatus.initializing),
           actionLabel,
         ),
         secondaryActions: [

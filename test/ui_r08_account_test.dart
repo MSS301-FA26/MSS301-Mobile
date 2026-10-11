@@ -10,6 +10,8 @@ import 'package:mss301_mobile/core/money/vnd_money.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/core/theme/app_theme.dart';
 import 'package:mss301_mobile/features/account/presentation/models/account_summary.dart';
+import 'package:mss301_mobile/features/account/data/models/account_dto.dart';
+import 'package:mss301_mobile/features/account/data/models/account_enums.dart';
 import 'package:mss301_mobile/features/account/presentation/pages/account_page.dart';
 import 'package:mss301_mobile/features/account/presentation/providers/account_summary_provider.dart';
 import 'package:mss301_mobile/features/account/presentation/widgets/account_menu.dart';
@@ -124,6 +126,22 @@ Future<(GoRouter, _RecordingAuthSession)> _pumpAccount(
         authSessionProvider.overrideWith(() => session),
         accountSummaryProvider.overrideWith(
           (ref) => load?.call() ?? Future.value(_user),
+        ),
+        accountWalletProvider.overrideWith(
+          (ref) async => WalletDto(
+            id: 9001,
+            balance: _user.walletBalance!,
+            createdAt: DateTime(2024),
+          ),
+        ),
+        accountLoyaltyProvider.overrideWith(
+          (ref) async => LoyaltyDto(
+            userId: _user.userId,
+            userEmail: _user.email,
+            points: _user.points!,
+            totalPoints: _user.points!,
+            status: LoyaltyStatus.active,
+          ),
         ),
       ],
       child: MaterialApp.router(
@@ -271,8 +289,11 @@ void main() {
   testWidgets('wallet real amount and management CTA fit at320', (
     tester,
   ) async {
-    await _pumpComponent(tester, WalletTile(user: _user, onManage: () {}));
-    expect(find.text(_user.walletBalance.format()), findsOneWidget);
+    await _pumpComponent(
+      tester,
+      WalletTile(balance: _user.walletBalance!, onManage: () {}),
+    );
+    expect(find.text(_user.walletBalance!.format()), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -281,7 +302,7 @@ void main() {
   ) async {
     await _pumpComponent(
       tester,
-      const MembershipCard(user: _user, onQr: null),
+      MembershipCard(points: _user.points!, onQr: null),
       textScale: 2,
     );
     expect(find.text('123.456.789'), findsOneWidget);

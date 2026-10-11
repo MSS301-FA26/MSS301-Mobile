@@ -8,6 +8,59 @@ class AuthRemoteDataSource {
   AuthRemoteDataSource(this._dio);
   final Dio _dio;
 
+  Future<AuthSession> loginWithGoogle(String credential) async {
+    const invalid = ApiException(
+      type: ApiErrorType.unknown,
+      message: 'Invalid Google login response',
+    );
+    if (credential.trim().isEmpty) {
+      throw const ApiException(
+        type: ApiErrorType.badRequest,
+        message: 'Google credential is required',
+      );
+    }
+    try {
+      final response = await _dio.post(
+        '/api/v1/auth/google',
+        data: {'credential': credential},
+        // An invalid Google credential must not trigger app-token refresh/retry.
+        options: Options(
+          extra: {'skipAuthRefresh': true, 'skipAuthorization': true},
+        ),
+      );
+      final body = response.data;
+      if (body is! Map || body['success'] != true) throw invalid;
+      final data = body['data'];
+      if (data is! Map<String, dynamic> ||
+          !_nonBlank(data['accessToken']) ||
+          !_nonBlank(data['refreshToken']) ||
+          data['tokenType'] != 'Bearer' ||
+          data['expiresInMs'] is! num ||
+          (data['expiresInMs'] as num) <= 0 ||
+          !_roles(data['roles'])) {
+        throw invalid;
+      }
+      final user = data['user'];
+      if (user is! Map<String, dynamic> ||
+          user['id'] is! num ||
+          !_nonBlank(user['email']) ||
+          !_roles(user['roles'])) {
+        throw invalid;
+      }
+      try {
+        return AuthSession.fromJson(data);
+      } catch (_) {
+        throw invalid;
+      }
+    } on DioException catch (error) {
+      if (error.error case final ApiException mapped) throw mapped;
+      throw ApiErrorMapper().fromDioException(error);
+    }
+  }
+
+  bool _nonBlank(Object? value) => value is String && value.trim().isNotEmpty;
+  bool _roles(Object? value) => value is List && value.every(_nonBlank);
+
   Future<Map<String, dynamic>> _data(Response<dynamic> response) async {
     final body = response.data;
     if (body is! Map) {

@@ -21,12 +21,13 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
   final bool compact;
 
   @override
-  Size get preferredSize => const Size.fromHeight(AppSpacing.headerHeight);
+  Size get preferredSize =>
+      Size.fromHeight(compact ? 56 : AppSpacing.headerHeight);
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      toolbarHeight: AppSpacing.headerHeight,
+      toolbarHeight: compact ? 56 : AppSpacing.headerHeight,
       automaticallyImplyLeading: false,
       titleSpacing: AppSpacing.xs,
       backgroundColor: AppColors.background,
@@ -69,7 +70,7 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'CINEPREMIER',
-                  style: AppTextStyles.label.copyWith(
+                  style: AppTextStyles.emphasis.copyWith(
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.5,
                   ),
@@ -89,7 +90,7 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
                 ),
                 borderRadius: AppRadii.control,
                 child: Container(
-                  height: 40,
+                  height: 44,
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.sm,
                   ),
@@ -125,8 +126,8 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             tooltip: 'Tìm kiếm',
             constraints: BoxConstraints.tightFor(
-              width: compact ? 48 : 40,
-              height: compact ? 48 : 40,
+              width: compact ? 48 : 44,
+              height: compact ? 48 : 44,
             ),
             padding: EdgeInsets.zero,
             onPressed: onSearch,
@@ -135,7 +136,7 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
           if (!compact)
             IconButton(
               tooltip: 'Thông báo • Sắp có',
-              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              constraints: const BoxConstraints.tightFor(width: 44, height: 44),
               padding: EdgeInsets.zero,
               onPressed: onNotifications,
               icon: const Icon(Icons.notifications_none, size: 22),
@@ -143,8 +144,8 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             tooltip: 'Tài khoản',
             constraints: BoxConstraints.tightFor(
-              width: compact ? 48 : 40,
-              height: compact ? 48 : 40,
+              width: compact ? 48 : 44,
+              height: compact ? 48 : 44,
             ),
             padding: EdgeInsets.zero,
             onPressed: onAccount,
@@ -189,31 +190,38 @@ class _BrandMark extends StatelessWidget {
           key: const ValueKey('header-home-logo'),
           onTap: onTap,
           borderRadius: AppRadii.control,
-          child: Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: AppRadii.control,
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'C',
-                    style: TextStyle(color: AppColors.text),
-                  ),
-                  TextSpan(
-                    text: 'P',
-                    style: TextStyle(color: AppColors.gold),
-                  ),
-                ],
+          child: Padding(
+            // Keep the 40px visual mark while providing a 44px hit target.
+            padding: const EdgeInsets.all(2),
+            child: Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: AppRadii.control,
+                border: Border.all(color: AppColors.border),
               ),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1,
+              child: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'C',
+                        style: TextStyle(color: AppColors.text),
+                      ),
+                      TextSpan(
+                        text: 'P',
+                        style: TextStyle(color: AppColors.gold),
+                      ),
+                    ],
+                  ),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                  ),
+                ),
               ),
             ),
           ),

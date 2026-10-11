@@ -18,13 +18,13 @@ class HomeMovieCarousel extends StatelessWidget {
   final ValueChanged<Movie> onOpen;
   final ValueChanged<Movie>? onBook;
 
-  String _metadata(Movie movie) => [
-    if (movie.genreTags.isNotEmpty) movie.genreTags.join(', '),
-    if (movie.isComingSoon && movie.releaseDate != null)
-      'Khởi chiếu ${_date(movie.releaseDate!)}'
-    else
-      movie.duration,
-  ].join(' • ');
+  String _metadata(Movie movie) =>
+      movie.isComingSoon && movie.releaseDate != null
+      ? 'Khởi chiếu ${_date(movie.releaseDate!)}'
+      : [
+          if (movie.genreTags.isNotEmpty) movie.genreTags.first,
+          if (movie.duration.isNotEmpty) movie.duration,
+        ].join(' • ');
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -34,14 +34,17 @@ class HomeMovieCarousel extends StatelessWidget {
           ? math.min(box.maxWidth - 48, 320.0)
           : box.maxWidth >= 600
           ? 210.0
-          : 176.0;
-      double textHeight(String text, TextStyle style) {
+          : (box.maxWidth - 16) / 2.2 - 12;
+      double textHeight(String text, TextStyle style, int maxLines) {
         final painter = TextPainter(
           text: TextSpan(
             text: text,
-          style: DefaultTextStyle.of(context).style.merge(style),
+            // Measure the same inherited typography that Text actually renders.
+            // https://api.flutter.dev/flutter/painting/TextStyle/inherit.html
+            style: DefaultTextStyle.of(context).style.merge(style),
           ),
           textScaler: scale,
+          maxLines: maxLines,
           textDirection: Directionality.of(context),
         )..layout(maxWidth: width);
         final height = painter.height;
@@ -49,22 +52,17 @@ class HomeMovieCarousel extends StatelessWidget {
         return height;
       }
 
-      final textSpace = movies.fold<double>(
-        0,
-        (height, movie) => math.max(
-          height,
-          textHeight(movie.title, AppTextStyles.cardTitle) +
-              6 +
-              textHeight(_metadata(movie), AppTextStyles.caption),
-        ),
-      );
+      final textSpace =
+          textHeight('Ag\nAg', AppTextStyles.cardTitle, 2) +
+          4 +
+          textHeight('Ag', AppTextStyles.body, 1);
       return SizedBox(
-        height: width * 1.5 + 12 + textSpace + 4,
+        height: width * 1.5 + 8 + textSpace + 4,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: movies.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 16),
+          separatorBuilder: (_, _) => const SizedBox(width: 12),
           itemBuilder: (context, index) {
             final movie = movies[index];
             return SizedBox(
@@ -99,26 +97,7 @@ class HomeMovieCarousel extends StatelessWidget {
                               child: AgeBadge(rating: movie.ageRating),
                             ),
                           ),
-                        if (movie.isComingSoon && movie.releaseDate != null)
-                          Positioned(
-                            left: 8,
-                            right: 8,
-                            top: 8,
-                            child: IgnorePointer(
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                color: AppColors.deepPurple,
-                                child: Text(
-                                  'KHỞI CHIẾU ${_date(movie.releaseDate!)}',
-                                  style: AppTextStyles.meta.copyWith(
-                                    color: AppColors.text,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                        else if (movie.format.isNotEmpty)
+                        if (movie.format.isNotEmpty)
                           Positioned(
                             left: 8,
                             top: 8,
@@ -156,10 +135,25 @@ class HomeMovieCarousel extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(movie.title, style: AppTextStyles.cardTitle),
-                  const SizedBox(height: 6),
-                  Text(_metadata(movie), style: AppTextStyles.caption),
+                  const SizedBox(height: 8),
+                  Text(
+                    movie.title,
+                    style: AppTextStyles.cardTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    semanticsLabel: movie.title,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _metadata(movie),
+                    style: AppTextStyles.body.copyWith(
+                      color: movie.isComingSoon
+                          ? AppColors.lavender
+                          : AppColors.textMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             );

@@ -84,16 +84,27 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.text,
-              borderRadius: AppRadii.control,
+          Material(
+            key: const ValueKey('home-quick-card'),
+            color: AppColors.surface,
+            shape: const RoundedRectangleBorder(
+              side: BorderSide(color: AppColors.borderStrong),
+              borderRadius: AppRadii.small,
             ),
             clipBehavior: Clip.antiAlias,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: Text(
+                    'MUA VÉ NHANH',
+                    style: AppTextStyles.label.copyWith(color: AppColors.gold),
+                  ),
+                ),
                 HomeBookingStep(
                   step: 1,
+                  name: 'Phim',
                   label: movie?.title ?? 'Chọn phim',
                   onTap: widget.movies.isEmpty
                       ? null
@@ -118,6 +129,7 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
                 const Divider(color: AppColors.borderStrong),
                 HomeBookingStep(
                   step: 2,
+                  name: 'Rạp',
                   label: cinema?.name ?? 'Chọn rạp',
                   onTap: movie == null || !dataReady || cinemas.isEmpty
                       ? null
@@ -141,6 +153,7 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
                 const Divider(color: AppColors.borderStrong),
                 HomeBookingStep(
                   step: 3,
+                  name: 'Ngày',
                   label: date == null ? 'Chọn ngày' : _dateLabel(date),
                   onTap: cinema == null || !dataReady || dates.isEmpty
                       ? null
@@ -163,6 +176,7 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
                 const Divider(color: AppColors.borderStrong),
                 HomeBookingStep(
                   step: 4,
+                  name: 'Suất',
                   label: selected == null
                       ? 'Chọn suất'
                       : '${selected.slot.time} • ${selected.room.name}',
@@ -184,25 +198,26 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
                           setState(() => _showtimeId = id);
                         },
                 ),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: FilledButton.icon(
+                    key: const ValueKey('home-quick-buy'),
+                    onPressed: selected == null || !dataReady
+                        ? null
+                        : () => widget.onBook(selected.slot.id),
+                    iconAlignment: IconAlignment.end,
+                    icon: const Icon(Icons.arrow_forward, size: 20),
+                    label: const Text('MUA VÉ NHANH'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                      disabledBackgroundColor: AppColors.goldSurface,
+                      disabledForegroundColor: AppColors.textMuted,
+                      textStyle: Theme.of(context).textTheme.labelLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
               ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            key: const ValueKey('home-quick-buy'),
-            onPressed: selected == null || !dataReady
-                ? null
-                : () => widget.onBook(selected.slot.id),
-            iconAlignment: IconAlignment.end,
-            icon: const Icon(Icons.arrow_forward, size: 20),
-            label: const Text('MUA VÉ NHANH'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(48, 56),
-              disabledBackgroundColor: AppColors.goldSurface,
-              disabledForegroundColor: AppColors.textMuted,
-              textStyle: AppTextStyles.button.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
             ),
           ),
           if (failed)
@@ -231,10 +246,12 @@ class HomeBookingStep extends StatelessWidget {
   const HomeBookingStep({
     super.key,
     required this.step,
+    required this.name,
     required this.label,
     this.onTap,
   });
   final int step;
+  final String name;
   final String label;
   final VoidCallback? onTap;
 
@@ -243,14 +260,14 @@ class HomeBookingStep extends StatelessWidget {
     key: ValueKey('home-quick-step-$step'),
     onTap: onTap,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 56),
+      constraints: const BoxConstraints(minHeight: 48),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
             Container(
-              width: 26,
-              height: 26,
+              width: 24 * MediaQuery.textScalerOf(context).scale(12) / 12,
+              height: 24 * MediaQuery.textScalerOf(context).scale(12) / 12,
               alignment: Alignment.center,
               decoration: const BoxDecoration(
                 color: AppColors.gold,
@@ -258,26 +275,34 @@ class HomeBookingStep extends StatelessWidget {
               ),
               child: Text(
                 '$step',
-                textScaler: TextScaler.noScaling,
                 style: AppTextStyles.label.copyWith(
                   color: AppColors.background,
                 ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              name,
+              style: AppTextStyles.label.copyWith(
+                color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
+                textAlign: TextAlign.end,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                semanticsLabel: '$name: $label',
                 style: AppTextStyles.body.copyWith(
-                  color: AppColors.background.withValues(
-                    alpha: onTap == null ? .55 : 1,
-                  ),
+                  color: onTap == null ? AppColors.textMuted : AppColors.text,
                 ),
               ),
             ),
             const SizedBox(width: 8),
             const Icon(
-              Icons.keyboard_arrow_down,
+              Icons.chevron_right,
               color: AppColors.textDisabled,
               size: 20,
             ),
@@ -313,7 +338,12 @@ Future<T?> homeChoose<T>(
               itemBuilder: (context, index) => ListTile(
                 key: ValueKey('home-choice-${options[index].value}'),
                 minTileHeight: 56,
-                title: Text(options[index].label),
+                title: Text(
+                  options[index].label,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  semanticsLabel: options[index].label,
+                ),
                 trailing: const Icon(
                   Icons.arrow_forward,
                   color: AppColors.gold,

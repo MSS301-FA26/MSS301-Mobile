@@ -264,7 +264,7 @@ void main() {
     expect(find.byKey(const ValueKey('auth-login-tab')), findsOneWidget);
     expect(find.byKey(const ValueKey('auth-register-tab')), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('auth-google-unavailable')),
+      find.byKey(const ValueKey('auth-google-login')),
       findsOneWidget,
     );
     expect(find.text('AN TOÀN'), findsOneWidget);
@@ -505,7 +505,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byKey(const ValueKey('auth-google-unavailable')), findsNothing);
+    expect(find.byKey(const ValueKey('auth-google-login')), findsNothing);
     expect(find.text('AN TOÀN'), findsOneWidget);
     expect(find.text('CINEPREMIER CLUB'), findsOneWidget);
   });
@@ -700,7 +700,7 @@ void main() {
     expect(find.text('CINEPREMIER'), findsOneWidget);
     expect(find.text('KHÔI PHỤC MẬT KHẨU'), findsOneWidget);
     expect(find.text('ĐỊA CHỈ EMAIL'), findsOneWidget);
-    expect(find.byKey(const ValueKey('auth-google-unavailable')), findsNothing);
+    expect(find.byKey(const ValueKey('auth-google-login')), findsNothing);
     await tester.ensureVisible(find.text('Về đăng nhập'));
     await tester.tap(find.text('Về đăng nhập'));
     await tester.pumpAndSettle();
@@ -838,7 +838,7 @@ void main() {
             findsWidgets,
           );
           expect(
-            find.byKey(const ValueKey('auth-google-unavailable')),
+            find.byKey(const ValueKey('auth-google-login')),
             route == AppRoutes.login ? findsOneWidget : findsNothing,
           );
           expect(find.textContaining('Thiết lập mật khẩu'), findsNothing);

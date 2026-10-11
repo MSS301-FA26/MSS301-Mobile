@@ -72,7 +72,7 @@ class HomePage extends ConsumerWidget {
               title: 'PHIM ĐANG CHIẾU',
               subtitle:
                   'Những siêu phẩm điện ảnh đang khuấy đảo phòng vé tuần này',
-              action: 'XEM TẤT CẢ',
+              action: 'Xem tất cả',
               onAction: () => context.go(AppRoutes.discover),
             ),
             _MovieSection(
@@ -87,7 +87,7 @@ class HomePage extends ConsumerWidget {
               title: 'PHIM SẮP CHIẾU',
               subtitle: 'Đón chờ những bom tấn tiếp theo sắp đổ bộ phòng vé',
               accent: AppColors.lavender,
-              action: 'XEM TOÀN BỘ',
+              action: 'Xem tất cả',
               onAction: () => context.go(AppRoutes.discover),
             ),
             _MovieSection(
@@ -97,19 +97,7 @@ class HomePage extends ConsumerWidget {
               onOpen: (movie) => _openMovie(context, movie),
             ),
             HomeCinemasSection(onBook: (id) => _openSeats(context, ref, id)),
-            const HomeSectionHeading(
-              eyebrow: 'ẨM THỰC ĐIỆN ẢNH',
-              title: 'BẮP NƯỚC & COMBO',
-              subtitle: 'Không thể thiếu cho một buổi xem phim trọn vẹn và bùng nổ vị giác',
-            ),
-            // No live food catalog/purchase repository exists in the current
-            // Mobile scope. Never substitute Web curated data or mock checkout.
-            const RepositoryStatePane.empty(
-              key: ValueKey('home-food-unavailable'),
-              title: 'Danh mục bắp nước chưa được hỗ trợ',
-              message: 'Ứng dụng hiện chưa có danh mục bắp nước production. Không thể đặt bắp nước từ Trang chủ.',
-              icon: Icons.fastfood_outlined,
-            ),
+            // F&B stays hidden until a production catalog is integrated.
             const SizedBox(height: 32),
           ],
         ),
@@ -140,11 +128,12 @@ class _MovieSection extends StatelessWidget {
         .where((m) => upcoming ? m.isComingSoon : m.isNowShowing)
         .take(20)
         .toList(growable: false);
-    if (movies.isEmpty)
+    if (movies.isEmpty) {
       return RepositoryStatePane.empty(
         title: upcoming ? 'Chưa có phim sắp chiếu' : 'Chưa có phim đang chiếu',
         message: 'Danh sách phim sẽ được cập nhật sớm.',
       );
+    }
     return HomeMovieCarousel(movies: movies, onOpen: onOpen, onBook: onBook);
   }
 }

@@ -7,6 +7,9 @@ import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/account/presentation/pages/account_page.dart';
 import 'package:mss301_mobile/features/discover/presentation/pages/discover_page.dart';
 import 'package:mss301_mobile/features/home/presentation/pages/home_page.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/home_providers.dart';
+import 'package:mss301_mobile/features/home/presentation/widgets/home_cinemas_section.dart';
+import 'package:mss301_mobile/features/home/presentation/widgets/home_quick_booking.dart';
 import 'package:mss301_mobile/features/movie/presentation/pages/movie_detail_page.dart';
 import 'package:mss301_mobile/features/orders/presentation/pages/orders_page.dart';
 import 'package:mss301_mobile/features/showtime/presentation/pages/showtimes_page.dart';
@@ -25,7 +28,7 @@ void main() {
 
       await pumpTestApp(tester);
 
-      expect(find.text('Phim đang chiếu'), findsOneWidget);
+      expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('hero-open-1')));
       await tester.pumpAndSettle();
 
@@ -46,25 +49,28 @@ void main() {
 
       await tester.tap(find.byTooltip('Quay lại'));
       await tester.pumpAndSettle();
-      expect(find.text('Phim đang chiếu'), findsOneWidget);
+      expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
     });
   }
 
-  testWidgets('home preview and cinema information open', (tester) async {
+  testWidgets('home cinema card opens real cinema schedule', (tester) async {
     await tester.binding.setSurfaceSize(const Size(360, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await pumpTestApp(tester);
 
-    await tester.tap(find.text('Xem trailer'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('nội dung mô phỏng'), findsOneWidget);
-    await tester.tap(find.byTooltip('Đóng'));
-    await tester.pumpAndSettle();
-
+    await tester.ensureVisible(find.text('CineAI Central'));
     await tester.tap(find.text('CineAI Central'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Nguyễn Huệ'), findsOneWidget);
+    expect(find.byType(HomeCinemaSchedule), findsOneWidget);
+    expect(
+      tester
+          .widget<HomeCinemaSchedule>(find.byType(HomeCinemaSchedule))
+          .cinema
+          .name,
+      'CineAI Central',
+    );
+    expect(find.text('Inception'), findsWidgets);
   });
 
   testWidgets('booking CTA opens movie-filtered showtimes', (tester) async {
@@ -73,9 +79,10 @@ void main() {
 
     await pumpTestApp(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(-400, 0));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('hero-book-2')));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('now-showing-book-2')),
+    );
+    await tester.tap(find.byKey(const ValueKey('now-showing-book-2')));
     await tester.pumpAndSettle();
 
     expect(find.byType(ShowtimesPage), findsOneWidget);
@@ -88,33 +95,36 @@ void main() {
     );
   });
 
-  testWidgets('header actions route and preview notification is disabled', (
+  testWidgets(
+    'compact Home header actions route without unsupported notifications',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await pumpTestApp(tester);
+
+      expect(
+        find.widgetWithIcon(IconButton, Icons.notifications_none),
+        findsNothing,
+      );
+
+      await tester.tap(find.byTooltip('Tìm kiếm'));
+      await tester.pumpAndSettle();
+      expect(find.byType(DiscoverPage), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Tài khoản'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountPage), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('header-home-logo')));
+      await tester.pumpAndSettle();
+      expect(find.byType(HomePage), findsOneWidget);
+    },
+  );
+
+  testWidgets('real quick booking replaces unsupported preview actions', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await pumpTestApp(tester);
-
-    final notification = tester.widget<IconButton>(
-      find.widgetWithIcon(IconButton, Icons.notifications_none),
-    );
-    expect(notification.onPressed, isNull);
-
-    await tester.tap(find.byTooltip('Tìm kiếm'));
-    await tester.pumpAndSettle();
-    expect(find.byType(DiscoverPage), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Tài khoản'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AccountPage), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('header-home-logo')));
-    await tester.pumpAndSettle();
-    expect(find.byType(HomePage), findsOneWidget);
-  });
-
-  testWidgets('preview quick actions are visibly disabled', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -125,10 +135,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final foodAction = find.byKey(const ValueKey('quick-action-Bắp & Nước'));
-    expect(foodAction, findsOneWidget);
-    expect(tester.widget<InkWell>(foodAction).onTap, isNull);
-    expect(find.text('Sắp có'), findsNWidgets(4));
+    expect(find.byKey(const ValueKey('quick-action-Bắp & Nước')), findsNothing);
+    expect(find.byType(HomeQuickBooking), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const ValueKey('home-quick-buy')))
+          .onPressed,
+      isNull,
+    );
+    expect(find.byKey(const ValueKey('home-food-unavailable')), findsNothing);
+    expect(find.text('BẮP NƯỚC & COMBO'), findsNothing);
     expect(find.byType(SnackBar), findsNothing);
   });
 
@@ -192,13 +208,14 @@ void main() {
           moviesProvider.overrideWith(
             (ref) => throw StateError('catalog unavailable'),
           ),
+          homeCinemasProvider.overrideWith((ref) async => []),
         ],
         child: const MaterialApp(home: HomePage()),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Đã xảy ra lỗi'), findsOneWidget);
-    expect(find.text('Thử lại'), findsOneWidget);
+    expect(find.text('Đã xảy ra lỗi'), findsNWidgets(3));
+    expect(find.text('Thử lại'), findsNWidgets(3));
   });
 }

@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_surface.dart';
-import '../models/account_summary.dart';
 
 class MembershipCard extends StatelessWidget {
-  const MembershipCard({super.key, required this.user, required this.onQr});
+  const MembershipCard({super.key, required this.points, required this.onQr});
 
-  final AccountSummary user;
+  final int points;
   final VoidCallback? onQr;
 
   @override
@@ -18,7 +17,7 @@ class MembershipCard extends StatelessWidget {
         const Text('Điểm tích lũy', style: AppTextStyles.cardTitle),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          _formatNumber(user.points),
+          _formatNumber(points),
           style: AppTextStyles.price.copyWith(color: AppColors.gold),
         ),
         const SizedBox(height: AppSpacing.xxs),

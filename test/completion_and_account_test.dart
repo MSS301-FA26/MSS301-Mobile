@@ -22,9 +22,10 @@ void main() {
     WidgetTester tester,
     ProviderContainer container,
   ) async {
-    await tester.drag(find.byType(PageView), const Offset(-400, 0));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('hero-book-2')));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('now-showing-book-2')),
+    );
+    await tester.tap(find.byKey(const ValueKey('now-showing-book-2')));
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('showtime-slot-1002')).hitTestable(),

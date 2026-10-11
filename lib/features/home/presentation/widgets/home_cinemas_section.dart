@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/cinema_dto.dart';
+import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
 import '../../../showtime/presentation/providers/showtimes_provider.dart';
 import '../providers/home_providers.dart';
-import 'home_quick_booking.dart';
 import 'home_section_heading.dart';
 
 class HomeCinemasSection extends ConsumerStatefulWidget {
@@ -38,7 +40,6 @@ class _HomeCinemasSectionState extends ConsumerState<HomeCinemasSection> {
     final state = ref.watch(homeCinemasProvider);
     final cinemas = (state.value ?? <CinemaDto>[])
         .where((c) => c.active)
-        .take(20)
         .toList();
     final cities =
         cinemas
@@ -55,16 +56,8 @@ class _HomeCinemasSectionState extends ConsumerState<HomeCinemasSection> {
           eyebrow: 'KHÔNG GIAN ĐIỆN ẢNH',
           title: 'RẠP CINEPREMIER',
           subtitle: 'Tìm kiếm cụm rạp phù hợp nhất với trải nghiệm của bạn',
-          action: 'XEM LỊCH CHIẾU THEO RẠP',
-          onAction: state.hasError || state.isLoading || cinemas.isEmpty
-              ? null
-              : () async {
-                  final id = await homeChoose<int>(context, 'Chọn rạp', [
-                    for (final c in cinemas) (value: c.id, label: c.name),
-                  ]);
-                  if (!mounted || id == null) return;
-                  _open(cinemas.firstWhere((c) => c.id == id));
-                },
+          action: 'Xem tất cả',
+          onAction: () => context.go(AppRoutes.showtimes),
         ),
         if (state.isLoading)
           const RepositoryStatePane.loading()
@@ -76,31 +69,40 @@ class _HomeCinemasSectionState extends ConsumerState<HomeCinemasSection> {
           const RepositoryStatePane.empty(title: 'Chưa có rạp khả dụng')
         else ...[
           if (cities.isNotEmpty)
-            Padding(
+            SingleChildScrollView(
+              key: const ValueKey('home-cinema-filters'),
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              child: Row(
                 children: [
                   for (final city in [null, ...cities])
-                    ChoiceChip(
-                      label: Text(city ?? 'Tất cả khu vực'),
-                      selected: city == selectedCity,
-                      showCheckmark: false,
-                      labelStyle: AppTextStyles.label.copyWith(
-                        color: city == selectedCity
-                            ? AppColors.background
-                            : AppColors.text,
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(city ?? 'Tất cả', maxLines: 1),
+                        selected: city == selectedCity,
+                        showCheckmark: false,
+                        selectedColor: AppColors.gold,
+                        backgroundColor: AppColors.surface,
+                        materialTapTargetSize: MaterialTapTargetSize.padded,
+                        side: const BorderSide(color: AppColors.borderStrong),
+                        labelStyle: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: city == selectedCity
+                                  ? AppColors.background
+                                  : AppColors.text,
+                            ),
+                        padding: const EdgeInsets.all(8),
+                        onSelected: (_) => setState(() => _city = city),
                       ),
-                      padding: const EdgeInsets.all(12),
-                      onSelected: (_) => setState(() => _city = city),
                     ),
                 ],
               ),
             ),
-          for (final cinema in cinemas.where(
-            (c) => selectedCity == null || c.city == selectedCity,
-          ))
+          for (final cinema
+              in cinemas
+                  .where((c) => selectedCity == null || c.city == selectedCity)
+                  .take(3))
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Material(
@@ -113,25 +115,37 @@ class _HomeCinemasSectionState extends ConsumerState<HomeCinemasSection> {
                   key: ValueKey('home-cinema-${cinema.id}'),
                   onTap: () => _open(cinema),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           cinema.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.cardTitle.copyWith(
                             color: AppColors.gold,
                           ),
                         ),
                         if (cinema.city.trim().isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(cinema.city, style: AppTextStyles.label),
+                          const SizedBox(height: 4),
+                          Text(
+                            cinema.city,
+                            style: AppTextStyles.body,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                         if (cinema.address.trim().isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(cinema.address, style: AppTextStyles.body),
+                          const SizedBox(height: 4),
+                          Text(
+                            cinema.address,
+                            style: AppTextStyles.body,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             const Icon(
@@ -179,6 +193,7 @@ class HomeCinemaSchedule extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const query = ShowtimeQuery();
+    final now = ref.watch(appClockProvider).now();
     final state = ref.watch(showtimesProvider(query));
     final movies = ref.watch(moviesProvider);
     final entries = [
@@ -231,7 +246,9 @@ class HomeCinemaSchedule extends ConsumerWidget {
                             Icons.arrow_forward,
                             color: AppColors.gold,
                           ),
-                          onTap: entry.slot.isBookable
+                          onTap:
+                              entry.slot.isBookable &&
+                                  entry.slot.startAt.isAfter(now)
                               ? () => onBook(entry.slot.id)
                               : null,
                         );

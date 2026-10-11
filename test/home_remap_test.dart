@@ -6,13 +6,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mss301_mobile/core/money/vnd_money.dart';
 import 'package:mss301_mobile/core/theme/app_theme.dart';
 import 'package:mss301_mobile/core/time/app_clock.dart';
+import 'package:mss301_mobile/core/routing/app_router.dart';
+import 'package:mss301_mobile/core/routing/app_routes.dart';
+import 'package:mss301_mobile/features/auth/application/auth_session.dart';
 import 'package:mss301_mobile/features/home/presentation/pages/home_page.dart';
 import 'package:mss301_mobile/features/home/presentation/providers/home_providers.dart';
 import 'package:mss301_mobile/features/home/presentation/widgets/home_hero_carousel.dart';
 import 'package:mss301_mobile/features/home/presentation/widgets/home_movie_carousel.dart';
 import 'package:mss301_mobile/features/home/presentation/widgets/home_quick_booking.dart';
+import 'package:mss301_mobile/features/home/presentation/widgets/home_section_heading.dart';
+import 'package:mss301_mobile/shared/widgets/cinema_bottom_nav.dart';
+import 'package:mss301_mobile/shared/widgets/cinema_header.dart';
 import 'package:mss301_mobile/features/movie/data/models/catalog_enums.dart';
 import 'package:mss301_mobile/features/movie/data/models/cinema_dto.dart';
+import 'package:mss301_mobile/features/movie/data/models/movie_dto.dart';
 import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
 import 'package:mss301_mobile/features/movie/presentation/models/movie.dart';
 import 'package:mss301_mobile/features/movie/presentation/pages/movie_detail_page.dart';
@@ -22,6 +29,7 @@ import 'package:mss301_mobile/features/showtime/presentation/models/showtime_mod
 import 'package:mss301_mobile/features/showtime/presentation/providers/showtimes_provider.dart';
 
 import 'support/pump_test_app.dart';
+import 'support/fake_auth_session.dart';
 
 void main() {
   testWidgets('Home follows the current Web section hierarchy', (tester) async {
@@ -35,10 +43,12 @@ void main() {
       'PHIM SẮP CHIẾU',
       'KHÔNG GIAN ĐIỆN ẢNH',
       'RẠP CINEPREMIER',
-      'ẨM THỰC ĐIỆN ẢNH',
-      'BẮP NƯỚC & COMBO',
     ]) {
-      expect(find.text(label), findsOneWidget, reason: label);
+      expect(
+        find.text(label),
+        label == 'MUA VÉ NHANH' ? findsNWidgets(2) : findsOneWidget,
+        reason: label,
+      );
     }
     expect(find.textContaining('Watchlist'), findsNothing);
     expect(find.textContaining('Rạp yêu thích'), findsNothing);
@@ -46,6 +56,13 @@ void main() {
     expect(find.text('Ưu đãi VIP'), findsNothing);
     expect(find.byKey(const ValueKey('hero-open-1')), findsOneWidget);
     expect(find.byType(HomePage), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(HomeSectionHeading),
+        matching: find.byType(FilledButton),
+      ),
+      findsNothing,
+    );
     final buy = tester.widget<FilledButton>(
       find.byKey(const ValueKey('home-quick-buy')),
     );
@@ -55,7 +72,9 @@ void main() {
         .toList();
     expect(carousels[0].movies.every((m) => m.isNowShowing), isTrue);
     expect(carousels[1].movies.every((m) => m.isComingSoon), isTrue);
-    expect(find.byKey(const ValueKey('home-food-unavailable')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-food-unavailable')), findsNothing);
+    expect(find.text('BẮP NƯỚC & COMBO'), findsNothing);
+    expect(find.text('Danh mục bắp nước chưa được hỗ trợ'), findsNothing);
     expect(find.text('ĐẶT BẮP NƯỚC'), findsNothing);
     expect(find.text('Chọn'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -68,6 +87,13 @@ void main() {
         addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
         await _open(tester, width: width);
         expect(find.byType(HomeHeroCarousel), findsOneWidget);
+        expect(
+          tester.getSize(find.byType(HomeHeroCarousel)).height,
+          closeTo(
+            width >= 600 ? width / 2.8 : (width * .46).clamp(180, 210),
+            .01,
+          ),
+        );
         expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
         expect(find.text('PHIM SẮP CHIẾU'), findsOneWidget);
         expect(find.text('RẠP CINEPREMIER'), findsOneWidget);
@@ -81,13 +107,169 @@ void main() {
           findsOneWidget,
         );
         await tester.ensureVisible(
-          find.byKey(const ValueKey('home-food-unavailable')),
+          find.byKey(const ValueKey('home-cinema-802')),
         );
         await tester.pumpAndSettle();
+        expect(
+          tester.getRect(find.byKey(const ValueKey('home-cinema-802'))).bottom,
+          lessThanOrEqualTo(tester.getRect(find.byType(CinemaBottomNav)).top),
+        );
         expect(tester.takeException(), isNull);
       });
     }
   }
+
+  testWidgets('compact dark Quick Booking keeps four 48px selector rows', (
+    tester,
+  ) async {
+    await _open(tester);
+    for (var step = 1; step <= 4; step++) {
+      expect(
+        tester.getSize(find.byKey(ValueKey('home-quick-step-$step'))).height,
+        48,
+      );
+    }
+    final card = tester.widget<Material>(
+      find.byKey(const ValueKey('home-quick-card')),
+    );
+    expect(card.color, AppColors.surface);
+    expect(tester.getSize(find.byType(HomeQuickBooking)).height, lessThan(300));
+    expect(_buy(tester).onPressed, isNull);
+    // Real selector values and dependency behavior are covered below.
+  });
+
+  testWidgets(
+    'compact Home header reserves 56px without changing other headers',
+    (tester) async {
+      await _open(tester);
+      final header = tester.widget<CinemaHeader>(find.byType(CinemaHeader));
+      expect(header.compact, isTrue);
+      expect(header.preferredSize.height, 56);
+      expect(
+        const CinemaHeader(
+          onHome: _noop,
+          onSearch: _noop,
+          onAccount: _noop,
+        ).preferredSize.height,
+        AppSpacing.headerHeight,
+      );
+    },
+  );
+
+  testWidgets(
+    'movie cards show two readable titles lines and one metadata row',
+    (tester) async {
+      await _open(tester);
+      final title = tester.widget<Text>(find.text(_longTitle).last);
+      expect(title.maxLines, 2);
+      expect(title.overflow, TextOverflow.ellipsis);
+      expect(title.style!.fontSize, greaterThanOrEqualTo(15));
+      final metadata = tester.widget<Text>(
+        find.text('Hành động • 123 phút').first,
+      );
+      expect(metadata.maxLines, 1);
+      expect(find.text('Khởi chiếu 10/11/2026'), findsOneWidget);
+      final poster = tester.getSize(
+        find.byKey(const ValueKey('home-movie-701')),
+      );
+      expect(poster.width / poster.height, closeTo(2 / 3, .01));
+      // Two full posters and a peek of the next at ordinary phone font size.
+      expect((430 - 16) / (poster.width + 12), closeTo(2.2, .05));
+    },
+  );
+
+  for (final entry in [
+    ('PHIM ĐANG CHIẾU', AppRoutes.discover),
+    ('PHIM SẮP CHIẾU', AppRoutes.discover),
+    ('RẠP CINEPREMIER', AppRoutes.showtimes),
+  ]) {
+    testWidgets('${entry.$1} compact see-all action uses existing route', (
+      tester,
+    ) async {
+      await _open(tester);
+      final action = find.byKey(ValueKey('home-section-action-${entry.$1}'));
+      expect(tester.widget<TextButton>(action).onPressed, isNotNull);
+      await tester.ensureVisible(action);
+      await tester.tap(action);
+      await tester.pumpAndSettle();
+      expect(appRouter.routeInformationProvider.value.uri.path, entry.$2);
+    });
+  }
+
+  testWidgets(
+    'cinema chips scroll horizontally and preview limits after filtering',
+    (tester) async {
+      final cinemas = [
+        ..._cinemas,
+        for (var id = 803; id <= 808; id++)
+          CinemaDto(
+            id: id,
+            name: 'Rạp $id',
+            address: 'Địa chỉ dài từ contract $id',
+            city: 'Thành phố $id',
+            active: id != 808,
+          ),
+      ];
+      await _open(tester, width: 320, cinemas: () => cinemas);
+      expect(find.byKey(const ValueKey('home-cinema-801')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-cinema-803')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-cinema-804')), findsNothing);
+      final strip = find.byKey(const ValueKey('home-cinema-filters'));
+      await tester.ensureVisible(strip);
+      await tester.pumpAndSettle();
+      final chips = find.descendant(
+        of: strip,
+        matching: find.byType(ChoiceChip),
+      );
+      final tops = tester
+          .elementList(chips)
+          .map((e) => tester.getRect(find.byWidget(e.widget)).top)
+          .toSet();
+      expect(tops.length, 1);
+      for (final chip in tester.elementList(chips)) {
+        expect(
+          tester.getSize(find.byWidget(chip.widget)).height,
+          greaterThanOrEqualTo(48),
+        );
+        expect((chip.widget as ChoiceChip).labelStyle!.fontFamily, 'Inter');
+      }
+      final lastCity = find.widgetWithText(ChoiceChip, 'Thành phố 807');
+      await tester.ensureVisible(lastCity);
+      await tester.pumpAndSettle();
+      await tester.tap(lastCity);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('home-cinema-807')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-cinema-801')), findsNothing);
+      expect(find.text('Thành phố 808'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Home scroll ends with cinema action safely above bottom navigation',
+    (tester) async {
+      await _open(tester, width: 320);
+      final scrollable = tester.state<ScrollableState>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('home-scroll')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final last = find.byKey(const ValueKey('home-cinema-802'));
+      expect(
+        tester.getRect(last).bottom,
+        lessThan(tester.getRect(find.byType(CinemaBottomNav)).top),
+      );
+      expect(last.hitTestable(), findsOneWidget);
+      expect(find.text('BẮP NƯỚC & COMBO'), findsNothing);
+      expect(find.textContaining('chưa được hỗ trợ'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('four real selectors pass the exact showtime ID', (tester) async {
     await _open(tester);
@@ -109,6 +291,58 @@ void main() {
           .showtimeId,
       901,
     );
+  });
+
+  testWidgets('guest Quick Booking keeps the existing login continuation', (
+    tester,
+  ) async {
+    final container = await _open(tester, guest: true);
+    await _choose(tester, 1, 701);
+    await _choose(tester, 2, 801);
+    await _choose(tester, 3, DateTime(2026, 11, 3));
+    await _choose(tester, 4, 901);
+    await tester.ensureVisible(find.byKey(const ValueKey('home-quick-buy')));
+    await tester.tap(find.byKey(const ValueKey('home-quick-buy')));
+    await tester.pumpAndSettle();
+    final uri = appRouter.routeInformationProvider.value.uri;
+    expect(uri.path, AppRoutes.login);
+    expect(uri.queryParameters['continue'], AppRoutes.seatSelection(901));
+    expect(container.read(authSessionProvider).isAuthenticated, isFalse);
+  });
+
+  testWidgets('compact selectors remain usable at 320px and 200 percent text', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await _open(tester, width: 320);
+    await _choose(tester, 1, 701);
+    await _choose(tester, 2, 801);
+    await _choose(tester, 3, DateTime(2026, 11, 3));
+    await _choose(tester, 4, 901);
+    expect(_buy(tester).onPressed, isNotNull);
+    expect(_step(tester, 1).label, _longTitle);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact hero preserves swipe, pager and next movie navigation', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await _open(tester);
+      await tester.drag(find.byType(HomeHeroCarousel), const Offset(-430, 0));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Ảnh 2 trên 3'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('hero-open-702')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<MovieDetailPage>(find.byType(MovieDetailPage)).movieId,
+        702,
+      );
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('changing a parent clears dependent choices', (tester) async {
@@ -168,7 +402,7 @@ void main() {
     );
   });
 
-  testWidgets('hero and poster keep actual movie detail IDs', (tester) async {
+  testWidgets('hero keeps actual movie detail ID', (tester) async {
     await _open(tester);
     await tester.tap(find.byKey(const ValueKey('hero-open-701')));
     await tester.pumpAndSettle();
@@ -176,6 +410,85 @@ void main() {
       tester.widget<MovieDetailPage>(find.byType(MovieDetailPage)).movieId,
       701,
     );
+  });
+
+  testWidgets('coming-soon poster preserves actual movie detail ID', (
+    tester,
+  ) async {
+    await _open(tester);
+    final poster = find.byKey(const ValueKey('home-movie-703'));
+    await tester.ensureVisible(poster);
+    await tester.tap(poster);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<MovieDetailPage>(find.byType(MovieDetailPage)).movieId,
+      703,
+    );
+  });
+
+  testWidgets('unknown age/format/rating do not become fake Home badges', (
+    tester,
+  ) async {
+    final movie = mapMovieToPresentation(
+      MovieDto.fromJson({
+        'id': 709,
+        'title': 'Không có metadata',
+        'durationMinutes': 90,
+        'status': 'NOW_SHOWING',
+      }),
+    );
+    await pumpTestApp(
+      tester,
+      size: const Size(430, 900),
+      providerOverrides: [
+        moviesProvider.overrideWith((ref) async => [movie]),
+      ],
+    );
+    expect(movie.hasAgeRating, isFalse);
+    expect(find.text('P'), findsNothing);
+    expect(find.text('2D'), findsNothing);
+    expect(find.text('0.0'), findsNothing);
+  });
+
+  testWidgets(
+    'Quick Booking schedule error is recoverable and does not hide movies',
+    (tester) async {
+      var failed = true;
+      await _open(
+        tester,
+        schedule: () {
+          if (failed) throw StateError('schedule unavailable');
+          return _schedule();
+        },
+      );
+      await _choose(tester, 1, 701);
+      expect(_step(tester, 2).onTap, isNull);
+      expect(_buy(tester).onPressed, isNull);
+      expect(find.text('Đã xảy ra lỗi'), findsOneWidget);
+      expect(find.byType(HomeMovieCarousel), findsNWidgets(2));
+      failed = false;
+      await tester.ensureVisible(find.text('Thử lại'));
+      await tester.tap(find.text('Thử lại'));
+      await tester.pumpAndSettle();
+      expect(_step(tester, 2).onTap, isNotNull);
+      expect(find.text('Đã xảy ra lỗi'), findsNothing);
+    },
+  );
+
+  testWidgets('closed showtimes are never offered as Quick Booking options', (
+    tester,
+  ) async {
+    await _open(tester);
+    await _choose(tester, 1, 701);
+    await _choose(tester, 2, 801);
+    await _choose(tester, 3, DateTime(2026, 11, 4));
+    await tester.ensureVisible(find.byKey(const ValueKey('home-quick-step-4')));
+    await tester.tap(find.byKey(const ValueKey('home-quick-step-4')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('home-choice-902')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-choice-903')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('home-choice-902')));
+    await tester.pumpAndSettle();
   });
 
   testWidgets(
@@ -249,6 +562,8 @@ void main() {
   });
 }
 
+void _noop() {}
+
 HomeBookingStep _step(WidgetTester tester, int step) =>
     tester.widget<HomeBookingStep>(find.byType(HomeBookingStep).at(step - 1));
 FilledButton _buy(WidgetTester tester) =>
@@ -261,6 +576,11 @@ Future<void> _choose(WidgetTester tester, int step, Object id) async {
   await tester.pumpAndSettle();
   final option = find.byKey(ValueKey('home-choice-$id'));
   await tester.ensureVisible(option);
+  expect(
+    option.hitTestable(),
+    findsOneWidget,
+    reason: 'Selector option rect: ${tester.getRect(option)}',
+  );
   await tester.tap(option);
   await tester.pumpAndSettle();
 }
@@ -270,10 +590,12 @@ Future<ProviderContainer> _open(
   double width = 430,
   bool movieError = false,
   bool emptyMovies = false,
+  bool guest = false,
   List<CinemaDto> Function()? cinemas,
   List<MovieShowtime> Function()? schedule,
 }) => pumpTestApp(
   tester,
+  authState: guest ? unauthenticatedState : authenticatedCustomerState(),
   size: Size(width, 900),
   providerOverrides: [
     appClockProvider.overrideWithValue(FakeAppClock(DateTime(2026, 11, 1))),

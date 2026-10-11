@@ -20,6 +20,7 @@ class AuthFormLayout extends StatelessWidget {
     this.onRegisterTabPressed,
     this.isRegisterEntry = false,
     this.isEmailVerification = false,
+    this.googleButton,
   });
 
   final String title;
@@ -34,6 +35,7 @@ class AuthFormLayout extends StatelessWidget {
   final VoidCallback? onRegisterTabPressed;
   final bool isRegisterEntry;
   final bool isEmailVerification;
+  final Widget? googleButton;
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +68,7 @@ class AuthFormLayout extends StatelessWidget {
         const SizedBox(height: AppSpacing.xl),
         const _OrDivider(),
         const SizedBox(height: AppSpacing.lg),
-        const _UnavailableGoogleButton(),
+        ?googleButton,
       ],
       if (secondaryActions.isNotEmpty) ...[
         const SizedBox(height: AppSpacing.md),
@@ -371,42 +373,6 @@ class _OrDivider extends StatelessWidget {
       ),
       const Expanded(child: Divider(color: AppColors.border)),
     ],
-  );
-}
-
-class _UnavailableGoogleButton extends StatelessWidget {
-  const _UnavailableGoogleButton();
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'Đăng nhập bằng Google hiện chưa khả dụng',
-    enabled: false,
-    child: SizedBox(
-      width: double.infinity,
-      height: AppSizes.buttonHeight,
-      child: OutlinedButton(
-        key: const ValueKey('auth-google-unavailable'),
-        onPressed: null,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.borderStrong),
-          shape: const RoundedRectangleBorder(borderRadius: AppRadii.small),
-        ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('G', style: TextStyle(fontWeight: FontWeight.w800)),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'ĐĂNG NHẬP BẰNG GOOGLE',
-                style: AppTextStyles.label.copyWith(color: AppColors.textMuted),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
   );
 }
 
