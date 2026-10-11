@@ -212,6 +212,58 @@ void main() {
       container.read(bookingCompletionProvider).message,
       contains('Tổng tiền'),
     );
+    expect(
+      container.read(bookingCompletionProvider).phase,
+      BookingCompletionPhase.checkout,
+    );
+    expect(
+      container.read(bookingCompletionProvider).quote!.total.amount,
+      110000,
+    );
+    expect(await controller.createPayment(), isNotNull);
+    expect(
+      gateway.calls.where((c) => c == 'POST /api/v1/payments/vnpay/create'),
+      hasLength(1),
+    );
+  });
+
+  test(
+    'out-of-stock errors preserve the cart and allow removing missing products',
+    () async {
+      await controller.load(42);
+      controller.changeQuantity(1, 2);
+      gateway.foodUnavailable = true;
+      gateway.hideProducts = true;
+      expect(await controller.prepareCheckout(), isFalse);
+      var state = container.read(bookingCompletionProvider);
+      expect(state.phase, BookingCompletionPhase.choosingFood);
+      expect(state.quantities['item:1'], 2);
+      expect(state.products.single.isAvailable, isFalse);
+      expect(state.message, contains('sửa giỏ'));
+      controller.changeQuantity(1, 1);
+      expect(container.read(bookingCompletionProvider).quantities['item:1'], 2);
+      controller.changeQuantity(1, -2);
+      gateway.foodUnavailable = false;
+      expect(await controller.prepareCheckout(), isTrue);
+      expect(gateway.itemsBody!['foods'], isEmpty);
+      expect(await controller.createPayment(), isNotNull);
+    },
+  );
+
+  test('each item and combo can have eight and food is optional', () async {
+    await controller.load(42);
+    controller.changeQuantity(1, 99);
+    controller.changeQuantity(1, 99, isCombo: true);
+    expect(container.read(bookingCompletionProvider).quantities, {
+      'item:1': 8,
+      'combo:1': 8,
+    });
+    controller.changeQuantity(1, -99);
+    controller.changeQuantity(1, -99, isCombo: true);
+    expect(await controller.prepareCheckout(), isTrue);
+    expect(gateway.itemsBody!['foods'], isEmpty);
+    expect(gateway.quoteBody!['voucherCode'], isNull);
+    expect(gateway.quoteBody!['cinePointsToUse'], isNull);
   });
 
   test('history retrieves records beyond the first twenty orders', () async {
@@ -245,18 +297,62 @@ void main() {
   );
 
   test(
-    'low-stock products remain selectable but out-of-stock products do not',
+    'only ACTIVE items and combos can be added, matching backend quote',
+    () async {
+      for (final status in [
+        'LOW_STOCK',
+        'OUT_OF_STOCK',
+        'INACTIVE',
+        'UNKNOWN',
+        'ACTIVE',
+      ]) {
+        container.invalidate(bookingCompletionProvider);
+        controller = container.read(bookingCompletionProvider.notifier);
+        gateway.productStatus = status;
+        await controller.load(42);
+        controller.changeQuantity(1, 1);
+        controller.changeQuantity(1, 1, isCombo: true);
+        final quantities = container.read(bookingCompletionProvider).quantities;
+        expect(
+          quantities,
+          status == 'ACTIVE' ? {'item:1': 1, 'combo:1': 1} : isEmpty,
+        );
+      }
+    },
+  );
+
+  test(
+    'restored LOW_STOCK selection must be removed before checkout',
     () async {
       gateway.productStatus = 'LOW_STOCK';
+      gateway.foods = [
+        {
+          'id': 1,
+          'productId': 1,
+          'isCombo': false,
+          'productName': 'Drink',
+          'quantity': 2,
+          'unitPrice': 10000,
+          'lineTotal': 20000,
+        },
+      ];
       await controller.load(42);
+      expect(container.read(bookingCompletionProvider).quantities['item:1'], 2);
+      expect(await controller.prepareCheckout(), isFalse);
+      expect(
+        container.read(bookingCompletionProvider).phase,
+        BookingCompletionPhase.choosingFood,
+      );
+      expect(
+        container.read(bookingCompletionProvider).message,
+        contains('sửa giỏ'),
+      );
+      expect(gateway.calls, isNot(contains('PUT /api/v1/bookings/42/items')));
       controller.changeQuantity(1, 1);
-      expect(container.read(bookingCompletionProvider).quantities['item:1'], 1);
-      container.invalidate(bookingCompletionProvider);
-      controller = container.read(bookingCompletionProvider.notifier);
-      gateway.productStatus = 'OUT_OF_STOCK';
-      await controller.load(42);
-      controller.changeQuantity(1, 1);
-      expect(container.read(bookingCompletionProvider).quantities, isEmpty);
+      expect(container.read(bookingCompletionProvider).quantities['item:1'], 2);
+      controller.changeQuantity(1, -2);
+      expect(await controller.prepareCheckout(), isTrue);
+      expect(gateway.itemsBody!['foods'], isEmpty);
     },
   );
 
@@ -298,6 +394,9 @@ class _Gateway implements HttpClientAdapter {
   Completer<void>? paymentGate;
   Completer<void>? bookingGate;
   int total = 100000;
+  int baseTotal = 100000;
+  bool foodUnavailable = false;
+  bool hideProducts = false;
   List<dynamic> foods = [];
 
   Map<String, Object?> get booking => {
@@ -365,20 +464,33 @@ class _Gateway implements HttpClientAdapter {
       final combo = options.path.endsWith('combos');
       data = {
         'items': [
-          {
-            'id': 1,
-            'name': combo ? 'Combo' : 'Drink',
-            'price': combo ? 20000 : 10000,
-            'status': productStatus,
-          },
+          if (!hideProducts)
+            {
+              'id': 1,
+              'name': combo ? 'Combo' : 'Drink',
+              'price': combo ? 20000 : 10000,
+              'status': productStatus,
+            },
         ],
         'totalPages': 1,
       };
     } else if (options.path.endsWith('/items') ||
         options.path.endsWith('/checkout')) {
+      if (foodUnavailable) {
+        return ResponseBody.fromString(
+          jsonEncode({
+            'success': false,
+            'message': 'Food product is unavailable: 1',
+          }),
+          400,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      }
       itemsBody = Map<String, dynamic>.from(options.data as Map);
       final selected = itemsBody!['foods'] as List;
-      total = 100000;
+      total = baseTotal;
       foods = [
         for (final food in selected)
           {
@@ -397,6 +509,8 @@ class _Gateway implements HttpClientAdapter {
       if (options.path.endsWith('/checkout')) bookingStatus = 'PENDING_PAYMENT';
       if (options.path.endsWith('/checkout') && checkoutPriceChange) {
         total += 10000;
+        baseTotal += 10000;
+        checkoutPriceChange = false;
       }
       data = booking;
     } else if (options.path == '/api/v1/catalog/checkout-quote') {
@@ -413,8 +527,8 @@ class _Gateway implements HttpClientAdapter {
         'tickets': [],
         'foods': foods,
         'foodItems': foods,
-        'ticketSubtotal': 100000,
-        'foodSubtotal': total - 100000,
+        'ticketSubtotal': baseTotal,
+        'foodSubtotal': total - baseTotal,
         'subtotal': total,
         'total': total,
         'discount': 0,

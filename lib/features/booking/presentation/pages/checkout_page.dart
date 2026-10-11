@@ -152,6 +152,10 @@ class CheckoutPage extends ConsumerWidget {
                               .createPayment();
                           if (payment != null && context.mounted) {
                             context.go(AppRoutes.payment(payment.id));
+                          } else if (context.mounted &&
+                              ref.read(bookingCompletionProvider).phase ==
+                                  BookingCompletionPhase.choosingFood) {
+                            context.go(AppRoutes.concessions(bookingId));
                           }
                         },
                 ),

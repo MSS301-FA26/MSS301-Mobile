@@ -1,3 +1,6 @@
+import '../../../core/network/api_exception.dart';
+import '../../movie/data/models/catalog_enums.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../movie/data/models/food_quote_dto.dart';
@@ -243,6 +246,15 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       );
       return false;
     }
+    if (state.products.any(
+      (p) => !p.isAvailable && (state.quantities[p.selectionKey] ?? 0) > 0,
+    )) {
+      state = state.copyWith(
+        phase: BookingCompletionPhase.choosingFood,
+        message: 'Có sản phẩm đã hết hàng hoặc ngừng bán. Vui lòng sửa giỏ bắp nước để tiếp tục.',
+      );
+      return false;
+    }
     state = state.copyWith(
       phase: BookingCompletionPhase.preparingCheckout,
       clearMessage: true,
@@ -359,9 +371,14 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       if (!ref.mounted || generation != _generation) return null;
       state = state.copyWith(booking: checkedOut);
       if (checkedOut.totalAmount != state.quote!.total) {
-        throw StateError(
-          'Tổng tiền đã thay đổi. Vui lòng cập nhật đơn và xác nhận lại.',
-        );
+        state = state.copyWith(phase: BookingCompletionPhase.checkout);
+        final ready = await prepareCheckout();
+        if (ready && ref.mounted && generation == _generation) {
+          state = state.copyWith(
+            message: 'Tổng tiền đã thay đổi. Báo giá đã được cập nhật; vui lòng kiểm tra và xác nhận lại.',
+          );
+        }
+        return null;
       }
       final payment = await ref
           .read(paymentRepositoryProvider)
@@ -657,13 +674,55 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       // Preserve the original failure if the follow-up request is also offline.
     }
     if (!ref.mounted || generation != _generation) return;
+    final expired = booking?.status == BookingStatus.expired || _expired;
+    var products = state.products;
+    if (!expired) {
+      try {
+        final catalog = ref.read(catalogRepositoryProvider);
+        final lists = await Future.wait([
+          catalog.getFoodCombos(),
+          catalog.getFoodItems(),
+        ]);
+        if (!ref.mounted || generation != _generation) return;
+        final fresh = {
+          for (final p in lists.expand((items) => items)) p.selectionKey: p,
+        };
+        // Preserve selected products missing from the public catalog so users can remove them.
+        products = [
+          ...fresh.values,
+          for (final old in state.products)
+            if (!fresh.containsKey(old.selectionKey) &&
+                (state.quantities[old.selectionKey] ?? 0) > 0)
+              FoodProductDto(
+                id: old.id,
+                name: old.name,
+                price: old.price,
+                status: FoodItemStatus.outOfStock,
+                isCombo: old.isCombo,
+                description: old.description,
+                imageUrl: old.imageUrl,
+              ),
+        ];
+      } catch (_) {
+        // Keep the cart editable when refreshing the catalog also fails.
+      }
+    }
+    if (!ref.mounted || generation != _generation) return;
+    final unavailable = products.any(
+      (p) => !p.isAvailable && (state.quantities[p.selectionKey] ?? 0) > 0,
+    );
     state = state.copyWith(
-      phase: booking?.status == BookingStatus.expired
+      phase: expired
           ? BookingCompletionPhase.expired
-          : BookingCompletionPhase.error,
+          : BookingCompletionPhase.choosingFood,
       booking: booking,
-      message: booking?.status == BookingStatus.expired
+      products: products,
+      message: expired
           ? 'Thời gian giữ ghế đã hết.'
+          : unavailable
+          ? 'Có sản phẩm đã hết hàng hoặc ngừng bán. Vui lòng sửa giỏ bắp nước để tiếp tục.'
+          : error is ApiException
+          ? error.message
           : error.toString(),
     );
   }

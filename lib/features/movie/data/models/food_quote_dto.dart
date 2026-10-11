@@ -24,8 +24,8 @@ class FoodProductDto {
 
   // Item and combo IDs come from separate database tables.
   String get selectionKey => '${isCombo ? 'combo' : 'item'}:$id';
-  bool get isAvailable =>
-      status == FoodItemStatus.active || status == FoodItemStatus.lowStock;
+  // CheckoutQuoteService accepts ACTIVE products only, including combos.
+  bool get isAvailable => status == FoodItemStatus.active;
 
   factory FoodProductDto.fromJson(
     Map<String, Object?> json, {

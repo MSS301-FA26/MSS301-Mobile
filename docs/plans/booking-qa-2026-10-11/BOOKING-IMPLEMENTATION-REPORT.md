@@ -17,7 +17,7 @@ Trạng thái: **Đã triển khai phần Mobile của luồng chính; còn QA t
 | Vé và ghế | Không nhập tuổi người xem; gửi giá trị theo loại vé để tương thích API. Thẻ trẻ em chặn theo phân loại phim và giải thích lý do. Ghế đôi chọn từng cặp thay vì toàn bộ hàng. |
 | Giữ ghế | Chống gửi hold hai lần; kiểm tra hết hạn; lỗi xung đột/mất mạng trả lại trạng thái chọn ghế. Back/logo/Search/Account/tab giữ người dùng trong flow nếu hủy hold thất bại. |
 | Phục hồi | Lưu booking ID, payment ID và giá trị tuổi API theo ghế trong secure storage, tách khóa theo user. Home có đường tiếp tục đơn. Luôn GET booking từ BE để xác minh trạng thái; không phục hồi hold chỉ bằng dữ liệu trên máy. |
-| Bắp nước | Đọc `/api/v1/foods/items` và `/api/v1/foods/combos`, tải đủ trang. Tách khóa `item:id`/`combo:id` để tránh trùng ID. Hiển thị ảnh, giá và trạng thái; LOW_STOCK vẫn chọn được, OUT_OF_STOCK/INACTIVE không được tăng số lượng. |
+| Bắp nước | Đọc `/api/v1/foods/items` và `/api/v1/foods/combos`, tải đủ trang. Tách khóa `item:id`/`combo:id` để tránh trùng ID. Hiển thị ảnh, giá và trạng thái; Chỉ ACTIVE được mua theo BE hiện tại; LOW_STOCK/OUT_OF_STOCK/INACTIVE/UNKNOWN không được tăng số lượng. |
 | Xác nhận đơn | PUT `/api/v1/bookings/{id}/items` → quote. POST `/api/v1/bookings/{id}/checkout` trước tạo payment. Không tạo payment nếu tổng tiền checkout khác báo giá đã xác nhận. Báo giá hết hạn phải được cập nhật và xác nhận lại. |
 | VNPay | Dùng launcher kiểm tra URL và kết quả mở. Kiểm tra payment hiện có theo booking trước khi tạo lại. Tải trạng thái khi app resume và polling mỗi 3 giây, tối đa 20 lần; dừng khi rời màn hình/đổi lifecycle hoặc có kết quả cuối. Có kiểm tra thủ công sau khi polling kết thúc. |
 | Hoàn tất | Payment SUCCESS chỉ mở vé khi booking PAID/USED. Khi callback booking chậm, tiếp tục kiểm tra; không tự đánh dấu paid. Refresh Orders và xóa checkpoint sau hoàn tất. Rời màn payment giữ đơn để kiểm tra lại, không tự hủy đơn đang thanh toán. |
@@ -89,3 +89,30 @@ Với cấu hình local hiện tại, emulator dùng ADB reverse `tcp:8080 → t
 - Hold expiry và quote expiry giữ parser server UTC riêng, dựa trên giờ UTC container đã kiểm tra ở lần chạy trước. Không đổi hạn giữ ghế thành giờ local hoặc cộng thêm 7 tiếng vào thời lượng. Nếu BE thay đổi múi giờ chạy thì contract này cần được cập nhật rõ ràng.
 - Analyzer PASS, full suite **104/104 PASS**. Test mới kiểm tra local schedule, explicit UTC/+07/-05, đổi ngày Việt Nam, mapping showtime/booking và thời hạn 3 phút vẫn đúng.
 - Không sửa BE/DB, không sửa Markdown của thành viên khác.
+
+## Chốt Plan 06: bắp nước và checkout
+
+Người dùng chốt: bắp nước không bắt buộc; tối đa 8 mỗi sản phẩm/combo (không thêm giới hạn tổng giỏ); LOW_STOCK vẫn bán, OUT_OF_STOCK bị chặn; giá thay đổi phải cập nhật báo giá và xác nhận lại; hết hàng trong lúc đặt phải báo lỗi để người dùng sửa giỏ, không tự bỏ món; voucher/điểm thuộc Plan 10–11.
+
+- Bổ sung phục hồi sau lỗi mutation/quote: giữ nguyên số lượng giỏ, tải lại danh sách sản phẩm và cho sửa ngay. Sản phẩm đã chọn nhưng biến mất khỏi catalog vẫn hiện trong giỏ với trạng thái không bán để người dùng giảm/bỏ thủ công. Không tạo payment nếu giỏ còn món không bán.
+- Bổ sung thông báo lỗi trên màn bắp nước; lỗi từ checkout chuyển về giỏ sửa được.
+- Giá thay đổi trong POST checkout: tải items/quote mới, hiển thị giá mới và chờ người dùng bấm xác nhận lại; không tạo payment trong lần phát hiện đổi giá.
+- 28/28 test remote booking completion + booking entry + completion/account PASS. Test mới: hết hàng giữ giỏ và cho bỏ món đã bị ẩn khỏi catalog, bỏ qua food, giới hạn 8 độc lập cho item/combo, giá mới phải xác nhận trước tạo payment.
+
+### Điều kiện BE phát hiện trước khi đồng bộ Mobile
+
+Source `catalog-service/.../service/impl/CheckoutQuoteServiceImpl.java` hiện chỉ chấp nhận `FoodItemStatus.ACTIVE` ở bước tính giá food. Trong khi `FoodServiceImpl` công khai cả ACTIVE và LOW_STOCK. Vì vậy Mobile cho chọn LOW_STOCK theo yêu cầu, nhưng BE quote có thể từ chối. Cần người phụ trách BE đồng bộ điều kiện bán để chốt Plan 06; không sửa BE/DB trong đợt này. Các test dùng HTTP adapter kiểm chứng Mobile, chưa chứng minh LOW_STOCK thanh toán được qua BE thật.
+
+Plan 06 chưa DONE: còn QA Gateway thật cho giỏ/stock/giá/timeout cùng luồng checkout. Vấn đề LOW_STOCK được xử lý bằng việc cho Mobile tuân theo BE trong cập nhật dưới đây.
+
+## Điều chỉnh Plan 06 theo BE hiện tại
+
+Yêu cầu mới của người dùng thay thế quyết định cho mua LOW_STOCK trước đó: Mobile tuân theo điều kiện bán của CheckoutQuoteService, không sửa BE/DB.
+
+- Chỉ ACTIVE được tăng số lượng, áp dụng cho cả item và combo. LOW_STOCK/OUT_OF_STOCK/INACTIVE/UNKNOWN bị chặn ngay trên thẻ và tại controller.
+- LOW_STOCK hiển thị “Sắp hết • Tạm ngừng đặt”; OUT_OF_STOCK hiển thị “Tạm hết hàng”; INACTIVE hiển thị “Tạm ngừng bán”. Danh sách vẫn có thể hiển thị LOW_STOCK do endpoint catalog trả về, nhưng không cho chọn mua.
+- Món không đủ điều kiện đã có trong giỏ được giữ để người dùng giảm/bỏ; không tự xóa và không gửi checkout khi giỏ còn món này.
+- Các quy tắc còn lại giữ theo yêu cầu: food tùy chọn; 8 mỗi item/combo; giá thay đổi phải xác nhận lại; lỗi hàng phải sửa giỏ; voucher/điểm ở Plan 10–11.
+- Phụ thuộc thay đổi BE LOW_STOCK nêu ở mục trước đã được xử lý bằng việc điều chỉnh Mobile. Plan 06 vẫn cần QA Gateway thật; không đánh dấu DONE chỉ dựa trên test adapter.
+
+- Kiểm chứng lần đồng bộ BE: analyzer PASS; 29/29 test booking/checkout/account PASS, gồm cả item/combo mọi trạng thái và giỏ phục hồi chứa LOW_STOCK.

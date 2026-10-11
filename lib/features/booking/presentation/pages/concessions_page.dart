@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/app_image.dart';
+import '../../../movie/data/models/catalog_enums.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_hold_countdown.dart';
 import '../../../seat/application/booking_entry_session.dart';
@@ -76,6 +77,16 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
             ),
             const BookingProgress(currentStep: 2),
             BookingHoldCountdown(booking: state.booking),
+            if (state.message != null &&
+                state.phase == BookingCompletionPhase.choosingFood)
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: Text(
+                  state.message!,
+                  key: const ValueKey('concessions-message'),
+                  style: const TextStyle(color: AppColors.adultBadge),
+                ),
+              ),
             Expanded(
               child: state.phase == BookingCompletionPhase.loading
                   ? const Center(child: CircularProgressIndicator())
@@ -160,7 +171,15 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                                       Text(
                                         available
                                             ? product.price.format()
-                                            : 'Tạm hết hàng',
+                                            : switch (product.status) {
+                                                FoodItemStatus.lowStock =>
+                                                  'Sắp hết • Tạm ngừng đặt',
+                                                FoodItemStatus.outOfStock =>
+                                                  'Tạm hết hàng',
+                                                FoodItemStatus.inactive =>
+                                                  'Tạm ngừng bán',
+                                                _ => 'Chưa thể đặt',
+                                              },
                                         style: TextStyle(
                                           color: available
                                               ? AppColors.gold
