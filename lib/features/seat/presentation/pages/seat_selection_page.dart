@@ -1,3 +1,5 @@
+import '../../../../core/time/vietnam_time.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -42,7 +44,7 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
       builder: (context) => AlertDialog(
         title: const Text('Bỏ ghế đã gán?'),
         content: const Text(
-          'Giảm số lượng vé sẽ bỏ các ghế vượt quá của loại vé này.',
+          'Giảm số lượng vé sẽ bỏ các ghế vượt quá của loại vé này. Nếu có ghế đôi, cả cặp ghế sẽ được bỏ.',
         ),
         actions: [
           FilledButton(
@@ -215,7 +217,8 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
           ..sort((a, b) => a.seatNumber.compareTo(b.seatNumber));
     final index = row.indexWhere((item) => item.seatId == seat.seatId);
     final start = (index ~/ 2) * 2;
-    return row.skip(start).take(2).map((item) => item.seatId).toSet();
+    final pair = row.skip(start).take(2).toList();
+    return pair.length == 2 ? pair.map((item) => item.seatId).toSet() : {};
   }
 
   @override
@@ -255,6 +258,12 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
               movieId: seatMap.showtime.movieId,
               movieAgeRating: seatMap.showtime.movieAgeRating,
               showtimeId: widget.showtimeId,
+              couplePairs: {
+                for (final seat in seatMap.seats)
+                  if (seat.seatType.normalized == CatalogSeatType.couple)
+                    for (final partner in _seatGroup(seat, seatMap.seats))
+                      if (partner != seat.seatId) seat.seatId: partner,
+              },
             );
       });
     }
@@ -327,7 +336,13 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                         enabled: !holding && !submitting,
                         onSeat: (seat) => ref
                             .read(bookingEntryProvider.notifier)
-                            .toggleSeatIds(_seatGroup(seat, seatMap.seats)),
+                            .toggleSeatIds(
+                              _seatGroup(seat, seatMap.seats),
+                              unavailableSeatIds: seatMap.seats
+                                  .where((item) => !item.selectable)
+                                  .map((item) => item.seatId)
+                                  .toSet(),
+                            ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
@@ -890,9 +905,7 @@ class _SeatActionBar extends StatelessWidget {
   );
 }
 
-String _dateTime(DateTime value) =>
-    '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')} • '
-    '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+String _dateTime(DateTime value) => formatVietnamDateTime(value);
 
 String _ticketLabel(TicketType type) => switch (type) {
   TicketType.student => 'Sinh viên',

@@ -1,3 +1,4 @@
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/money/vnd_money.dart';
 import '../../data/models/booking_dto.dart';
 import '../../data/models/booking_enums.dart';
@@ -59,7 +60,7 @@ class TicketOrder {
   String get dateTime {
     final value = showtimeAt;
     if (value == null) return 'Chưa có thời gian';
-    return '${_two(value.hour)}:${_two(value.minute)} • ${_two(value.day)}/${_two(value.month)}/${value.year}';
+    return formatVietnamDateTime(value);
   }
 }
 
@@ -109,8 +110,6 @@ TicketOrder mapBookingToOrder(
     status: booking.status,
   );
 }
-
-String _two(int value) => value.toString().padLeft(2, '0');
 
 String _ticketLabel(TicketType type) => switch (type) {
   TicketType.child => 'trẻ em',

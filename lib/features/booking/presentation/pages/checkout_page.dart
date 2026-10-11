@@ -1,3 +1,5 @@
+import '../../../../core/time/vietnam_time.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -216,9 +218,7 @@ class _Line extends StatelessWidget {
   );
 }
 
-String _dateTime(DateTime value) =>
-    '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')} • '
-    '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+String _dateTime(DateTime value) => formatVietnamDateTime(value);
 
 String _ticketLabel(TicketType type) => switch (type) {
   TicketType.child => 'Vé trẻ em',

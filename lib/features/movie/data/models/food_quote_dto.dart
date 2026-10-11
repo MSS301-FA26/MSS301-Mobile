@@ -1,3 +1,4 @@
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/contracts/json_parsers.dart';
 import '../../../../core/money/vnd_money.dart';
 import 'catalog_enums.dart';
@@ -113,7 +114,7 @@ class QuoteShowtimeSnapshotDto {
         posterUrl: json['posterUrl']?.toString(),
         cinemaName: json['cinemaName']?.toString(),
         roomName: json['roomName']?.toString(),
-        startTime: dateTimeFromJson(json['startTime']),
+        startTime: cinemaTimeFromJson(json['startTime']),
       );
 }
 

@@ -70,6 +70,7 @@ class BookingEntryState {
     this.ticketQuantities = const {},
     this.activeTicketType,
     this.assignments = const {},
+    this.couplePairs = const {},
     this.unavailableSeatIds = const {},
     this.booking,
     this.message,
@@ -84,6 +85,7 @@ class BookingEntryState {
   final Map<TicketType, int> ticketQuantities;
   final TicketType? activeTicketType;
   final Map<int, SeatTicketAssignment> assignments;
+  final Map<int, int> couplePairs;
   final Set<int> unavailableSeatIds;
   final BookingDto? booking;
   final String? message;
@@ -92,7 +94,13 @@ class BookingEntryState {
   int get ticketCount => ticketQuantities.values.fold(0, (a, b) => a + b);
   int get assignedCount => assignments.length;
   bool get assignmentComplete =>
-      ticketCount > 0 && ticketCount == assignedCount;
+      ticketCount > 0 &&
+      ticketCount == assignedCount &&
+      assignments.values.every((item) {
+        final partner = couplePairs[item.seatId];
+        return partner == null ||
+            assignments[partner]?.ticketType == item.ticketType;
+      });
   int quantityFor(TicketType type) => ticketQuantities[type] ?? 0;
   int assignedFor(TicketType type) =>
       assignments.values.where((item) => item.ticketType == type).length;
@@ -133,6 +141,9 @@ class BookingEntryController extends Notifier<BookingEntryState> {
           : null,
       showtimeId: booking.showtimeId,
       booking: booking,
+      couplePairs: state.showtimeId == booking.showtimeId
+          ? state.couplePairs
+          : const {},
       ticketQuantities: quantities,
       activeTicketType: quantities.keys.firstOrNull,
       assignments: {
@@ -152,15 +163,17 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     required int movieId,
     required int showtimeId,
     String? movieAgeRating,
+    Map<int, int> couplePairs = const {},
   }) {
     if (state.showtimeId == showtimeId && state.hasActiveDraft) {
-      if (movieAgeRating != null) state = _copy(movieAgeRating: movieAgeRating);
+      state = _copy(movieAgeRating: movieAgeRating, couplePairs: couplePairs);
       return;
     }
     state = BookingEntryState(
       phase: BookingEntryPhase.selectingSeats,
       movieId: movieId,
       movieAgeRating: movieAgeRating,
+      couplePairs: couplePairs,
       showtimeId: showtimeId,
     );
   }
@@ -200,6 +213,8 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     if (assigned.length > nextQuantity) {
       for (final item in assigned.skip(nextQuantity)) {
         nextAssignments.remove(item.seatId);
+        final partner = state.couplePairs[item.seatId];
+        if (partner != null) nextAssignments.remove(partner);
       }
     }
     final quantities = Map<TicketType, int>.from(state.ticketQuantities);
@@ -229,14 +244,39 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     state = _copy(activeTicketType: type, clearMessage: true);
   }
 
-  void toggleSeatIds(Set<int> seatIds) {
+  void toggleSeatIds(
+    Set<int> seatIds, {
+    Set<int> unavailableSeatIds = const {},
+  }) {
     if (state.phase != BookingEntryPhase.selectingSeats) return;
+    if (seatIds.isEmpty) {
+      state = _copy(message: 'Ghế đôi phải gồm đủ 2 ghế cùng loại vé.');
+      return;
+    }
+    seatIds = {
+      ...seatIds,
+      for (final id in seatIds)
+        if (state.couplePairs[id] != null) state.couplePairs[id]!,
+    };
     final next = Map<int, SeatTicketAssignment>.from(state.assignments);
     if (seatIds.every(next.containsKey)) {
       for (final id in seatIds) {
         next.remove(id);
       }
       state = _copy(assignments: next, clearMessage: true);
+      return;
+    }
+    if (seatIds.any(unavailableSeatIds.contains) ||
+        seatIds.any(state.unavailableSeatIds.contains)) {
+      state = _copy(
+        message: 'Cặp ghế này không còn đủ 2 ghế trống. Hãy chọn ghế khác.',
+      );
+      return;
+    }
+    if (seatIds.any(next.containsKey)) {
+      state = _copy(
+        message: 'Ghế đôi phải gồm đủ 2 ghế cùng loại vé. Hãy bỏ cặp ghế trước khi đổi loại vé.',
+      );
       return;
     }
     final type = state.activeTicketType;
@@ -458,6 +498,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       phase: BookingEntryPhase.selectingSeats,
       movieId: state.movieId,
       movieAgeRating: state.movieAgeRating,
+      couplePairs: state.couplePairs,
       showtimeId: state.showtimeId,
       ticketQuantities: state.ticketQuantities,
       activeTicketType: state.activeTicketType,
@@ -465,6 +506,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
   }
 
   BookingEntryState _copy({
+    Map<int, int>? couplePairs,
     String? movieAgeRating,
     BookingEntryPhase? phase,
     Map<TicketType, int>? ticketQuantities,
@@ -486,6 +528,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
         ? null
         : activeTicketType ?? state.activeTicketType,
     assignments: assignments ?? state.assignments,
+    couplePairs: couplePairs ?? state.couplePairs,
     unavailableSeatIds: unavailableSeatIds ?? state.unavailableSeatIds,
     booking: clearBooking ? null : booking ?? state.booking,
     message: clearMessage ? null : message ?? state.message,

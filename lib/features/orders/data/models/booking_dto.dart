@@ -1,3 +1,4 @@
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/contracts/json_parsers.dart';
 import '../../../../core/money/vnd_money.dart';
 import '../../../movie/data/models/catalog_enums.dart';
@@ -263,8 +264,8 @@ class BookingDto {
     cinemaNameSnapshot: json['cinemaNameSnapshot']?.toString(),
     roomName: json['roomName']?.toString(),
     roomNameSnapshot: json['roomNameSnapshot']?.toString(),
-    showtimeStart: nullableDateTimeFromJson(json['showtimeStart']),
-    showtimeStartSnapshot: nullableDateTimeFromJson(
+    showtimeStart: nullableCinemaTimeFromJson(json['showtimeStart']),
+    showtimeStartSnapshot: nullableCinemaTimeFromJson(
       json['showtimeStartSnapshot'],
     ),
     subtotal: VndMoney.fromJson(json['subtotal']),

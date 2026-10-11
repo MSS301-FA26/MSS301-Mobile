@@ -27,7 +27,7 @@ Trạng thái: **Đã triển khai phần Mobile của luồng chính; còn QA t
 ## Kiểm chứng
 
 - Analyzer: PASS, không có lỗi/lint; xem [analyze.log](analyze.log).
-- Toàn bộ test Mobile: **98/98 PASS**; xem [tests.log](tests.log).
+- Toàn bộ test Mobile sau cập nhật UTC+7: **104/104 PASS**; xem [vietnam-time-tests.log](vietnam-time-tests.log).
 - Android debug APK cuối cùng: PASS; xem [build.log](build.log). Git diff whitespace check: PASS.
 - Test mới `test/remote_booking_completion_test.dart` dùng các remote repository thực với HTTP adapter giả lập. Các test này kiểm chứng contract và state transition, không phải giao dịch VNPay thật.
 - Các ca mới: item/combo trùng ID; thứ tự items/quote/checkout/payment; gửi payment hai lần; callback SUCCESS trước PAID; hết hold; phục hồi tuổi trẻ em; checkout thay giá; lịch sử 23 đơn/2 trang; logout trong lúc request chờ; LOW_STOCK/OUT_OF_STOCK; sửa giỏ sau Back.
@@ -42,7 +42,7 @@ Trạng thái: **Đã triển khai phần Mobile của luồng chính; còn QA t
 3. Kiểm tra iOS, restart giữa payment, timeout khi server đã tạo payment, callback trễ và hai tài khoản trên thiết bị thật.
 4. BE đang ghi `viewerAge(20)` khi dựng ticket snapshot. Theo yêu cầu mới, Mobile không hỏi tuổi người xem. Mobile gửi giá trị theo loại vé (trẻ em 10, sinh viên 20, người lớn 30) để tương thích contract hiện có, đồng thời chặn trẻ em với phim T13/T16/T18. Checkpoint lưu giá trị này; nếu không còn checkpoint thì suy ra lại theo loại vé thay vì dùng snapshot 20 của BE. Đây không phải xác minh tuổi thực tế của người xem. Cần người phụ trách BE xác minh, không sửa BE trong đợt này.
 5. Dữ liệu local có khác biệt tên phim: `/movies` movie ID 1 hiển thị Avatar, trong khi `/showtimes/1` và seat-map cùng ID phim hiển thị Dune. Cần đối chiếu dữ liệu QA trước khi kết luận tên phim xuyên flow đã đúng.
-6. Chính sách tối đa 8 vé và cách ghép ghế đôi trong Mobile còn cần xác nhận theo sản phẩm/contract BE. Không đánh dấu phần chính sách của plan 05 done khi chưa xác nhận.
+6. Người dùng đã chốt tối đa 8 ghế/đơn, ghế đôi gồm 2 ghế cùng loại vé và chặn vé trẻ em theo phân loại phim. Các quy tắc này đã áp dụng trong Mobile; QA phiên thực tế vẫn còn.
 7. Lưu/chia sẻ vé, review entry và refund là các mục còn lại của plan 08/04/11; chưa triển khai trong luồng thanh toán chính này. Chi tiết đơn đã hiển thị cho mọi trạng thái, gồm tổng tiền/bắp nước và tải lại đơn; đơn chưa trả tiền không có QR sử dụng được.
 
 ## Lệnh kiểm tra
@@ -58,7 +58,7 @@ Với cấu hình local hiện tại, emulator dùng ADB reverse `tcp:8080 → t
 
 ## Cập nhật yêu cầu ngày 11/10: loại vé và thời hạn
 
-- Bỏ ô nhập tuổi và yêu cầu nhập tuổi trước khi giữ ghế. Payload API vẫn có `viewerAge` vì Catalog Service bắt buộc trường này; các giá trị theo loại vé chỉ dùng để tương thích API.
+- Bỏ ô nhập tuổi và yêu cầu nhập tuổi trước khi giữ ghế. Payload API vẫn có `viewerAge` vì BE dùng tuổi để kiểm tra eligibility; nếu không gửi thì hold/checkout mặc định 20 và Catalog quote mặc định 22; các giá trị theo loại vé chỉ dùng để tương thích API.
 - Thẻ Trẻ em với phim T13/T16/T18 hoặc 13+/16+/18+ hiển thị lý do không được mua và ẩn cả nút cộng/trừ. Controller cũng từ chối chọn vé trẻ em để không thể bỏ qua kiểm tra UI. P/K vẫn cho phép; K có nhắc trẻ dưới 13 tuổi cần người lớn đi cùng.
 - Nguyên nhân báo hết hạn ngay: booking-service và catalog-service chạy UTC (đã đọc `docker exec ... date`), nhưng `LocalDateTime` JSON không có offset bị Mobile hiểu theo múi giờ thiết bị. Parser dành riêng cho `holdExpiresAt` và quote `validUntil` đọc timestamp thiếu offset là UTC, giữ đúng instant nếu đã có offset. Không reset hay kéo dài phiên 3 phút khi chuyển màn; giờ lịch chiếu vẫn giữ cách đọc cũ.
 - Phiên thực sự hết hạn có nút **Chọn lại ghế**, thay vì tải lại cùng booking hết hạn.
@@ -72,3 +72,20 @@ Với cấu hình local hiện tại, emulator dùng ADB reverse `tcp:8080 → t
 - Thêm `BookingHoldCountdown` dùng chung ở Bắp nước, Xác nhận đơn và màn VNPay. Đọc cùng `booking.holdExpiresAt` từ BE; không tạo phiên hay reset thời gian khi chuyển màn.
 - Cập nhật mỗi giây theo AppClock; còn 30 giây đổi màu cảnh báo, hết hạn hiển thị 00:00. Khi ứng dụng trở lại từ nền/VNPay, tính lại từ thời hạn gốc. Sau booking PAID/USED không còn hiện đồng hồ giữ ghế.
 - Analyzer PASS. 17/17 test trong `booking_hold_countdown_test.dart`, `booking_entry_test.dart`, `completion_and_account_test.dart` PASS; kiểm tra chuyển màn, background/resume, không âm sau hết hạn, ẩn sau thanh toán và màn 320 px.
+
+## Chốt quy tắc Plan 05
+
+- Người dùng chốt 1 đơn tối đa 8 **ghế**; mỗi ghế đôi chiếm 2 ghế và 2 vé cùng loại (ví dụ đều sinh viên hoặc đều người lớn).
+- Bổ sung mapping cặp ghế trong booking entry: chọn một ghế sẽ kiểm tra/chọn cả cặp, không cho ghép hai loại vé; không cho chọn nếu một ghế trong cặp đã không còn trống. Khi giảm số lượng xuống dưới số ghế đã gán, bỏ nguyên cặp thay vì để lại một nửa. Sau đó phải gán đủ số vé mới được tiếp tục.
+- `viewerAge` là trường nullable trong request BE. Hold/checkout mặc định 20, Catalog quote mặc định 22, rồi kiểm tra tuổi với loại vé và phân loại phim. Vì vậy Mobile vẫn gửi giá trị theo loại vé; người dùng không cần nhập tuổi. Các giá trị này không xác minh tuổi thực tế.
+- Analyzer PASS; 30/30 test trong booking entry controller/widget và remote booking completion PASS.
+- Hiển thị giờ Việt Nam UTC+7 đã được người dùng chốt. Cần xác nhận ý nghĩa giờ suất chiếu không offset trước khi đổi cách diễn giải: schema hiện dùng TIMESTAMP/LocalDateTime không lưu múi giờ. Docker hiện không chạy nên chưa đọc được múi giờ DB trực tiếp. Chưa cộng 7 giờ vào các chuỗi lịch chiếu không offset khi chưa xác định nguồn giờ.
+
+## Quy ước LocalDateTime và hiển thị UTC+7
+
+- Người dùng xác nhận BE lưu kiểu LocalDateTime. Kiểu này không chứa offset; thông tin này không tự xác định thời gian được lưu là UTC hay giờ Việt Nam. Mobile áp dụng quy ước lịch chiếu không offset là giờ Việt Nam theo yêu cầu hiển thị UTC+7; chưa xác minh trực tiếp ý nghĩa dữ liệu lịch chiếu trong DB đang chạy.
+- `cinemaTimeFromJson` diễn giải chuỗi lịch chiếu không offset theo +07:00 và lưu instant UTC trong DTO. Ví dụ `2026-10-12T10:00:00` hiển thị 10:00 Việt Nam; `2026-10-12T03:00:00Z` cũng hiển thị 10:00 Việt Nam. Không phụ thuộc múi giờ thiết bị.
+- Lịch chiếu, Vé & Ghế, quote/Xác nhận đơn, Vé QR và lịch sử đều dùng formatter Việt Nam chung. Ngày Hôm nay và lọc ngày lịch chiếu dùng ngày Việt Nam, kể cả khi UTC còn ở ngày trước.
+- Hold expiry và quote expiry giữ parser server UTC riêng, dựa trên giờ UTC container đã kiểm tra ở lần chạy trước. Không đổi hạn giữ ghế thành giờ local hoặc cộng thêm 7 tiếng vào thời lượng. Nếu BE thay đổi múi giờ chạy thì contract này cần được cập nhật rõ ràng.
+- Analyzer PASS, full suite **104/104 PASS**. Test mới kiểm tra local schedule, explicit UTC/+07/-05, đổi ngày Việt Nam, mapping showtime/booking và thời hạn 3 phút vẫn đúng.
+- Không sửa BE/DB, không sửa Markdown của thành viên khác.

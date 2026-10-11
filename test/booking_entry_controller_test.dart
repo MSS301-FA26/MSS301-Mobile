@@ -45,6 +45,43 @@ void main() {
     expect(container.read(bookingEntryProvider).assignmentComplete, isTrue);
   }
 
+  test('couple seats stay together with one ticket type, including quantity reduction', () {
+    final container = containerFor(_FakeSeatHoldRepository());
+    addTearDown(container.dispose);
+    final controller = container.read(bookingEntryProvider.notifier);
+    controller.begin(
+      movieId: _movieId,
+      showtimeId: _showtimeId,
+      couplePairs: const {441: 442, 442: 441},
+    );
+    controller.setTicketQuantity(TicketType.student, 1);
+    controller.toggleSeatIds({441});
+    expect(container.read(bookingEntryProvider).assignments, isEmpty);
+    controller.setTicketQuantity(TicketType.student, 2);
+    controller.toggleSeatIds({441}, unavailableSeatIds: {442});
+    expect(container.read(bookingEntryProvider).assignments, isEmpty);
+    controller.toggleSeatIds({441});
+    expect(
+      container
+          .read(bookingEntryProvider)
+          .assignments
+          .values
+          .map((a) => a.ticketType),
+      everyElement(TicketType.student),
+    );
+    expect(container.read(bookingEntryProvider).assignmentComplete, isTrue);
+    controller.setTicketQuantity(
+      TicketType.student,
+      1,
+      removeExcessAssignments: true,
+    );
+    expect(container.read(bookingEntryProvider).assignments, isEmpty);
+    expect(container.read(bookingEntryProvider).assignmentComplete, isFalse);
+    controller.setTicketQuantity(TicketType.adult, 7);
+    expect(controller.setTicketQuantity(TicketType.adult, 8), isFalse);
+    expect(container.read(bookingEntryProvider).ticketCount, 8);
+  });
+
   test(
     'restricted movies reject child tickets before assigning or holding seats',
     () {
