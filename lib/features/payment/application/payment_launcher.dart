@@ -41,8 +41,11 @@ class UrlPaymentLauncher implements PaymentLauncher {
       );
     }
 
-    final uri = Uri.tryParse(rawUrl);
-    if (uri == null || !uri.hasScheme) {
+    final uri = Uri.tryParse(rawUrl.trim());
+    if (uri == null ||
+        !uri.hasScheme ||
+        (uri.scheme != 'mock' &&
+            (!['https', 'http'].contains(uri.scheme) || uri.host.isEmpty))) {
       return const PaymentLaunchResult(
         status: PaymentLaunchStatus.invalidUrl,
         message: 'paymentUrl không hợp lệ.',

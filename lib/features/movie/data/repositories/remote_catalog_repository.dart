@@ -103,9 +103,34 @@ class RemoteCatalogRepository implements CatalogRepository {
         _data(await _get('/api/v1/showtimes/$showtimeId/seat-map')),
       );
   @override
-  Future<List<FoodProductDto>> getFoodItems() => _outOfScope();
+  Future<List<FoodProductDto>> getFoodItems() => _foodProducts(false);
   @override
-  Future<List<FoodProductDto>> getFoodCombos() => _outOfScope();
+  Future<List<FoodProductDto>> getFoodCombos() => _foodProducts(true);
+
+  Future<List<FoodProductDto>> _foodProducts(bool isCombo) async {
+    final products = <FoodProductDto>[];
+    var page = 0;
+    while (true) {
+      final data = _data(
+        await _get(
+          '/api/v1/foods/${isCombo ? 'combos' : 'items'}',
+          queryParameters: {'page': page, 'size': 100},
+        ),
+      );
+      final items = _list(
+        data['items'],
+        (json) => FoodProductDto.fromJson(json, isCombo: isCombo),
+      );
+      products.addAll(items);
+      final totalPages = data['totalPages'];
+      if (items.isEmpty ||
+          (totalPages is num ? page + 1 >= totalPages : items.length < 100)) {
+        return products;
+      }
+      page++;
+    }
+  }
+
   @override
   Future<CheckoutQuoteDto> createCheckoutQuote(
     CheckoutQuoteRequestDto request,
@@ -143,13 +168,6 @@ class RemoteCatalogRepository implements CatalogRepository {
     );
     return CheckoutQuoteDto.fromJson(_data(response));
   }
-
-  Future<T> _outOfScope<T>() => Future<T>.error(
-    const ApiException(
-      type: ApiErrorType.unknown,
-      message: 'This catalog capability remains mock until Batch 05.',
-    ),
-  );
 
   Future<Response<dynamic>> _get(
     String path, {

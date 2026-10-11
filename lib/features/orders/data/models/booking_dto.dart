@@ -272,7 +272,7 @@ class BookingDto {
     loyaltyPointsRedeemed: intFromJson(json['loyaltyPointsRedeemed'] ?? 0),
     totalAmount: VndMoney.fromJson(json['totalAmount']),
     status: BookingStatus.parse(json['status']),
-    holdExpiresAt: nullableDateTimeFromJson(json['holdExpiresAt']),
+    holdExpiresAt: nullableServerDeadlineFromJson(json['holdExpiresAt']),
     paidAt: nullableDateTimeFromJson(json['paidAt']),
     checkedInAt: nullableDateTimeFromJson(json['checkedInAt']),
     cancelledAt: nullableDateTimeFromJson(json['cancelledAt']),

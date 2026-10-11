@@ -7,8 +7,10 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../../../movie/data/models/catalog_enums.dart';
+import '../../../../shared/widgets/app_image.dart';
 import '../../application/booking_completion_controller.dart';
+import '../widgets/booking_hold_countdown.dart';
+import '../../../seat/application/booking_entry_session.dart';
 import '../widgets/booking_progress.dart';
 
 class ConcessionsPage extends ConsumerStatefulWidget {
@@ -22,8 +24,10 @@ class ConcessionsPage extends ConsumerStatefulWidget {
 
 class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
   var _requested = false;
+  var _redirectingPayment = false;
 
   void _backToSeats(BookingCompletionState state) {
+    if (state.isBusy) return;
     final showtimeId = state.booking?.showtimeId;
     context.go(
       showtimeId == null
@@ -35,16 +39,25 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(bookingCompletionProvider);
+    if (state.payment != null && !_redirectingPayment) {
+      _redirectingPayment = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go(AppRoutes.payment(state.payment!.id));
+      });
+    }
     if (!_requested) {
       _requested = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(bookingCompletionProvider.notifier).load(widget.bookingId);
+        final controller = ref.read(bookingCompletionProvider.notifier);
+        controller.returnToFood();
+        controller.load(widget.bookingId);
       });
     }
     final total = state.products.fold(
       VndMoney.zero,
       (sum, product) =>
-          sum + product.price.multiply(state.quantities[product.id] ?? 0),
+          sum +
+          product.price.multiply(state.quantities[product.selectionKey] ?? 0),
     );
     return PopScope(
       canPop: false,
@@ -62,6 +75,7 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
               onBack: () => _backToSeats(state),
             ),
             const BookingProgress(currentStep: 2),
+            BookingHoldCountdown(booking: state.booking),
             Expanded(
               child: state.phase == BookingCompletionPhase.loading
                   ? const Center(child: CircularProgressIndicator())
@@ -69,7 +83,22 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                         state.phase == BookingCompletionPhase.error
                   ? _BookingProblem(
                       message: state.message ?? 'Không thể tải bắp nước.',
-                      onAction: () => context.go(AppRoutes.showtimes),
+                      actionLabel: state.phase == BookingCompletionPhase.expired
+                          ? 'Chọn lại ghế'
+                          : 'Thử lại',
+                      onAction: () {
+                        if (state.phase == BookingCompletionPhase.expired) {
+                          ref
+                              .read(bookingEntryProvider.notifier)
+                              .restartSelection();
+                          _backToSeats(state);
+                          ref.invalidate(bookingCompletionProvider);
+                        } else {
+                          ref
+                              .read(bookingCompletionProvider.notifier)
+                              .load(widget.bookingId);
+                        }
+                      },
                     )
                   : state.products.isEmpty
                   ? const Center(child: Text('Hiện chưa có sản phẩm bắp nước.'))
@@ -80,10 +109,9 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                           const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, index) {
                         final product = state.products[index];
-                        final quantity = state.quantities[product.id] ?? 0;
-                        final available =
-                            product.status != FoodItemStatus.inactive &&
-                            product.status != FoodItemStatus.outOfStock;
+                        final quantity =
+                            state.quantities[product.selectionKey] ?? 0;
+                        final available = product.isAvailable;
                         return Semantics(
                           label:
                               '${product.name}, ${product.price.format()}, số lượng $quantity',
@@ -103,12 +131,14 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                                     color: AppColors.goldSurface,
                                     borderRadius: AppRadii.control,
                                   ),
-                                  child: Icon(
-                                    product.isCombo
-                                        ? Icons.fastfood_rounded
-                                        : Icons.local_drink_rounded,
-                                    color: AppColors.gold,
-                                  ),
+                                  child: product.imageUrl?.isNotEmpty == true
+                                      ? AppImage(asset: product.imageUrl!)
+                                      : Icon(
+                                          product.isCombo
+                                              ? Icons.fastfood_rounded
+                                              : Icons.local_drink_rounded,
+                                          color: AppColors.gold,
+                                        ),
                                 ),
                                 const SizedBox(width: AppSpacing.sm),
                                 Expanded(
@@ -142,7 +172,9 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                                   ),
                                 ),
                                 IconButton(
-                                  key: ValueKey('food-minus-${product.id}'),
+                                  key: ValueKey(
+                                    'food-minus-${product.selectionKey}',
+                                  ),
                                   tooltip: 'Giảm ${product.name}',
                                   onPressed: quantity > 0
                                       ? () => ref
@@ -150,7 +182,11 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                                               bookingCompletionProvider
                                                   .notifier,
                                             )
-                                            .changeQuantity(product.id, -1)
+                                            .changeQuantity(
+                                              product.id,
+                                              -1,
+                                              isCombo: product.isCombo,
+                                            )
                                       : null,
                                   icon: const Icon(Icons.remove_circle_outline),
                                 ),
@@ -159,7 +195,9 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                                   style: AppTextStyles.cardTitle,
                                 ),
                                 IconButton(
-                                  key: ValueKey('food-plus-${product.id}'),
+                                  key: ValueKey(
+                                    'food-plus-${product.selectionKey}',
+                                  ),
                                   tooltip: 'Tăng ${product.name}',
                                   onPressed: available && quantity < 8
                                       ? () => ref
@@ -167,7 +205,11 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                                               bookingCompletionProvider
                                                   .notifier,
                                             )
-                                            .changeQuantity(product.id, 1)
+                                            .changeQuantity(
+                                              product.id,
+                                              1,
+                                              isCombo: product.isCombo,
+                                            )
                                       : null,
                                   icon: const Icon(Icons.add_circle_outline),
                                 ),
@@ -208,7 +250,10 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                       child: AppButton(
                         key: const ValueKey('concessions-continue'),
                         label: state.isBusy ? 'Đang cập nhật…' : 'Tiếp tục',
-                        onPressed: state.isBusy || state.booking == null
+                        onPressed:
+                            state.isBusy ||
+                                state.booking == null ||
+                                state.phase == BookingCompletionPhase.expired
                             ? null
                             : () async {
                                 final ready = await ref
@@ -260,9 +305,14 @@ class _BookingHeader extends StatelessWidget {
 }
 
 class _BookingProblem extends StatelessWidget {
-  const _BookingProblem({required this.message, required this.onAction});
+  const _BookingProblem({
+    required this.message,
+    required this.onAction,
+    required this.actionLabel,
+  });
 
   final String message;
+  final String actionLabel;
   final VoidCallback onAction;
 
   @override
@@ -276,7 +326,7 @@ class _BookingProblem extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: AppSpacing.md),
-          AppButton(label: 'Về lịch chiếu', onPressed: onAction),
+          AppButton(label: actionLabel, onPressed: onAction),
         ],
       ),
     ),

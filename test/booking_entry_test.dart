@@ -51,6 +51,23 @@ void main() {
     }
   }
 
+  testWidgets(
+    'restricted child card explains why controls are hidden and has no age input',
+    (tester) async {
+      final container = await openAvengersSeat(tester);
+      expect(find.byKey(const ValueKey('ticket-type-child')), findsOneWidget);
+      expect(find.byKey(const ValueKey('ticket-plus-child')), findsNothing);
+      expect(find.byKey(const ValueKey('ticket-minus-child')), findsNothing);
+      expect(find.textContaining('0–12 tuổi'), findsOneWidget);
+      await addAdultTickets(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
+      await tester.tap(find.byKey(const ValueKey('seat-3001')));
+      await tester.pump();
+      expect(container.read(bookingEntryProvider).assignmentComplete, isTrue);
+      expect(find.byType(TextFormField), findsNothing);
+    },
+  );
+
   testWidgets('R4 happy path selects seats, holds, and guards logo exit', (
     tester,
   ) async {
@@ -75,7 +92,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('header-home-logo')));
     await tester.pumpAndSettle();
-    expect(find.text('Quay lại Trang chủ?'), findsOneWidget);
+    expect(find.text('Dừng đặt vé?'), findsOneWidget);
     final noButton = tester.widget<FilledButton>(
       find.byKey(const ValueKey('booking-leave-no')),
     );

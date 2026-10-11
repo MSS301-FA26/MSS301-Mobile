@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../auth/application/auth_session.dart';
+import '../../booking/application/booking_checkpoint.dart';
 import '../../movie/data/models/catalog_enums.dart';
 import '../../movie/data/repositories/catalog_providers.dart';
 import '../../orders/data/models/booking_dto.dart';
 import '../../orders/data/models/booking_enums.dart';
+import '../../showtime/data/models/showtime_dto.dart';
 import '../data/repositories/seat_hold_providers.dart';
 import '../presentation/providers/seat_map_provider.dart';
 
@@ -24,6 +27,22 @@ abstract final class BookingTicketPolicy {
     TicketType.child,
   ];
 
+  static int minimumMovieAge(String? rating) =>
+      switch (rating?.trim().toUpperCase().replaceAll(' ', '')) {
+        'T13' || '13+' => 13,
+        'T16' || '16+' => 16,
+        'T18' || '18+' => 18,
+        _ => 0,
+      };
+
+  static String? restriction(TicketType type, String? rating) {
+    final minimum = minimumMovieAge(rating);
+    if (type == TicketType.child && minimum > 12) {
+      return 'Phim dành cho người từ $minimum tuổi. Vé trẻ em chỉ áp dụng cho người từ 0–12 tuổi nên không thể mua cho phim này.';
+    }
+    return null;
+  }
+
   static int defaultViewerAge(TicketType type) => switch (type) {
     TicketType.child => 10,
     TicketType.student => 20,
@@ -32,15 +51,21 @@ abstract final class BookingTicketPolicy {
 }
 
 class SeatTicketAssignment {
-  const SeatTicketAssignment({required this.seatId, required this.ticketType});
+  const SeatTicketAssignment({
+    required this.seatId,
+    required this.ticketType,
+    this.viewerAge,
+  });
   final int seatId;
   final TicketType ticketType;
+  final int? viewerAge;
 }
 
 class BookingEntryState {
   const BookingEntryState({
     required this.phase,
     this.movieId,
+    this.movieAgeRating,
     this.showtimeId,
     this.ticketQuantities = const {},
     this.activeTicketType,
@@ -54,6 +79,7 @@ class BookingEntryState {
 
   final BookingEntryPhase phase;
   final int? movieId;
+  final String? movieAgeRating;
   final int? showtimeId;
   final Map<TicketType, int> ticketQuantities;
   final TicketType? activeTicketType;
@@ -78,13 +104,63 @@ class BookingEntryState {
 
 class BookingEntryController extends Notifier<BookingEntryState> {
   @override
-  BookingEntryState build() => const BookingEntryState.idle();
+  BookingEntryState build() {
+    _generation++;
+    ref.watch(authSessionProvider.select((auth) => auth.session?.user.id));
+    return const BookingEntryState.idle();
+  }
 
-  void begin({required int movieId, required int showtimeId}) {
-    if (state.showtimeId == showtimeId && state.hasActiveDraft) return;
+  bool _leaving = false;
+  int _generation = 0;
+
+  void restoreBooking(
+    BookingDto booking, {
+    Map<int, int> viewerAges = const {},
+  }) {
+    final quantities = <TicketType, int>{};
+    for (final ticket in booking.tickets) {
+      quantities.update(
+        ticket.ticketType,
+        (value) => value + ticket.quantity,
+        ifAbsent: () => ticket.quantity,
+      );
+    }
+    state = BookingEntryState(
+      phase: BookingEntryPhase.holding,
+      movieId: booking.movieId,
+      movieAgeRating: state.showtimeId == booking.showtimeId
+          ? state.movieAgeRating
+          : null,
+      showtimeId: booking.showtimeId,
+      booking: booking,
+      ticketQuantities: quantities,
+      activeTicketType: quantities.keys.firstOrNull,
+      assignments: {
+        for (final ticket in booking.tickets)
+          ticket.seatId: SeatTicketAssignment(
+            seatId: ticket.seatId,
+            ticketType: ticket.ticketType,
+            viewerAge:
+                viewerAges[ticket.seatId] ??
+                BookingTicketPolicy.defaultViewerAge(ticket.ticketType),
+          ),
+      },
+    );
+  }
+
+  void begin({
+    required int movieId,
+    required int showtimeId,
+    String? movieAgeRating,
+  }) {
+    if (state.showtimeId == showtimeId && state.hasActiveDraft) {
+      if (movieAgeRating != null) state = _copy(movieAgeRating: movieAgeRating);
+      return;
+    }
     state = BookingEntryState(
       phase: BookingEntryPhase.selectingSeats,
       movieId: movieId,
+      movieAgeRating: movieAgeRating,
       showtimeId: showtimeId,
     );
   }
@@ -96,6 +172,14 @@ class BookingEntryController extends Notifier<BookingEntryState> {
   }) {
     if (state.phase != BookingEntryPhase.selectingSeats ||
         !BookingTicketPolicy.supportedTypes.contains(type)) {
+      return false;
+    }
+    final restriction = BookingTicketPolicy.restriction(
+      type,
+      state.movieAgeRating,
+    );
+    if (quantity > 0 && restriction != null) {
+      state = _copy(message: restriction);
       return false;
     }
     final nextQuantity = quantity.clamp(0, BookingTicketPolicy.maxTickets);
@@ -171,12 +255,28 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       return;
     }
     for (final id in newIds) {
-      next[id] = SeatTicketAssignment(seatId: id, ticketType: type);
+      next[id] = SeatTicketAssignment(
+        seatId: id,
+        ticketType: type,
+        viewerAge: BookingTicketPolicy.defaultViewerAge(type),
+      );
     }
     state = _copy(assignments: next, clearMessage: true);
   }
 
   Future<BookingDto?> holdSelectedSeats() async {
+    final generation = _generation;
+    if (state.phase == BookingEntryPhase.expired) return null;
+    if (state.hasActiveHold) {
+      if (remainingHold() == Duration.zero) {
+        state = _copy(
+          phase: BookingEntryPhase.expired,
+          message: 'Thời gian giữ ghế đã hết.',
+        );
+        return null;
+      }
+      return state.booking;
+    }
     if (state.phase == BookingEntryPhase.submittingHold) return null;
     final showtimeId = state.showtimeId;
     if (showtimeId == null || !state.assignmentComplete) {
@@ -185,6 +285,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       );
       return null;
     }
+    final mock = ref.read(seatHoldRepositoryProvider).canEnterMockCheckout;
     state = _copy(phase: BookingEntryPhase.submittingHold, clearMessage: true);
     try {
       final tickets = state.assignments.values
@@ -192,9 +293,9 @@ class BookingEntryController extends Notifier<BookingEntryState> {
             (assignment) => TicketSelectionDto(
               seatId: assignment.seatId,
               ticketType: assignment.ticketType,
-              viewerAge: BookingTicketPolicy.defaultViewerAge(
-                assignment.ticketType,
-              ),
+              viewerAge:
+                  assignment.viewerAge ??
+                  BookingTicketPolicy.defaultViewerAge(assignment.ticketType),
             ),
           )
           .toList(growable: false);
@@ -207,12 +308,37 @@ class BookingEntryController extends Notifier<BookingEntryState> {
               tickets: tickets,
             ),
           );
+      if (!ref.mounted || generation != _generation) return null;
       state = _copy(phase: BookingEntryPhase.holding, booking: booking);
+      final userId = ref.read(authSessionProvider).session?.user.id;
+      if (userId != null && !mock) {
+        await ref
+            .read(bookingCheckpointStoreProvider)
+            .save(
+              userId,
+              BookingCheckpoint(
+                bookingId: booking.id,
+                viewerAges: {
+                  for (final ticket in tickets)
+                    if (ticket.viewerAge != null)
+                      ticket.seatId: ticket.viewerAge!,
+                },
+              ),
+            );
+        ref.invalidate(resumableBookingProvider);
+      }
       return booking;
     } on ApiException catch (error) {
-      final freshMap = error.type == ApiErrorType.conflict
-          ? await ref.refresh(seatMapProvider(showtimeId).future)
-          : null;
+      if (!ref.mounted || generation != _generation) return null;
+      ShowtimeSeatMapDto? freshMap;
+      if (error.type == ApiErrorType.conflict) {
+        try {
+          freshMap = await ref.refresh(seatMapProvider(showtimeId).future);
+        } catch (_) {
+          // Report the original hold failure when refreshing is also offline.
+        }
+      }
+      if (!ref.mounted || generation != _generation) return null;
       final availableIds = freshMap?.seats
           .where((seat) => seat.selectable)
           .map((seat) => seat.seatId)
@@ -240,6 +366,13 @@ class BookingEntryController extends Notifier<BookingEntryState> {
             : error.message,
       );
       return null;
+    } catch (error) {
+      if (!ref.mounted || generation != _generation) return null;
+      state = _copy(
+        phase: BookingEntryPhase.selectingSeats,
+        message: error.toString(),
+      );
+      return null;
     }
   }
 
@@ -249,7 +382,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     if (remainingHold() == Duration.zero) {
       state = _copy(
         phase: BookingEntryPhase.expired,
-        message: 'Thá»i gian giá»¯ gháº¿ Ä‘Ã£ háº¿t.',
+        message: 'Thời gian giữ ghế đã hết.',
       );
       return true;
     }
@@ -272,17 +405,35 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     return remaining.isNegative ? Duration.zero : remaining;
   }
 
-  Future<void> abandon() async {
-    final booking = state.booking;
-    if (booking != null && state.hasActiveHold) {
-      try {
-        await ref.read(seatHoldRepositoryProvider).cancel(booking.id);
-      } on ApiException catch (error) {
-        state = _copy(message: error.message);
-        return;
-      }
+  Future<bool> abandon() async {
+    final generation = _generation;
+    final userId = ref.read(authSessionProvider).session?.user.id;
+    if (_leaving || state.phase == BookingEntryPhase.submittingHold) {
+      return false;
     }
-    state = const BookingEntryState.idle();
+    _leaving = true;
+    try {
+      final booking = state.booking;
+      if (booking != null && state.hasActiveHold) {
+        try {
+          await ref.read(seatHoldRepositoryProvider).cancel(booking.id);
+          if (!ref.mounted || generation != _generation) return false;
+        } catch (error) {
+          state = _copy(
+            message: error is ApiException ? error.message : error.toString(),
+          );
+          return false;
+        }
+      }
+      state = const BookingEntryState.idle();
+      if (userId != null) {
+        await ref.read(bookingCheckpointStoreProvider).clear(userId);
+      }
+      ref.invalidate(resumableBookingProvider);
+      return true;
+    } finally {
+      _leaving = false;
+    }
   }
 
   Future<bool> editHeldSelection() async {
@@ -306,6 +457,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     state = BookingEntryState(
       phase: BookingEntryPhase.selectingSeats,
       movieId: state.movieId,
+      movieAgeRating: state.movieAgeRating,
       showtimeId: state.showtimeId,
       ticketQuantities: state.ticketQuantities,
       activeTicketType: state.activeTicketType,
@@ -313,6 +465,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
   }
 
   BookingEntryState _copy({
+    String? movieAgeRating,
     BookingEntryPhase? phase,
     Map<TicketType, int>? ticketQuantities,
     TicketType? activeTicketType,
@@ -326,6 +479,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
   }) => BookingEntryState(
     phase: phase ?? state.phase,
     movieId: state.movieId,
+    movieAgeRating: movieAgeRating ?? state.movieAgeRating,
     showtimeId: state.showtimeId,
     ticketQuantities: ticketQuantities ?? state.ticketQuantities,
     activeTicketType: clearActiveTicketType

@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
+import '../../../booking/presentation/widgets/resume_booking_banner.dart';
 import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
 import '../../../movie/presentation/widgets/trailer_preview_dialog.dart';
@@ -84,6 +85,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const ResumeBookingBanner(),
             const SizedBox(height: AppSpacing.xxs),
             SizedBox(
               height: AppSpacing.heroHeight,

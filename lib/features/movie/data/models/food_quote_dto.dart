@@ -21,6 +21,11 @@ class FoodProductDto {
   final FoodItemStatus status;
   final bool isCombo;
 
+  // Item and combo IDs come from separate database tables.
+  String get selectionKey => '${isCombo ? 'combo' : 'item'}:$id';
+  bool get isAvailable =>
+      status == FoodItemStatus.active || status == FoodItemStatus.lowStock;
+
   factory FoodProductDto.fromJson(
     Map<String, Object?> json, {
     required bool isCombo,
@@ -278,7 +283,7 @@ class CheckoutQuoteDto {
   factory CheckoutQuoteDto.fromJson(Map<String, Object?> json) =>
       CheckoutQuoteDto(
         quoteId: json['quoteId']?.toString() ?? '',
-        validUntil: dateTimeFromJson(json['validUntil']),
+        validUntil: serverDeadlineFromJson(json['validUntil']),
         showtime: QuoteShowtimeSnapshotDto.fromJson(
           Map<String, Object?>.from(json['showtime']! as Map),
         ),

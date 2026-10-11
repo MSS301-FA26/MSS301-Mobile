@@ -170,7 +170,7 @@ class ShowtimeSeatDto {
         seatType: CatalogSeatType.parse(json['seatType']),
         seatStatus: SeatStatus.parse(json['seatStatus']),
         runtimeStatus: SeatRuntimeStatus.parse(json['runtimeStatus']),
-        holdExpiresAt: nullableDateTimeFromJson(json['holdExpiresAt']),
+        holdExpiresAt: nullableServerDeadlineFromJson(json['holdExpiresAt']),
         unitPrice: _money(json['unitPrice'], 'unitPrice'),
       );
 }

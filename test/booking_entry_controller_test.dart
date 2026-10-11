@@ -46,6 +46,47 @@ void main() {
   }
 
   test(
+    'restricted movies reject child tickets before assigning or holding seats',
+    () {
+      final container = containerFor(_FakeSeatHoldRepository());
+      addTearDown(container.dispose);
+      final controller = container.read(bookingEntryProvider.notifier);
+      for (final rating in ['T13', '13+', 'T16', '16+', 'T18', '18+']) {
+        controller.begin(
+          movieId: _movieId,
+          showtimeId: rating.hashCode,
+          movieAgeRating: rating,
+        );
+        expect(controller.setTicketQuantity(TicketType.child, 1), isFalse);
+        expect(container.read(bookingEntryProvider).ticketCount, 0);
+        expect(
+          container.read(bookingEntryProvider).message,
+          contains('0–12 tuổi'),
+        );
+        expect(controller.setTicketQuantity(TicketType.student, 1), isTrue);
+        controller.toggleSeatIds({441});
+        expect(
+          container.read(bookingEntryProvider).assignments[441]!.viewerAge,
+          20,
+        );
+      }
+      for (final rating in ['P', 'K']) {
+        controller.begin(
+          movieId: _movieId,
+          showtimeId: rating.hashCode,
+          movieAgeRating: rating,
+        );
+        expect(controller.setTicketQuantity(TicketType.child, 1), isTrue);
+        controller.toggleSeatIds({441});
+        expect(
+          container.read(bookingEntryProvider).assignments[441]!.viewerAge,
+          10,
+        );
+      }
+    },
+  );
+
+  test(
     'hold success preserves selected backend ids and authoritative expiry',
     () async {
       final expiry = now.add(const Duration(minutes: 3));

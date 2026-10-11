@@ -5,6 +5,7 @@ import '../../../../shared/widgets/age_badge.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_image.dart';
 import '../models/ticket_order.dart';
+import '../../data/models/booking_enums.dart';
 
 class UpcomingOrderCard extends StatelessWidget {
   const UpcomingOrderCard({
@@ -202,7 +203,9 @@ class UpcomingOrderCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: AppButton(
-                  label: 'Mở mã vé',
+                  label: order.status == BookingStatus.paid
+                      ? 'Mở mã vé'
+                      : 'Tiếp tục đặt vé',
                   icon: Icons.qr_code_rounded,
                   height: 44,
                   onPressed: onOpenTicket,

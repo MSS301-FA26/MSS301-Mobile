@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../movie/data/models/food_quote_dto.dart';
+import '../../auth/application/auth_session.dart';
+import '../../orders/presentation/providers/orders_provider.dart';
 import '../../movie/data/repositories/catalog_providers.dart';
 import '../../orders/data/models/booking_dto.dart';
 import '../../orders/data/models/booking_enums.dart';
@@ -11,6 +13,7 @@ import '../../payment/data/models/payment_enums.dart';
 import '../../payment/data/repositories/payment_providers.dart';
 import '../../seat/application/booking_entry_session.dart';
 import '../../seat/data/repositories/seat_hold_providers.dart';
+import 'booking_checkpoint.dart';
 
 enum BookingCompletionPhase {
   idle,
@@ -44,15 +47,14 @@ class BookingCompletionState {
   final CheckoutQuoteDto? quote;
   final PaymentDto? payment;
   final List<FoodProductDto> products;
-  final Map<int, int> quantities;
+  final Map<String, int> quantities;
   final String? message;
 
   bool get isBusy => switch (phase) {
     BookingCompletionPhase.loading ||
     BookingCompletionPhase.preparingCheckout ||
     BookingCompletionPhase.creatingPayment ||
-    BookingCompletionPhase.openingPaymentGateway ||
-    BookingCompletionPhase.verifyingBooking => true,
+    BookingCompletionPhase.openingPaymentGateway => true,
     _ => false,
   };
 
@@ -62,7 +64,7 @@ class BookingCompletionState {
     CheckoutQuoteDto? quote,
     PaymentDto? payment,
     List<FoodProductDto>? products,
-    Map<int, int>? quantities,
+    Map<String, int>? quantities,
     String? message,
     bool clearMessage = false,
   }) => BookingCompletionState(
@@ -78,11 +80,34 @@ class BookingCompletionState {
 
 class BookingCompletionController extends Notifier<BookingCompletionState> {
   @override
-  BookingCompletionState build() => const BookingCompletionState();
+  BookingCompletionState build() {
+    _generation++;
+    ref.watch(authSessionProvider.select((auth) => auth.session?.user.id));
+    return const BookingCompletionState();
+  }
+
+  bool _refreshing = false;
+  int _generation = 0;
+
+  bool get _expired =>
+      state.booking?.status == BookingStatus.expired ||
+      (state.booking?.holdExpiresAt != null &&
+          !ref
+              .read(appClockProvider)
+              .now()
+              .isBefore(state.booking!.holdExpiresAt!));
+
+  void returnToFood() {
+    if (!state.isBusy && state.booking != null && state.payment == null) {
+      state = state.copyWith(phase: BookingCompletionPhase.choosingFood);
+    }
+  }
 
   Future<void> load(int bookingId) async {
+    final generation = _generation;
     if (state.booking?.id == bookingId &&
-        state.phase != BookingCompletionPhase.idle) {
+        state.phase != BookingCompletionPhase.idle &&
+        state.phase != BookingCompletionPhase.error) {
       return;
     }
     state = const BookingCompletionState(phase: BookingCompletionPhase.loading);
@@ -91,8 +116,30 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       final booking = seatHold.canEnterMockCheckout
           ? await ref.read(bookingRepositoryProvider).getBooking(bookingId)
           : await seatHold.getBooking(bookingId);
+      if (!ref.mounted || generation != _generation) return;
       if (booking == null) throw StateError('Không tìm thấy booking.');
-      if (booking.status == BookingStatus.expired) {
+      final userId = ref.read(authSessionProvider).session?.user.id;
+      final checkpoint = userId == null
+          ? null
+          : await ref.read(bookingCheckpointStoreProvider).read(userId);
+      if (!ref.mounted || generation != _generation) return;
+      ref
+          .read(bookingEntryProvider.notifier)
+          .restoreBooking(
+            booking,
+            viewerAges: checkpoint?.bookingId == booking.id
+                ? checkpoint!.viewerAges
+                : const {},
+          );
+      if (booking.status == BookingStatus.expired ||
+          booking.status == BookingStatus.cancelled ||
+          (booking.holdExpiresAt != null &&
+              !ref
+                  .read(appClockProvider)
+                  .now()
+                  .isBefore(booking.holdExpiresAt!) &&
+              booking.status != BookingStatus.paid &&
+              booking.status != BookingStatus.used)) {
         state = BookingCompletionState(
           phase: BookingCompletionPhase.expired,
           booking: booking,
@@ -100,21 +147,36 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         );
         return;
       }
-      final products = <FoodProductDto>[];
-      if (seatHold.canEnterMockCheckout) {
-        final catalog = ref.read(mockCatalogRepositoryProvider);
-        products.addAll(await catalog.getFoodCombos());
-        products.addAll(await catalog.getFoodItems());
+      if (booking.status == BookingStatus.pendingPayment) {
+        final payment = await findExistingPayment(booking.id);
+        if (payment != null) return;
       }
+      if (booking.status != BookingStatus.holding &&
+          booking.status != BookingStatus.pendingPayment) {
+        throw StateError(
+          'Đơn không còn ở trạng thái có thể chỉnh sửa. Vui lòng xem trong Đơn của tôi.',
+        );
+      }
+      final products = <FoodProductDto>[];
+      final catalog = ref.read(catalogRepositoryProvider);
+      final lists = await Future.wait([
+        catalog.getFoodCombos(),
+        catalog.getFoodItems(),
+      ]);
+      if (!ref.mounted || generation != _generation) return;
+      products.addAll(lists.expand((items) => items));
       state = BookingCompletionState(
         phase: BookingCompletionPhase.choosingFood,
         booking: booking,
         products: products,
         quantities: {
-          for (final food in booking.foods) food.productId: food.quantity,
+          for (final food in booking.foods)
+            '${food.isCombo ? 'combo' : 'item'}:${food.productId}':
+                food.quantity,
         },
       );
     } catch (error) {
+      if (!ref.mounted || generation != _generation) return;
       state = BookingCompletionState(
         phase: BookingCompletionPhase.error,
         message: error.toString(),
@@ -122,25 +184,32 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     }
   }
 
-  void changeQuantity(int productId, int delta) {
+  void changeQuantity(int productId, int delta, {bool isCombo = false}) {
     if (state.phase != BookingCompletionPhase.choosingFood) return;
-    final next = Map<int, int>.from(state.quantities);
-    final quantity = ((next[productId] ?? 0) + delta).clamp(0, 8);
+    final product = state.products
+        .where((p) => p.id == productId && p.isCombo == isCombo)
+        .firstOrNull;
+    if (product == null || (delta > 0 && !product.isAvailable)) {
+      return;
+    }
+    final key = product.selectionKey;
+    final next = Map<String, int>.from(state.quantities);
+    final quantity = ((next[key] ?? 0) + delta).clamp(0, 8);
     if (quantity == 0) {
-      next.remove(productId);
+      next.remove(key);
     } else {
-      next[productId] = quantity;
+      next[key] = quantity;
     }
     state = state.copyWith(quantities: next, clearMessage: true);
   }
 
   List<FoodSelectionDto> get _foodSelections => state.products
-      .where((product) => (state.quantities[product.id] ?? 0) > 0)
+      .where((product) => (state.quantities[product.selectionKey] ?? 0) > 0)
       .map(
         (product) => FoodSelectionDto(
           productId: product.id,
           isCombo: product.isCombo,
-          quantity: state.quantities[product.id]!,
+          quantity: state.quantities[product.selectionKey]!,
         ),
       )
       .toList(growable: false);
@@ -151,15 +220,21 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             (ticket) => TicketSelectionDto(
               seatId: ticket.seatId,
               ticketType: ticket.ticketType,
-              viewerAge: ticket.viewerAge,
+              viewerAge:
+                  ref
+                      .read(bookingEntryProvider)
+                      .assignments[ticket.seatId]
+                      ?.viewerAge ??
+                  ticket.viewerAge,
               quantity: ticket.quantity,
             ),
           )
           .toList(growable: false);
 
   Future<bool> prepareCheckout() async {
+    final generation = _generation;
     final booking = state.booking;
-    if (booking == null) return false;
+    if (booking == null || state.isBusy || state.payment != null) return false;
     final expiry = booking.holdExpiresAt;
     if (expiry != null && !ref.read(appClockProvider).now().isBefore(expiry)) {
       state = state.copyWith(
@@ -173,18 +248,16 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       clearMessage: true,
     );
     try {
-      final seatHold = ref.read(seatHoldRepositoryProvider);
-      final updated = seatHold.canEnterMockCheckout
-          ? await ref
-                .read(bookingRepositoryProvider)
-                .updateItems(
-                  booking.id,
-                  UpdateHoldingBookingRequestDto(
-                    tickets: _ticketSelections,
-                    foods: _foodSelections,
-                  ),
-                )
-          : booking;
+      final updated = await ref
+          .read(bookingRepositoryProvider)
+          .updateItems(
+            booking.id,
+            UpdateHoldingBookingRequestDto(
+              tickets: _ticketSelections,
+              foods: _foodSelections,
+            ),
+          );
+      if (!ref.mounted || generation != _generation) return false;
       final quote = await ref
           .read(catalogRepositoryProvider)
           .createCheckoutQuote(
@@ -198,7 +271,15 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
                     (ticket) => QuoteTicketRequestDto(
                       seatId: ticket.seatId,
                       ticketType: ticket.ticketType,
-                      viewerAge: ticket.viewerAge ?? 30,
+                      viewerAge:
+                          ref
+                              .read(bookingEntryProvider)
+                              .assignments[ticket.seatId]
+                              ?.viewerAge ??
+                          ticket.viewerAge ??
+                          (throw StateError(
+                            'Thiếu tuổi người xem. Hãy chọn lại vé.',
+                          )),
                       quantity: ticket.quantity,
                     ),
                   )
@@ -215,6 +296,12 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
               bookingSessionId: updated.id,
             ),
           );
+      if (!ref.mounted || generation != _generation) return false;
+      if (updated.totalAmount != quote.total) {
+        throw StateError(
+          'Tổng tiền đơn và báo giá chưa khớp. Vui lòng thử lại.',
+        );
+      }
       state = state.copyWith(
         phase: BookingCompletionPhase.checkout,
         booking: updated,
@@ -222,136 +309,238 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       );
       return true;
     } catch (error) {
-      await _recoverBookingError(booking.id, error);
+      if (ref.mounted && generation == _generation) {
+        await _recoverBookingError(booking.id, error);
+      }
       return false;
     }
   }
 
   Future<PaymentDto?> createPayment() async {
+    final generation = _generation;
     final booking = state.booking;
-    if (booking == null) return null;
+    if (booking == null || state.isBusy || state.quote == null) return null;
+    if (_expired) {
+      state = state.copyWith(
+        phase: BookingCompletionPhase.expired,
+        message: 'Thời gian giữ ghế đã hết.',
+      );
+      return null;
+    }
+    if (!ref.read(appClockProvider).now().isBefore(state.quote!.validUntil)) {
+      await prepareCheckout();
+      state = state.copyWith(
+        message: 'Báo giá đã được cập nhật. Vui lòng kiểm tra và xác nhận lại.',
+      );
+      return null;
+    }
     state = state.copyWith(
       phase: BookingCompletionPhase.creatingPayment,
       clearMessage: true,
     );
     try {
-      final seatHold = ref.read(seatHoldRepositoryProvider);
-      final checkedOut = seatHold.canEnterMockCheckout
-          ? await ref
-                .read(bookingRepositoryProvider)
-                .checkout(
-                  booking.id,
-                  UpdateHoldingBookingRequestDto(
-                    tickets: _ticketSelections,
-                    foods: _foodSelections,
-                  ),
-                )
-          : booking;
+      final existing = await ref
+          .read(paymentRepositoryProvider)
+          .getPaymentByBooking(booking.id);
+      if (!ref.mounted || generation != _generation) return null;
+      if (existing != null && existing.status != PaymentStatus.failed) {
+        await _applyPayment(existing);
+        return existing;
+      }
+      final checkedOut = await ref
+          .read(bookingRepositoryProvider)
+          .checkout(
+            booking.id,
+            UpdateHoldingBookingRequestDto(
+              tickets: _ticketSelections,
+              foods: _foodSelections,
+            ),
+          );
+      if (!ref.mounted || generation != _generation) return null;
+      state = state.copyWith(booking: checkedOut);
+      if (checkedOut.totalAmount != state.quote!.total) {
+        throw StateError(
+          'Tổng tiền đã thay đổi. Vui lòng cập nhật đơn và xác nhận lại.',
+        );
+      }
       final payment = await ref
           .read(paymentRepositoryProvider)
           .createPayment(0, CreatePaymentRequestDto(bookingId: checkedOut.id));
+      if (!ref.mounted || generation != _generation) return null;
       state = state.copyWith(
         phase: BookingCompletionPhase.paymentPending,
         booking: checkedOut,
         payment: payment,
       );
+      await _applyPayment(payment);
       return payment;
     } catch (error) {
-      await _recoverBookingError(booking.id, error);
+      if (ref.mounted && generation == _generation) {
+        await _recoverBookingError(booking.id, error);
+      }
       return null;
     }
   }
 
   Future<void> attachPayment(int paymentId) async {
-    if (state.payment?.id == paymentId) return;
-    final payment = await ref
-        .read(paymentRepositoryProvider)
-        .getPayment(paymentId);
-    if (payment == null) {
-      state = state.copyWith(
-        phase: BookingCompletionPhase.error,
-        message: 'Không tìm thấy giao dịch thanh toán.',
-      );
+    final generation = _generation;
+    if (state.payment?.id == paymentId) {
+      await refreshPaymentStatus();
       return;
     }
-    final seatHold = ref.read(seatHoldRepositoryProvider);
-    final booking = payment.bookingId == null
-        ? null
-        : seatHold.canEnterMockCheckout
-        ? await ref
-              .read(bookingRepositoryProvider)
-              .getBooking(payment.bookingId!)
-        : await seatHold.getBooking(payment.bookingId!);
+    try {
+      final payment = await ref
+          .read(paymentRepositoryProvider)
+          .getPayment(paymentId);
+      if (!ref.mounted || generation != _generation) return;
+      if (payment == null) {
+        throw StateError('Không tìm thấy giao dịch thanh toán.');
+      }
+      await _applyPayment(payment);
+    } catch (error) {
+      if (!ref.mounted || generation != _generation) return;
+      state = state.copyWith(
+        phase: BookingCompletionPhase.error,
+        message: error.toString(),
+      );
+    }
+  }
+
+  Future<bool> _applyPayment(PaymentDto payment) async {
+    final generation = _generation;
+    if (payment.bookingId == null) {
+      throw StateError('Giao dịch không thuộc đơn vé.');
+    }
+    final booking = await ref
+        .read(bookingRepositoryProvider)
+        .getBooking(payment.bookingId!);
+    if (!ref.mounted || generation != _generation) return false;
+    if (booking == null) throw StateError('Không tìm thấy đơn vé.');
+    final ready =
+        payment.status == PaymentStatus.success &&
+        (booking.status == BookingStatus.paid ||
+            booking.status == BookingStatus.used);
+    final expired =
+        booking.status == BookingStatus.expired ||
+        booking.status == BookingStatus.cancelled ||
+        (payment.status != PaymentStatus.success &&
+            booking.holdExpiresAt != null &&
+            !ref.read(appClockProvider).now().isBefore(booking.holdExpiresAt!));
     state = state.copyWith(
-      phase: payment.status == PaymentStatus.failed
+      phase: ready
+          ? BookingCompletionPhase.ticketReady
+          : expired
+          ? BookingCompletionPhase.expired
+          : payment.status == PaymentStatus.failed
           ? BookingCompletionPhase.paymentFailed
           : payment.status == PaymentStatus.success
           ? BookingCompletionPhase.verifyingBooking
           : BookingCompletionPhase.paymentPending,
       payment: payment,
       booking: booking,
+      message: !ready && payment.status == PaymentStatus.success
+          ? 'Đã ghi nhận thanh toán. Đang chờ phát hành vé; bạn có thể kiểm tra lại.'
+          : null,
+      clearMessage: ready || payment.status != PaymentStatus.success,
     );
+    if (ready) {
+      ref.invalidate(bookingEntryProvider);
+      ref.invalidate(ordersProvider);
+      ref.invalidate(ticketBookingProvider(booking.id));
+    }
+    final userId = ref.read(authSessionProvider).session?.user.id;
+    if (userId != null) {
+      final store = ref.read(bookingCheckpointStoreProvider);
+      if (ready || expired) {
+        await store.clear(userId);
+      } else {
+        final saved = await store.read(userId);
+        await store.save(
+          userId,
+          BookingCheckpoint(
+            bookingId: booking.id,
+            paymentId: payment.id,
+            viewerAges: saved?.bookingId == booking.id
+                ? saved!.viewerAges
+                : const {},
+          ),
+        );
+      }
+      ref.invalidate(resumableBookingProvider);
+    }
+    return ready;
+  }
+
+  Future<PaymentDto?> findExistingPayment(int bookingId) async {
+    final generation = _generation;
+    try {
+      final payment = await ref
+          .read(paymentRepositoryProvider)
+          .getPaymentByBooking(bookingId);
+      if (!ref.mounted || generation != _generation) return null;
+      if (payment != null) await _applyPayment(payment);
+      return payment;
+    } catch (error) {
+      if (!ref.mounted || generation != _generation) return null;
+      state = state.copyWith(message: error.toString());
+      rethrow;
+    }
   }
 
   Future<bool> openPaymentGateway({
     PaymentLaunchMode mode = PaymentLaunchMode.inAppWebView,
   }) async {
+    final generation = _generation;
     final payment = state.payment;
-    if (payment == null) return false;
+    if (payment == null || state.isBusy) return false;
 
     state = state.copyWith(
       phase: BookingCompletionPhase.openingPaymentGateway,
       clearMessage: true,
     );
 
-    final result = await ref
-        .read(paymentLauncherProvider)
-        .open(payment, mode: mode);
-
-    state = state.copyWith(
-      phase: BookingCompletionPhase.paymentPending,
-      message: result.message,
-    );
-
-    return result.isUsable;
+    try {
+      final result = await ref
+          .read(paymentLauncherProvider)
+          .open(payment, mode: mode);
+      if (!ref.mounted || generation != _generation) return false;
+      state = state.copyWith(
+        phase: BookingCompletionPhase.paymentPending,
+        message: result.message,
+      );
+      return result.isUsable;
+    } catch (error) {
+      if (ref.mounted && generation == _generation) {
+        state = state.copyWith(
+          phase: BookingCompletionPhase.paymentPending,
+          message: 'Không thể mở thanh toán. Vui lòng thử lại.',
+        );
+      }
+      return false;
+    }
   }
 
   Future<bool> refreshPaymentStatus() async {
+    final generation = _generation;
     final payment = state.payment;
-    if (payment == null) return false;
-
-    final refreshed = await ref
-        .read(paymentRepositoryProvider)
-        .getPayment(payment.id);
-
-    if (refreshed == null) {
-      state = state.copyWith(
-        phase: BookingCompletionPhase.error,
-        message: 'Không tìm thấy payment.',
-      );
+    if (payment == null || _refreshing) return false;
+    _refreshing = true;
+    try {
+      final refreshed = await ref
+          .read(paymentRepositoryProvider)
+          .getPayment(payment.id);
+      if (!ref.mounted || generation != _generation) return false;
+      if (refreshed == null) {
+        throw StateError('Không tìm thấy giao dịch thanh toán.');
+      }
+      return await _applyPayment(refreshed);
+    } catch (error) {
+      if (!ref.mounted || generation != _generation) return false;
+      state = state.copyWith(message: 'Không thể kiểm tra thanh toán: $error');
       return false;
+    } finally {
+      _refreshing = false;
     }
-
-    final phase = switch (refreshed.status) {
-      PaymentStatus.success => BookingCompletionPhase.verifyingBooking,
-      PaymentStatus.failed => BookingCompletionPhase.paymentFailed,
-      _ => BookingCompletionPhase.paymentPending,
-    };
-
-    final booking = refreshed.bookingId == null
-        ? state.booking
-        : await ref
-              .read(seatHoldRepositoryProvider)
-              .getBooking(refreshed.bookingId!);
-
-    state = state.copyWith(
-      phase: phase,
-      payment: refreshed,
-      booking: booking,
-      clearMessage: true,
-    );
-
-    return refreshed.status == PaymentStatus.success;
   }
 
   Future<bool> simulateSuccess() async {
@@ -405,12 +594,18 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
   }
 
   Future<PaymentDto?> retryPayment() async {
+    final generation = _generation;
     final booking = state.booking;
-    if (booking == null) return null;
+    if (booking == null || state.isBusy) return null;
+    state = state.copyWith(
+      phase: BookingCompletionPhase.creatingPayment,
+      clearMessage: true,
+    );
     try {
       final refreshed = await ref
           .read(bookingRepositoryProvider)
           .getBooking(booking.id);
+      if (!ref.mounted || generation != _generation) return null;
       if (refreshed == null || refreshed.status == BookingStatus.expired) {
         state = state.copyWith(
           phase: BookingCompletionPhase.expired,
@@ -419,9 +614,23 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         );
         return null;
       }
+      final existing = await ref
+          .read(paymentRepositoryProvider)
+          .getPaymentByBooking(booking.id);
+      if (!ref.mounted || generation != _generation) return null;
+      if (existing != null && existing.status != PaymentStatus.failed) {
+        await _applyPayment(existing);
+        return existing;
+      }
+      if (refreshed.status != BookingStatus.pendingPayment) {
+        throw StateError(
+          'Đơn chưa sẵn sàng thanh toán. Vui lòng quay lại xác nhận đơn.',
+        );
+      }
       final payment = await ref
           .read(paymentRepositoryProvider)
           .createPayment(0, CreatePaymentRequestDto(bookingId: booking.id));
+      if (!ref.mounted || generation != _generation) return null;
       state = state.copyWith(
         phase: BookingCompletionPhase.paymentPending,
         payment: payment,
@@ -430,6 +639,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       );
       return payment;
     } catch (error) {
+      if (!ref.mounted || generation != _generation) return null;
       state = state.copyWith(
         phase: BookingCompletionPhase.error,
         message: error.toString(),
@@ -439,9 +649,14 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
   }
 
   Future<void> _recoverBookingError(int bookingId, Object error) async {
-    final booking = await ref
-        .read(bookingRepositoryProvider)
-        .getBooking(bookingId);
+    final generation = _generation;
+    BookingDto? booking;
+    try {
+      booking = await ref.read(bookingRepositoryProvider).getBooking(bookingId);
+    } catch (_) {
+      // Preserve the original failure if the follow-up request is also offline.
+    }
+    if (!ref.mounted || generation != _generation) return;
     state = state.copyWith(
       phase: booking?.status == BookingStatus.expired
           ? BookingCompletionPhase.expired

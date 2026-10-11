@@ -8,6 +8,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../application/booking_completion_controller.dart';
+import '../widgets/booking_hold_countdown.dart';
 import '../widgets/booking_progress.dart';
 
 class CheckoutPage extends ConsumerWidget {
@@ -32,114 +33,130 @@ class CheckoutPage extends ConsumerWidget {
         ),
       );
     }
-    return AppShell(
-      currentIndex: 2,
-      showBottomNavigation: false,
-      body: Column(
-        children: [
-          SafeArea(
-            bottom: false,
-            child: ListTile(
-              leading: IconButton(
-                tooltip: 'Sửa bắp nước',
-                onPressed: state.isBusy
-                    ? null
-                    : () => context.go(AppRoutes.concessions(bookingId)),
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
-              title: const Text(
-                'Xác nhận đơn',
-                style: AppTextStyles.sectionTitle,
-              ),
-              subtitle: Text(booking.bookingCode, style: AppTextStyles.caption),
-            ),
-          ),
-          const BookingProgress(currentStep: 3),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: [
-                _Section(
-                  title: quote.showtime.movieTitle ?? 'Phim',
-                  children: [
-                    _Line('Rạp', quote.showtime.cinemaName ?? '—'),
-                    _Line('Phòng', quote.showtime.roomName ?? '—'),
-                    _Line('Suất chiếu', _dateTime(quote.showtime.startTime)),
-                    _Line(
-                      'Ghế',
-                      quote.seats.map((seat) => seat.seatLabel).join(', '),
-                    ),
-                    for (final ticket in quote.tickets)
-                      _Line(
-                        _ticketLabel(ticket.ticketType),
-                        '${quote.seats.firstWhere((seat) => seat.seatId == ticket.seatId).seatLabel} • ${ticket.lineTotal.format()}',
-                      ),
-                  ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && !state.isBusy) {
+          context.go(AppRoutes.concessions(bookingId));
+        }
+      },
+      child: AppShell(
+        currentIndex: 2,
+        showBottomNavigation: false,
+        body: Column(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: ListTile(
+                leading: IconButton(
+                  tooltip: 'Sửa bắp nước',
+                  onPressed: state.isBusy
+                      ? null
+                      : () => context.go(AppRoutes.concessions(bookingId)),
+                  icon: const Icon(Icons.arrow_back_rounded),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                _Section(
-                  title: 'Bắp nước',
-                  children: quote.foods.isEmpty
-                      ? const [_Line('Sản phẩm', 'Không chọn')]
-                      : [
-                          for (final food in quote.foods)
-                            _Line(
-                              '${food.productName} × ${food.quantity}',
-                              food.lineTotal.format(),
-                            ),
-                        ],
+                title: const Text(
+                  'Xác nhận đơn',
+                  style: AppTextStyles.sectionTitle,
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                _Section(
-                  title: 'Thanh toán',
-                  children: [
-                    _Line('Vé', quote.ticketSubtotal.format()),
-                    _Line('Bắp nước', quote.foodSubtotal.format()),
-                    if (quote.discount.amount > 0)
-                      _Line('Giảm giá', '-${quote.discount.format()}'),
-                    const _Line('Phương thức', 'VNPay Mock'),
-                    _Line('Tổng cộng', quote.total.format(), emphasized: true),
-                  ],
-                ),
-                if (state.message != null) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    state.message!,
-                    key: const ValueKey('checkout-message'),
-                    style: const TextStyle(color: AppColors.adultBadge),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'CineWallet không được dùng để thanh toán vé. CinePoints tại checkout đang tắt cho đến khi backend thống nhất reserve/deduct/rollback.',
+                subtitle: Text(
+                  booking.bookingCode,
                   style: AppTextStyles.caption,
                 ),
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: AppButton(
-                key: const ValueKey('checkout-pay'),
-                label: state.isBusy
-                    ? 'Đang tạo giao dịch…'
-                    : 'Thanh toán ${quote.total.format()}',
-                onPressed: state.isBusy
-                    ? null
-                    : () async {
-                        final payment = await ref
-                            .read(bookingCompletionProvider.notifier)
-                            .createPayment();
-                        if (payment != null && context.mounted) {
-                          context.go(AppRoutes.payment(payment.id));
-                        }
-                      },
               ),
             ),
-          ),
-        ],
+            const BookingProgress(currentStep: 3),
+            BookingHoldCountdown(booking: booking),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: [
+                  _Section(
+                    title: quote.showtime.movieTitle ?? 'Phim',
+                    children: [
+                      _Line('Rạp', quote.showtime.cinemaName ?? '—'),
+                      _Line('Phòng', quote.showtime.roomName ?? '—'),
+                      _Line('Suất chiếu', _dateTime(quote.showtime.startTime)),
+                      _Line(
+                        'Ghế',
+                        quote.seats.map((seat) => seat.seatLabel).join(', '),
+                      ),
+                      for (final ticket in quote.tickets)
+                        _Line(
+                          _ticketLabel(ticket.ticketType),
+                          '${quote.seats.firstWhere((seat) => seat.seatId == ticket.seatId).seatLabel} • ${ticket.lineTotal.format()}',
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _Section(
+                    title: 'Bắp nước',
+                    children: quote.foods.isEmpty
+                        ? const [_Line('Sản phẩm', 'Không chọn')]
+                        : [
+                            for (final food in quote.foods)
+                              _Line(
+                                '${food.productName} × ${food.quantity}',
+                                food.lineTotal.format(),
+                              ),
+                          ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _Section(
+                    title: 'Thanh toán',
+                    children: [
+                      _Line('Vé', quote.ticketSubtotal.format()),
+                      _Line('Bắp nước', quote.foodSubtotal.format()),
+                      if (quote.discount.amount > 0)
+                        _Line('Giảm giá', '-${quote.discount.format()}'),
+                      const _Line('Phương thức', 'VNPay'),
+                      _Line(
+                        'Tổng cộng',
+                        quote.total.format(),
+                        emphasized: true,
+                      ),
+                    ],
+                  ),
+                  if (state.message != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      state.message!,
+                      key: const ValueKey('checkout-message'),
+                      style: const TextStyle(color: AppColors.adultBadge),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  const Text(
+                    'Vui lòng kiểm tra thông tin vé và tổng tiền trước khi thanh toán.',
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: AppButton(
+                  key: const ValueKey('checkout-pay'),
+                  label: state.isBusy
+                      ? 'Đang tạo giao dịch…'
+                      : 'Thanh toán ${quote.total.format()}',
+                  onPressed: state.isBusy
+                      ? null
+                      : () async {
+                          final payment = await ref
+                              .read(bookingCompletionProvider.notifier)
+                              .createPayment();
+                          if (payment != null && context.mounted) {
+                            context.go(AppRoutes.payment(payment.id));
+                          }
+                        },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
