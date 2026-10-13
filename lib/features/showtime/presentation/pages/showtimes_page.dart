@@ -1,3 +1,5 @@
+import '../../../../core/time/vietnam_time.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -85,7 +87,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   @override
   Widget build(BuildContext context) {
     final moviesState = ref.watch(moviesProvider);
-    final dates = _dates(ref.watch(appClockProvider).now());
+    final dates = _dates(vietnamCalendar(ref.watch(appClockProvider).now()));
     final selectedDate = _selectedDate == null
         ? null
         : dates[_selectedDate!].date;
@@ -252,7 +254,4 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   }
 }
 
-bool _sameDay(DateTime first, DateTime second) =>
-    first.year == second.year &&
-    first.month == second.month &&
-    first.day == second.day;
+bool _sameDay(DateTime first, DateTime second) => isVietnamDate(first, second);

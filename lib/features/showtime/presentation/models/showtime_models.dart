@@ -1,3 +1,4 @@
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/money/vnd_money.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../data/models/showtime_dto.dart';
@@ -81,5 +82,4 @@ MovieShowtime mapShowtimesToPresentation(
   );
 }
 
-String _time(DateTime value) =>
-    '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+String _time(DateTime value) => formatVietnamTime(value);

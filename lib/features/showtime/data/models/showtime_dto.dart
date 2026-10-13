@@ -1,3 +1,4 @@
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/contracts/json_parsers.dart';
 import '../../../../core/money/vnd_money.dart';
 import '../../../movie/data/models/catalog_enums.dart';
@@ -84,8 +85,8 @@ class ShowtimeDto {
     cinemaName: json['cinemaName']?.toString(),
     roomId: intFromJson(json['roomId'], field: 'showtime.roomId'),
     roomName: json['roomName']?.toString(),
-    startTime: dateTimeFromJson(json['startTime'], field: 'startTime'),
-    endTime: dateTimeFromJson(json['endTime'], field: 'endTime'),
+    startTime: cinemaTimeFromJson(json['startTime']),
+    endTime: cinemaTimeFromJson(json['endTime']),
     basePrice: _money(json['basePrice'], 'basePrice'),
     vipPrice: _money(json['vipPrice'], 'vipPrice'),
     couplePrice: _money(json['couplePrice'], 'couplePrice'),
@@ -170,7 +171,7 @@ class ShowtimeSeatDto {
         seatType: CatalogSeatType.parse(json['seatType']),
         seatStatus: SeatStatus.parse(json['seatStatus']),
         runtimeStatus: SeatRuntimeStatus.parse(json['runtimeStatus']),
-        holdExpiresAt: nullableDateTimeFromJson(json['holdExpiresAt']),
+        holdExpiresAt: nullableServerDeadlineFromJson(json['holdExpiresAt']),
         unitPrice: _money(json['unitPrice'], 'unitPrice'),
       );
 }

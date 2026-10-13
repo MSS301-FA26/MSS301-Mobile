@@ -56,6 +56,7 @@ final appRouter = GoRouter(
       name: 'movieDetail',
       builder: (context, state) => MovieDetailPage(
         movieId: int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+        showReviews: state.uri.queryParameters['section'] == 'reviews',
       ),
     ),
     GoRoute(

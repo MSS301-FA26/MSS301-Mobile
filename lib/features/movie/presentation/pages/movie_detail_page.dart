@@ -16,13 +16,27 @@ import '../providers/movies_provider.dart';
 import '../providers/movie_engagement_provider.dart';
 import '../widgets/trailer_preview_dialog.dart';
 
-class MovieDetailPage extends ConsumerWidget {
-  const MovieDetailPage({super.key, required this.movieId});
+class MovieDetailPage extends ConsumerStatefulWidget {
+  const MovieDetailPage({
+    super.key,
+    required this.movieId,
+    this.showReviews = false,
+  });
 
   final int movieId;
+  final bool showReviews;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MovieDetailPage> createState() => _MovieDetailPageState();
+}
+
+class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
+  final _reviewsAnchor = GlobalKey();
+  bool _scrolledToReviews = false;
+  int get movieId => widget.movieId;
+
+  @override
+  Widget build(BuildContext context) {
     final movieState = ref.watch(movieProvider(movieId));
     final reviewSummary = ref.watch(movieReviewSummaryProvider(movieId));
     final reviews = ref.watch(movieReviewsProvider(movieId));
@@ -38,6 +52,18 @@ class MovieDetailPage extends ConsumerWidget {
       );
     }
     final Movie? movie = movieState.requireValue;
+    if (widget.showReviews && !_scrolledToReviews && !reviewSummary.isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final anchor = _reviewsAnchor.currentContext;
+        if (mounted && anchor != null) {
+          _scrolledToReviews = true;
+          Scrollable.ensureVisible(
+            anchor,
+            duration: const Duration(milliseconds: 250),
+          );
+        }
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -248,16 +274,26 @@ class MovieDetailPage extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        reviewSummary.when(
-                          loading: () => const _SectionLoading(
-                            label: 'Đang tải đánh giá...',
-                          ),
-                          error: (_, _) => const SizedBox.shrink(),
-                          data: (summary) => _ReviewSection(
-                            summary: summary,
-                            reviews: reviews.maybeWhen(
-                              data: (items) => items,
-                              orElse: () => const [],
+                        KeyedSubtree(
+                          key: _reviewsAnchor,
+                          child: reviewSummary.when(
+                            loading: () => const _SectionLoading(
+                              label: 'Đang tải đánh giá...',
+                            ),
+                            error: (_, _) => TextButton(
+                              onPressed: () => ref.invalidate(
+                                movieReviewSummaryProvider(movieId),
+                              ),
+                              child: const Text(
+                                'Không thể tải đánh giá. Thử lại',
+                              ),
+                            ),
+                            data: (summary) => _ReviewSection(
+                              summary: summary,
+                              reviews: reviews.maybeWhen(
+                                data: (items) => items,
+                                orElse: () => const [],
+                              ),
                             ),
                           ),
                         ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mss301_mobile/features/booking/application/booking_completion_controller.dart';
 import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/concessions_page.dart';
@@ -50,11 +52,12 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('payment-success')));
       await tester.pumpAndSettle();
-      expect(find.text('Booking đã được xác nhận'), findsOneWidget);
+      expect(find.text('Đặt vé thành công'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('open-ticket')));
       await tester.pumpAndSettle();
 
       expect(find.byType(TicketPage), findsOneWidget);
+      expect(find.byType(QrImageView), findsOneWidget);
       expect(find.text('Đã thanh toán'), findsOneWidget);
       expect(find.textContaining('CP-MOCK-'), findsOneWidget);
     },
@@ -72,6 +75,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Đã mở VNPay Mock'), findsOneWidget);
     expect(find.byKey(const ValueKey('payment-success')), findsOneWidget);
+  });
+
+  testWidgets('pending order detail exposes no usable QR before payment', (
+    tester,
+  ) async {
+    final container = await pumpApp(tester);
+    await openPayment(tester);
+    final bookingId = container.read(bookingCompletionProvider).booking!.id;
+    appRouter.go(AppRoutes.ticket(bookingId));
+    await tester.pumpAndSettle();
+    expect(find.text('Chi tiết đơn'), findsOneWidget);
+    expect(find.text('Chờ thanh toán'), findsOneWidget);
+    expect(find.byType(QrImageView), findsNothing);
   });
 
   testWidgets('R5 payment failure can create a fresh retry payment', (

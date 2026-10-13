@@ -1,3 +1,4 @@
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/contracts/json_parsers.dart';
 import '../../../../core/money/vnd_money.dart';
 import 'catalog_enums.dart';
@@ -20,6 +21,11 @@ class FoodProductDto {
   final String? imageUrl;
   final FoodItemStatus status;
   final bool isCombo;
+
+  // Item and combo IDs come from separate database tables.
+  String get selectionKey => '${isCombo ? 'combo' : 'item'}:$id';
+  // CheckoutQuoteService accepts ACTIVE products only, including combos.
+  bool get isAvailable => status == FoodItemStatus.active;
 
   factory FoodProductDto.fromJson(
     Map<String, Object?> json, {
@@ -108,7 +114,7 @@ class QuoteShowtimeSnapshotDto {
         posterUrl: json['posterUrl']?.toString(),
         cinemaName: json['cinemaName']?.toString(),
         roomName: json['roomName']?.toString(),
-        startTime: dateTimeFromJson(json['startTime']),
+        startTime: cinemaTimeFromJson(json['startTime']),
       );
 }
 
@@ -278,7 +284,7 @@ class CheckoutQuoteDto {
   factory CheckoutQuoteDto.fromJson(Map<String, Object?> json) =>
       CheckoutQuoteDto(
         quoteId: json['quoteId']?.toString() ?? '',
-        validUntil: dateTimeFromJson(json['validUntil']),
+        validUntil: serverDeadlineFromJson(json['validUntil']),
         showtime: QuoteShowtimeSnapshotDto.fromJson(
           Map<String, Object?>.from(json['showtime']! as Map),
         ),

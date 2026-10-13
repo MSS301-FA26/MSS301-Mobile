@@ -1,3 +1,5 @@
+import '../../../../core/time/vietnam_time.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -14,6 +16,7 @@ import '../../../movie/data/models/catalog_enums.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../../../booking/presentation/widgets/booking_progress.dart';
 import '../../application/booking_entry_session.dart';
+import '../../../booking/application/booking_completion_controller.dart';
 import '../providers/seat_map_provider.dart';
 
 class SeatSelectionPage extends ConsumerStatefulWidget {
@@ -41,7 +44,7 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
       builder: (context) => AlertDialog(
         title: const Text('Bỏ ghế đã gán?'),
         content: const Text(
-          'Giảm số lượng vé sẽ bỏ các ghế vượt quá của loại vé này.',
+          'Giảm số lượng vé sẽ bỏ các ghế vượt quá của loại vé này. Nếu có ghế đôi, cả cặp ghế sẽ được bỏ.',
         ),
         actions: [
           FilledButton(
@@ -85,7 +88,11 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     final edited = await ref
         .read(bookingEntryProvider.notifier)
         .editHeldSelection();
-    if (edited) _timer?.cancel();
+    if (edited) {
+      _timer?.cancel();
+      ref.invalidate(bookingCompletionProvider);
+      ref.invalidate(seatMapProvider(widget.showtimeId));
+    }
   }
 
   @override
@@ -100,10 +107,14 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (!mounted) return;
       _updateRemaining();
-      final expired = await ref
-          .read(bookingEntryProvider.notifier)
-          .refreshExpiry();
-      if (expired && mounted) await _showExpiredDialog();
+      try {
+        final expired = await ref
+            .read(bookingEntryProvider.notifier)
+            .refreshExpiry();
+        if (expired && mounted) await _showExpiredDialog();
+      } catch (_) {
+        // Retry on the next tick; local expiry still prevents submitting.
+      }
     });
   }
 
@@ -179,7 +190,9 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     );
     if (shouldLeave != true || !mounted) return;
     final movieId = session.movieId;
-    await ref.read(bookingEntryProvider.notifier).abandon();
+    final left = await ref.read(bookingEntryProvider.notifier).abandon();
+    if (!left) return;
+    ref.invalidate(bookingCompletionProvider);
     if (mounted) {
       context.go(
         movieId == null
@@ -193,14 +206,19 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     if (seat.seatType.normalized != CatalogSeatType.couple) {
       return {seat.seatId};
     }
-    return allSeats
-        .where(
-          (item) =>
-              item.rowLabel == seat.rowLabel &&
-              item.seatType.normalized == CatalogSeatType.couple,
-        )
-        .map((item) => item.seatId)
-        .toSet();
+    final row =
+        allSeats
+            .where(
+              (item) =>
+                  item.rowLabel == seat.rowLabel &&
+                  item.seatType.normalized == CatalogSeatType.couple,
+            )
+            .toList()
+          ..sort((a, b) => a.seatNumber.compareTo(b.seatNumber));
+    final index = row.indexWhere((item) => item.seatId == seat.seatId);
+    final start = (index ~/ 2) * 2;
+    final pair = row.skip(start).take(2).toList();
+    return pair.length == 2 ? pair.map((item) => item.seatId).toSet() : {};
   }
 
   @override
@@ -238,7 +256,14 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
             .read(bookingEntryProvider.notifier)
             .begin(
               movieId: seatMap.showtime.movieId,
+              movieAgeRating: seatMap.showtime.movieAgeRating,
               showtimeId: widget.showtimeId,
+              couplePairs: {
+                for (final seat in seatMap.seats)
+                  if (seat.seatType.normalized == CatalogSeatType.couple)
+                    for (final partner in _seatGroup(seat, seatMap.seats))
+                      if (partner != seat.seatId) seat.seatId: partner,
+              },
             );
       });
     }
@@ -251,6 +276,11 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
           session.assignments[seat.seatId]?.ticketType ?? TicketType.adult;
       return value + _ticketPrice(seatMap.showtime, seat, type);
     });
+    if (session.hasActiveHold && _timer == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _timer == null) _startTimer();
+      });
+    }
     final holding = session.phase == BookingEntryPhase.holding;
     final submitting = session.phase == BookingEntryPhase.submittingHold;
 
@@ -306,7 +336,13 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                         enabled: !holding && !submitting,
                         onSeat: (seat) => ref
                             .read(bookingEntryProvider.notifier)
-                            .toggleSeatIds(_seatGroup(seat, seatMap.seats)),
+                            .toggleSeatIds(
+                              _seatGroup(seat, seatMap.seats),
+                              unavailableSeatIds: seatMap.seats
+                                  .where((item) => !item.selectable)
+                                  .map((item) => item.seatId)
+                                  .toSet(),
+                            ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
@@ -319,8 +355,8 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.md),
-                    const Text(
-                      'Loại vé: Người lớn • Vui lòng kiểm tra phân loại độ tuổi của phim.',
+                    Text(
+                      'Phân loại phim: ${seatMap.showtime.movieAgeRating ?? "P"}${seatMap.showtime.movieAgeRating == "K" ? " • Trẻ dưới 13 tuổi cần người lớn đi cùng." : ""}',
                       style: AppTextStyles.caption,
                     ),
                     if (session.message != null) ...[
@@ -437,37 +473,49 @@ class _TicketSelector extends StatelessWidget {
                             style: AppTextStyles.cardTitle,
                           ),
                           Text(
-                            'Đã gán ${session.assignedFor(type)}/${session.quantityFor(type)} ghế',
+                            BookingTicketPolicy.restriction(
+                                  type,
+                                  session.movieAgeRating,
+                                ) ??
+                                'Đã gán ${session.assignedFor(type)}/${session.quantityFor(type)} ghế',
                             style: AppTextStyles.caption,
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      key: ValueKey(
-                        'ticket-minus-${type.wireValue.toLowerCase()}',
+                    if (BookingTicketPolicy.restriction(
+                          type,
+                          session.movieAgeRating,
+                        ) ==
+                        null) ...[
+                      IconButton(
+                        key: ValueKey(
+                          'ticket-minus-${type.wireValue.toLowerCase()}',
+                        ),
+                        onPressed: !editable || session.quantityFor(type) == 0
+                            ? null
+                            : () =>
+                                  onChange(type, session.quantityFor(type) - 1),
+                        icon: const Icon(Icons.remove_rounded),
                       ),
-                      onPressed: !editable || session.quantityFor(type) == 0
-                          ? null
-                          : () => onChange(type, session.quantityFor(type) - 1),
-                      icon: const Icon(Icons.remove_rounded),
-                    ),
-                    Text(
-                      '${session.quantityFor(type)}',
-                      style: AppTextStyles.sectionTitle,
-                    ),
-                    IconButton(
-                      key: ValueKey(
-                        'ticket-plus-${type.wireValue.toLowerCase()}',
+                      Text(
+                        '${session.quantityFor(type)}',
+                        style: AppTextStyles.sectionTitle,
                       ),
-                      onPressed:
-                          !editable ||
-                              session.ticketCount >=
-                                  BookingTicketPolicy.maxTickets
-                          ? null
-                          : () => onChange(type, session.quantityFor(type) + 1),
-                      icon: const Icon(Icons.add_rounded),
-                    ),
+                      IconButton(
+                        key: ValueKey(
+                          'ticket-plus-${type.wireValue.toLowerCase()}',
+                        ),
+                        onPressed:
+                            !editable ||
+                                session.ticketCount >=
+                                    BookingTicketPolicy.maxTickets
+                            ? null
+                            : () =>
+                                  onChange(type, session.quantityFor(type) + 1),
+                        icon: const Icon(Icons.add_rounded),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -857,9 +905,7 @@ class _SeatActionBar extends StatelessWidget {
   );
 }
 
-String _dateTime(DateTime value) =>
-    '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')} • '
-    '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+String _dateTime(DateTime value) => formatVietnamDateTime(value);
 
 String _ticketLabel(TicketType type) => switch (type) {
   TicketType.student => 'Sinh viên',

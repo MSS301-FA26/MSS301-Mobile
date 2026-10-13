@@ -1,3 +1,4 @@
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/money/vnd_money.dart';
 import '../../data/models/booking_dto.dart';
 import '../../data/models/booking_enums.dart';
@@ -48,7 +49,7 @@ class TicketOrder {
   String get statusLabel => switch (status) {
     BookingStatus.holding => 'Đang giữ ghế',
     BookingStatus.pendingPayment => 'Chờ thanh toán',
-    BookingStatus.paid => 'Sắp chiếu',
+    BookingStatus.paid => 'Đã thanh toán',
     BookingStatus.used => 'Đã xem',
     BookingStatus.cancelled => 'Đã hủy',
     BookingStatus.expired => 'Đã hết hạn',
@@ -59,7 +60,7 @@ class TicketOrder {
   String get dateTime {
     final value = showtimeAt;
     if (value == null) return 'Chưa có thời gian';
-    return '${_two(value.hour)}:${_two(value.minute)} • ${_two(value.day)}/${_two(value.month)}/${value.year}';
+    return formatVietnamDateTime(value);
   }
 }
 
@@ -96,7 +97,7 @@ TicketOrder mapBookingToOrder(
     moviePoster:
         booking.moviePosterSnapshot ?? booking.posterUrl ?? moviePoster,
     ageRating: ageRating,
-    format: '2D • Phụ đề',
+    format: '',
     cinemaLocation: '$cinema • $room',
     roomName: room,
     showtimeAt: booking.showtimeStartSnapshot ?? booking.showtimeStart,
@@ -109,8 +110,6 @@ TicketOrder mapBookingToOrder(
     status: booking.status,
   );
 }
-
-String _two(int value) => value.toString().padLeft(2, '0');
 
 String _ticketLabel(TicketType type) => switch (type) {
   TicketType.child => 'trẻ em',

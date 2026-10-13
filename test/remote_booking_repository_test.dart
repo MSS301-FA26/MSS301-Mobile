@@ -11,7 +11,11 @@ void main() {
       Dio()..httpClientAdapter = adapter,
     ).getBookings(999);
     expect(adapter.path, '/api/v1/bookings');
-    expect(adapter.query, {'page': '0', 'size': '20'});
+    expect(adapter.query, {
+      'page': '0',
+      'size': '20',
+      'sort': 'createdAt,desc',
+    });
     expect(adapter.method, 'GET');
     expect(bookings.single.id, 741852);
     expect(bookings.single.status.wireValue, 'PAID');

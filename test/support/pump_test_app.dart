@@ -22,6 +22,8 @@ import 'package:mss301_mobile/features/account/presentation/models/account_summa
 
 import 'fake_auth_session.dart';
 
+import 'package:mss301_mobile/features/booking/application/booking_checkpoint.dart';
+
 Future<ProviderContainer> pumpTestApp(
   WidgetTester tester, {
   AuthState? authState,
@@ -37,6 +39,7 @@ Future<ProviderContainer> pumpTestApp(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        bookingCheckpointStoreProvider.overrideWithValue(_MemoryCheckpoints()),
         catalogRepositoryProvider.overrideWith(
           (ref) => ref.watch(mockCatalogRepositoryProvider),
         ),
@@ -76,6 +79,21 @@ Future<ProviderContainer> pumpTestApp(
   );
   await tester.pumpAndSettle();
   return ProviderScope.containerOf(tester.element(find.byType(CinePremierApp)));
+}
+
+class _MemoryCheckpoints implements BookingCheckpointStore {
+  final _values = <int, BookingCheckpoint>{};
+  @override
+  Future<BookingCheckpoint?> read(int userId) async => _values[userId];
+  @override
+  Future<void> save(int userId, BookingCheckpoint checkpoint) async {
+    _values[userId] = checkpoint;
+  }
+
+  @override
+  Future<void> clear(int userId) async {
+    _values.remove(userId);
+  }
 }
 
 class _FakeSeatHoldRepository implements SeatHoldRepository {

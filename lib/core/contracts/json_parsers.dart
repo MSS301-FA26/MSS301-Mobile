@@ -62,3 +62,16 @@ List<String> stringListFromJson(Object? value) {
   if (value is! List) throw const FormatException('Expected string list');
   return value.map((item) => item.toString()).toList(growable: false);
 }
+
+/// Container services serialize UTC LocalDateTime values without an offset.
+/// Only server deadlines use this parser; cinema schedule wall times stay local.
+DateTime serverDeadlineFromJson(Object? value) {
+  if (value is String &&
+      !RegExp(r'(Z|[+-]\d{2}:?\d{2})$', caseSensitive: false).hasMatch(value)) {
+    return dateTimeFromJson('${value}Z');
+  }
+  return dateTimeFromJson(value).toUtc();
+}
+
+DateTime? nullableServerDeadlineFromJson(Object? value) =>
+    value == null ? null : serverDeadlineFromJson(value);

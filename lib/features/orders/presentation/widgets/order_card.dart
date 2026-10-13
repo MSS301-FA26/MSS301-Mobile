@@ -5,6 +5,7 @@ import '../../../../shared/widgets/age_badge.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_image.dart';
 import '../models/ticket_order.dart';
+import '../../data/models/booking_enums.dart';
 
 class UpcomingOrderCard extends StatelessWidget {
   const UpcomingOrderCard({
@@ -90,10 +91,11 @@ class UpcomingOrderCard extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              AgeBadge(
-                                rating: order.ageRating,
-                                variant: AgeBadgeVariant.hero,
-                              ),
+                              if (order.ageRating.isNotEmpty)
+                                AgeBadge(
+                                  rating: order.ageRating,
+                                  variant: AgeBadgeVariant.hero,
+                                ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -190,19 +192,22 @@ class UpcomingOrderCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Expanded(
-                child: AppButton(
-                  label: 'Hoàn / Đổi vé',
-                  icon: Icons.cancel_outlined,
-                  variant: AppButtonVariant.secondary,
-                  height: 44,
-                  onPressed: onCancel,
+              if (onCancel != null)
+                Expanded(
+                  child: AppButton(
+                    label: 'Hoàn / Đổi vé',
+                    icon: Icons.cancel_outlined,
+                    variant: AppButtonVariant.secondary,
+                    height: 44,
+                    onPressed: onCancel,
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
+              if (onCancel != null) const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: AppButton(
-                  label: 'Mở mã vé',
+                  label: order.status == BookingStatus.paid
+                      ? 'Mở mã vé'
+                      : 'Tiếp tục đặt vé',
                   icon: Icons.qr_code_rounded,
                   height: 44,
                   onPressed: onOpenTicket,
@@ -331,13 +336,14 @@ class CompletedOrderCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              AppButton(
-                label: onRate == null ? 'Đánh giá • Sắp có' : 'Đánh giá',
-                icon: Icons.star_rounded,
-                variant: AppButtonVariant.secondary,
-                height: 38,
-                onPressed: onRate,
-              ),
+              if (onRate != null)
+                AppButton(
+                  label: 'Xem đánh giá',
+                  icon: Icons.star_rounded,
+                  variant: AppButtonVariant.secondary,
+                  height: 38,
+                  onPressed: onRate,
+                ),
             ],
           ),
         ],

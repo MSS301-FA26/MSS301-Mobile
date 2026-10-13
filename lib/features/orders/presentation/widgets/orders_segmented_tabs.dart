@@ -36,7 +36,7 @@ class OrdersSegmentedTabs extends StatelessWidget {
             onTap: () => onSelected(OrdersTab.upcoming),
           ),
           _TabButton(
-            label: 'Lịch sử đã xem',
+            label: 'Lịch sử đơn',
             count: completedCount,
             selected: selected == OrdersTab.completed,
             onTap: () => onSelected(OrdersTab.completed),

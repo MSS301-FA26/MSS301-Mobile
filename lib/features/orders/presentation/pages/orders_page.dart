@@ -7,6 +7,8 @@ import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
+import '../../data/models/booking_enums.dart';
+import '../../../booking/presentation/widgets/resume_booking_banner.dart';
 import '../providers/orders_provider.dart';
 import '../widgets/order_card.dart';
 import '../widgets/orders_segmented_tabs.dart';
@@ -45,64 +47,95 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
 
     return AppShell(
       currentIndex: 3,
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          OrdersSegmentedTabs(
-            selected: _tab,
-            upcomingCount: upcoming.length,
-            completedCount: completed.length,
-            onSelected: (tab) => setState(() => _tab = tab),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (visible.isEmpty)
-            const _EmptyOrders()
-          else
-            for (final order in visible)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: order.isUpcoming
-                    ? UpcomingOrderCard(
-                        order: order,
-                        onCancel: FeatureFlags.refundPreview
-                            ? () =>
-                                  context.go(AppRoutes.previewRefund(order.id))
-                            : null,
-                        onOpenTicket: () =>
-                            context.go(AppRoutes.ticket(order.id)),
-                      )
-                    : CompletedOrderCard(
-                        order: order,
-                        onBookAgain: () => context.go(
-                          AppRoutes.showtimesForMovie(order.movieId),
-                        ),
-                        onRate: null,
-                      ),
-              ),
-        ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(ordersProvider);
+          await ref.read(ordersProvider.future);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            OrdersSegmentedTabs(
+              selected: _tab,
+              upcomingCount: upcoming.length,
+              completedCount: completed.length,
+              onSelected: (tab) => setState(() => _tab = tab),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (visible.isEmpty)
+              _EmptyOrders(history: _tab == OrdersTab.completed)
+            else
+              for (final order in visible)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: InkWell(
+                    onTap: () => context.go(AppRoutes.ticket(order.id)),
+                    child: order.isUpcoming
+                        ? UpcomingOrderCard(
+                            order: order,
+                            onCancel: FeatureFlags.refundPreview
+                                ? () => context.go(
+                                    AppRoutes.previewRefund(order.id),
+                                  )
+                                : null,
+                            onOpenTicket: () =>
+                                order.status == BookingStatus.paid
+                                ? context.go(AppRoutes.ticket(order.id))
+                                : resumeBooking(context, ref, order.id),
+                          )
+                        : Column(
+                            children: [
+                              CompletedOrderCard(
+                                order: order,
+                                onBookAgain: () => context.go(
+                                  AppRoutes.showtimesForMovie(order.movieId),
+                                ),
+                                onRate: order.status == BookingStatus.used
+                                    ? () => context.push(
+                                        AppRoutes.movieReviews(order.movieId),
+                                      )
+                                    : null,
+                              ),
+                              if (order.status == BookingStatus.used)
+                                TextButton(
+                                  onPressed: () =>
+                                      context.go(AppRoutes.ticket(order.id)),
+                                  child: const Text('Xem vé đã sử dụng'),
+                                ),
+                            ],
+                          ),
+                  ),
+                ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _EmptyOrders extends StatelessWidget {
-  const _EmptyOrders();
+  const _EmptyOrders({required this.history});
+  final bool history;
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 64),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 64),
       child: Column(
         children: [
-          Icon(
+          const Icon(
             Icons.confirmation_number_outlined,
             size: 48,
             color: AppColors.textDisabled,
           ),
-          SizedBox(height: AppSpacing.sm),
-          Text('Chưa có vé sắp chiếu nào', style: AppTextStyles.sectionTitle),
-          SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Text(
+            history ? 'Chưa có lịch sử đơn' : 'Chưa có vé sắp chiếu nào',
+            style: AppTextStyles.sectionTitle,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const Text(
             'Hãy chọn một bộ phim yêu thích và đặt chỗ ngay hôm nay!',
             textAlign: TextAlign.center,
             style: AppTextStyles.caption,
