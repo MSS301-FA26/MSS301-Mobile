@@ -80,7 +80,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   }
 
   Future<void> _avatar() async {
-    final controller = TextEditingController();
+    var avatarUrl = '';
     final form = GlobalKey<FormState>();
     final url = await showDialog<String>(
       context: context,
@@ -89,7 +89,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         content: Form(
           key: form,
           child: TextFormField(
-            controller: controller,
+            onChanged: (value) => avatarUrl = value,
             key: const ValueKey('avatar-url'),
             keyboardType: TextInputType.url,
             decoration: const InputDecoration(
@@ -114,7 +114,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
           FilledButton(
             onPressed: () {
               if (form.currentState!.validate()) {
-                Navigator.pop(context, controller.text.trim());
+                Navigator.pop(context, avatarUrl.trim());
               }
             },
             child: const Text('Cập nhật'),
@@ -122,7 +122,6 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         ],
       ),
     );
-    controller.dispose();
     if (url == null || !mounted) return;
     final saved = await ref.read(profileMutationProvider.notifier).avatar(url);
     if (saved && mounted) await _load();

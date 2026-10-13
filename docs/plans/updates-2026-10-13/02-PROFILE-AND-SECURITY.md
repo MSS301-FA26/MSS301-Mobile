@@ -1,6 +1,6 @@
 # 02 — Hồ sơ, avatar và đổi mật khẩu thật
 
-Cập nhật 13/10/2026 theo BE `9921498`, Mobile `c7e9edd` và thay đổi local Plan 02. Trạng thái: **đã triển khai Mobile, đạt test tự động; chờ QA thật**.
+Cập nhật tiếp 14/10/2026 theo BE `9921498`, Mobile `4958afa` và thay đổi local QA. Trạng thái: **đã triển khai Mobile, đạt test tự động và QA flow chính Android bằng CUSTOMER thật; còn QA iOS/A–B/mạng**.
 
 ## Kết quả triển khai 13/10/2026
 
@@ -15,6 +15,8 @@ Cập nhật 13/10/2026 theo BE `9921498`, Mobile `c7e9edd` và thay đổi loca
 - Analyzer: PASS. Toàn bộ 121 test: PASS, gồm 9 test mới cho Plan 02. Android debug APK: build PASS.
 
 Chi tiết bằng chứng và QA còn lại: [PLAN02-IMPLEMENTATION.md](../plan02-qa-2026-10-13/PLAN02-IMPLEMENTATION.md).
+
+QA tiếp ngày 14/10: sửa lỗi lifecycle khi hủy dialog avatar, thêm test tải/giải mã ảnh HTTP thật. 15 test Plan 02 và toàn bộ 127 test PASS; analyzer/build/cài Android PASS. QA CUSTOMER thật trên emulator đã đạt: lưu hồ sơ/cập nhật Account/restart, avatar URL sai/HTML/PNG, mật khẩu cũ sai/xác nhận không khớp/đổi thật/đăng nhập bằng mật khẩu mới, logout và đăng nhập lại. Đã khôi phục họ tên, điện thoại, năm sinh, avatar và mật khẩu ban đầu. Payment V8 đã chạy với xác nhận của người dùng; identity/gateway/payment mới healthy. Toàn bộ stack vẫn bị chặn bởi schema catalog V14 và recommendation thiếu source. Xem [QA-RESULTS.md](../plan02-qa-2026-10-14/QA-RESULTS.md).
 
 Các mục dưới đây là phạm vi và tiêu chí gốc để đối chiếu. Phần mô tả mock trong hiện trạng là **trước triển khai**.
 

@@ -311,6 +311,30 @@ void main() {
     );
   });
 
+  testWidgets(
+    'cancelling avatar dialog keeps existing avatar and sends no update',
+    (tester) async {
+      appRouter.go(AppRoutes.profile);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const CinePremierApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('profile-avatar')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('avatar-url')),
+        'https://example.test/image.png',
+      );
+      await tester.tap(find.text('Hủy'));
+      await tester.pumpAndSettle();
+      expect(backend.calls.where((call) => call.method == 'POST'), isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('profile save error keeps entered fields and never shows saved', (
     tester,
   ) async {
