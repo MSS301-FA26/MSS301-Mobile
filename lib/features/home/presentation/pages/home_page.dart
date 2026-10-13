@@ -4,17 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../booking/presentation/widgets/resume_booking_banner.dart';
 import '../../../movie/presentation/models/movie.dart';
-import '../../../movie/presentation/providers/movies_provider.dart';
+import '../../../movie/data/models/catalog_enums.dart';
 import '../../../movie/presentation/widgets/trailer_preview_dialog.dart';
-import '../widgets/coming_soon_card.dart';
-import '../widgets/genre_selector.dart';
-import '../widgets/hero_card.dart';
-import '../widgets/now_showing_card.dart';
+import '../providers/home_preview_provider.dart';
+import '../providers/poster_ambient_color.dart';
+import '../widgets/movie_coverflow.dart';
+import '../widgets/promotional_banner_carousel.dart';
 import '../widgets/popbot_banner.dart';
 import '../widgets/quick_actions.dart';
 
@@ -26,162 +24,169 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  final PageController _heroController = PageController();
-  int _activeHero = 0;
-  String _genre = 'Tất cả';
+  MovieStatus _category = MovieStatus.nowShowing;
 
-  @override
-  void dispose() {
-    _heroController.dispose();
-    super.dispose();
+  bool _previewOnly() {
+    if (!ref.read(homeUiPreviewProvider)) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Dữ liệu mẫu chỉ dùng để xem giao diện Trang chủ.'),
+      ),
+    );
+    return true;
   }
 
-  void _openMovie(Movie movie) =>
-      context.pushNamed('movieDetail', pathParameters: {'id': '${movie.id}'});
+  void _openMovie(Movie movie) {
+    if (_previewOnly()) return;
+    context.pushNamed('movieDetail', pathParameters: {'id': '${movie.id}'});
+  }
 
-  void _bookMovie(Movie movie) =>
-      context.go(AppRoutes.showtimesForMovie(movie.id));
-
-  bool _matchesGenre(Movie movie) {
-    return _genre == 'Tất cả' || movie.genreTags.contains(_genre);
+  void _bookMovie(Movie movie) {
+    if (_previewOnly()) return;
+    context.go(AppRoutes.showtimesForMovie(movie.id));
   }
 
   @override
   Widget build(BuildContext context) {
-    final moviesState = ref.watch(moviesProvider);
-    if (moviesState.isLoading) {
-      return const AppShell(
-        currentIndex: 0,
-        body: RepositoryStatePane.loading(),
-      );
-    }
-    if (moviesState.hasError) {
-      return AppShell(
-        currentIndex: 0,
-        body: RepositoryStatePane.error(
-          onRetry: () => ref.invalidate(moviesProvider),
-        ),
-      );
-    }
-    final movies = moviesState.requireValue;
-    if (movies.isEmpty) {
-      return const AppShell(
-        currentIndex: 0,
-        body: RepositoryStatePane.empty(
-          title: 'Chưa có phim',
-          message: 'Danh sách phim sẽ được cập nhật sớm.',
-        ),
-      );
-    }
-    final nowShowing = movies
-        .where((movie) => movie.isNowShowing && _matchesGenre(movie))
-        .toList();
-    final comingSoon = movies.where((movie) => movie.isComingSoon).toList();
-    final heroes = movies.take(3).toList(growable: false);
-
+    final movies = ref.watch(homeCategoryMoviesProvider(_category));
+    final preview = ref.watch(homeUiPreviewProvider);
     return AppShell(
       currentIndex: 0,
       body: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const PromotionalBannerCarousel(),
+            if (preview)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Text(
+                  'Trang chủ · Dữ liệu mẫu',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 10),
+                ),
+              ),
             const ResumeBookingBanner(),
-            const SizedBox(height: AppSpacing.xxs),
-            SizedBox(
-              height: AppSpacing.heroHeight,
-              child: PageView.builder(
-                controller: _heroController,
-                itemCount: heroes.length,
-                onPageChanged: (index) => setState(() => _activeHero = index),
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: 8,
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      for (final status in [
+                        MovieStatus.nowShowing,
+                        MovieStatus.upcoming,
+                      ])
+                        Expanded(
+                          child: Semantics(
+                            selected: _category == status,
+                            child: TextButton(
+                              key: ValueKey(
+                                'home-category-${status.wireValue}',
+                              ),
+                              onPressed: () =>
+                                  setState(() => _category = status),
+                              child: AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 200),
+                                style: AppTextStyles.cardTitle.copyWith(
+                                  color: _category == status
+                                      ? AppColors.text
+                                      : AppColors.textMuted,
+                                ),
+                                child: Text(
+                                  status == MovieStatus.nowShowing
+                                      ? 'Đang chiếu'
+                                      : 'Sắp chiếu',
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  child: HeroCard(
-                    movie: heroes[index],
-                    activeIndex: _activeHero,
-                    count: heroes.length,
-                    onOpen: () => _openMovie(heroes[index]),
-                    onBook: () => _bookMovie(heroes[index]),
-                    onTrailer: () => showDialog<void>(
-                      context: context,
-                      builder: (context) =>
-                          TrailerPreviewDialog(movie: heroes[index]),
-                    ),
-                    onDot: (page) => _heroController.animateToPage(
-                      page,
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOut,
-                    ),
+                  Stack(
+                    children: [
+                      Container(height: 1, color: AppColors.border),
+                      AnimatedAlign(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeInOut,
+                        alignment: _category == MovieStatus.nowShowing
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: FractionallySizedBox(
+                          widthFactor: 0.5,
+                          child: Container(height: 2, color: AppColors.gold),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ],
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
+            movies.when(
+              loading: () => const SizedBox(
+                height: 320,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+              error: (_, _) => SizedBox(
+                height: 280,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.cloud_off_outlined,
+                      color: AppColors.textMuted,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Không thể tải danh sách phim.',
+                      style: AppTextStyles.caption,
+                    ),
+                    TextButton.icon(
+                      onPressed: () =>
+                          ref.invalidate(homeCategoryMoviesProvider(_category)),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              ),
+              data: (items) => items.isEmpty
+                  ? SizedBox(
+                      height: 280,
+                      child: Center(
+                        child: Text(
+                          _category == MovieStatus.nowShowing
+                              ? 'Chưa có phim đang chiếu'
+                              : 'Chưa có phim sắp chiếu',
+                          style: AppTextStyles.caption,
+                        ),
+                      ),
+                    )
+                  : MovieCoverflow(
+                      key: ValueKey('showcase-${_category.wireValue}'),
+                      movies: items,
+                      colorLoader: ref.watch(posterAmbientLoaderProvider),
+                      onOpen: _openMovie,
+                      onBook: _bookMovie,
+                      onTrailer: (movie) => showDialog<void>(
+                        context: context,
+                        builder: (_) => TrailerPreviewDialog(movie: movie),
+                      ),
+                    ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Divider(height: 28),
+            ),
             const QuickActions(),
-            const SizedBox(height: AppSpacing.xl),
-            AppSectionHeader(
-              title: 'Phim đang chiếu',
-              action: 'Xem tất cả',
-              onAction: () => context.go(AppRoutes.discover),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              height: 338,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                itemCount: nowShowing.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(width: AppSpacing.sm),
-                itemBuilder: (context, index) => NowShowingCard(
-                  movie: nowShowing[index],
-                  onOpen: () => _openMovie(nowShowing[index]),
-                  onBook: () => _bookMovie(nowShowing[index]),
-                ),
-              ),
-            ),
             const SizedBox(height: AppSpacing.xl),
             const PopBotBanner(onOpen: null),
             const SizedBox(height: AppSpacing.xl),
-            const AppSectionHeader(
-              title: 'Thể loại thịnh hành',
-              accent: AppColors.lavender,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            GenreSelector(
-              selectedGenre: _genre,
-              onSelected: (genre) => setState(() => _genre = genre),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppSectionHeader(
-              title: 'Phim sắp chiếu VIP',
-              action: 'Xem lịch',
-              onAction: () => context.go(AppRoutes.showtimes),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(left: 30, right: 16, bottom: 12),
-              child: Text(
-                'Lưu trước thời khắc khởi chiếu và đặt chỗ tiên phong',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-              ),
-            ),
-            for (final movie in comingSoon)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  0,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                ),
-                child: ComingSoonCard(
-                  movie: movie,
-                  reminded: false,
-                  onOpen: () => _openMovie(movie),
-                  onReminder: null,
-                ),
-              ),
-            const SizedBox(height: AppSpacing.md),
           ],
         ),
       ),

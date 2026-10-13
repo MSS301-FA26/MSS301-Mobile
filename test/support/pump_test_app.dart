@@ -6,6 +6,8 @@ import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/auth/application/auth_session.dart';
 import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
+import 'package:mss301_mobile/features/home/data/home_banner_repository.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/poster_ambient_color.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_providers.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_repository.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/mock_booking_repository.dart';
@@ -39,6 +41,10 @@ Future<ProviderContainer> pumpTestApp(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        homeBannersProvider.overrideWith((ref) async => const []),
+        posterAmbientLoaderProvider.overrideWithValue(
+          (_) async => const Color(0xFF232631),
+        ),
         bookingCheckpointStoreProvider.overrideWithValue(_MemoryCheckpoints()),
         catalogRepositoryProvider.overrideWith(
           (ref) => ref.watch(mockCatalogRepositoryProvider),
