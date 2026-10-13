@@ -13,15 +13,77 @@ import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../orders/data/models/booking_enums.dart';
 import '../../application/booking_completion_controller.dart';
+import '../../application/ticket_export_service.dart';
+import '../../../auth/application/auth_session.dart';
+import '../../../orders/presentation/providers/orders_provider.dart';
 import '../widgets/resume_booking_banner.dart';
 
-class TicketPage extends ConsumerWidget {
+class TicketPage extends ConsumerStatefulWidget {
   const TicketPage({super.key, required this.bookingId});
 
   final int bookingId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TicketPage> createState() => _TicketPageState();
+}
+
+class _TicketPageState extends ConsumerState<TicketPage> {
+  bool _exporting = false;
+  int get bookingId => widget.bookingId;
+
+  Future<void> _export(bool share, Rect origin) async {
+    if (_exporting) return;
+    final userId = ref.read(authSessionProvider).session?.user.id;
+    setState(() => _exporting = true);
+    try {
+      final fresh = await ref.refresh(ticketBookingProvider(bookingId).future);
+      if (!mounted ||
+          userId != ref.read(authSessionProvider).session?.user.id) {
+        return;
+      }
+      if (fresh == null) throw StateError('Không thể tải vé.');
+      final document = await ref
+          .read(ticketDocumentBuilderProvider)
+          .build(fresh);
+      if (!mounted ||
+          userId != ref.read(authSessionProvider).session?.user.id) {
+        return;
+      }
+      final exporter = ref.read(ticketExportServiceProvider);
+      final result = share
+          ? await exporter.share(document, origin)
+          : await exporter.save(document);
+      if (!mounted ||
+          userId != ref.read(authSessionProvider).session?.user.id) {
+        return;
+      }
+      final message = switch (result) {
+        TicketExportResult.saved => 'Đã lưu vé PDF.',
+        TicketExportResult.shared => 'Đã chia sẻ vé.',
+        TicketExportResult.unavailable => 'Đã mở bảng chia sẻ.',
+        TicketExportResult.cancelled => null,
+      };
+      if (message != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (_) {
+      if (mounted && userId == ref.read(authSessionProvider).session?.user.id) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Không thể lưu/chia sẻ vé. Vui lòng tải lại đơn và thử lại.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final bookingState = ref.watch(ticketBookingProvider(bookingId));
     return AppShell(
       currentIndex: 3,
@@ -102,7 +164,7 @@ class TicketPage extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       if (booking.status == BookingStatus.paid &&
-                          booking.qrCode?.isNotEmpty == true)
+                          booking.qrCode?.trim().isNotEmpty == true)
                         QrImageView(
                           key: const ValueKey('ticket-qr'),
                           data: booking.qrCode!,
@@ -115,6 +177,8 @@ class TicketPage extends ConsumerWidget {
                         Text(
                           booking.status == BookingStatus.used
                               ? 'Vé đã được sử dụng'
+                              : booking.status == BookingStatus.paid
+                              ? 'Đã thanh toán. Mã QR chưa được cập nhật; vui lòng tải lại đơn.'
                               : 'Đơn chưa có vé có thể sử dụng.',
                         ),
                       const SizedBox(height: AppSpacing.sm),
@@ -155,11 +219,14 @@ class TicketPage extends ConsumerWidget {
                       booking.tickets
                           .where((ticket) => ticket.ticketType == type)
                           .map(
-                            (ticket) => booking.seats
-                                .firstWhere(
-                                  (seat) => seat.seatId == ticket.seatId,
-                                )
-                                .seatLabel,
+                            (ticket) =>
+                                booking.seats
+                                    .where(
+                                      (seat) => seat.seatId == ticket.seatId,
+                                    )
+                                    .firstOrNull
+                                    ?.seatLabel ??
+                                'Ghế ${ticket.seatId}',
                           )
                           .join(', '),
                     ),
@@ -186,18 +253,68 @@ class TicketPage extends ConsumerWidget {
                     label: 'Tiếp tục đặt vé',
                     onPressed: () => resumeBooking(context, ref, booking.id),
                   ),
+                if (booking.status == BookingStatus.used ||
+                    (booking.status == BookingStatus.paid &&
+                        booking.qrCode?.trim().isNotEmpty == true)) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      AppButton(
+                        key: const ValueKey('ticket-save'),
+                        label: _exporting ? 'Đang xử lý…' : 'Lưu vé PDF',
+                        icon: Icons.download_rounded,
+                        variant: AppButtonVariant.secondary,
+                        onPressed: _exporting
+                            ? null
+                            : () => _export(false, Rect.zero),
+                      ),
+                      Builder(
+                        builder: (context) => AppButton(
+                          key: const ValueKey('ticket-share'),
+                          label: 'Chia sẻ vé',
+                          icon: Icons.share_rounded,
+                          variant: AppButtonVariant.secondary,
+                          onPressed: _exporting
+                              ? null
+                              : () {
+                                  final box =
+                                      context.findRenderObject() as RenderBox;
+                                  _export(
+                                    true,
+                                    box.localToGlobal(Offset.zero) & box.size,
+                                  );
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (booking.status == BookingStatus.used)
+                  TextButton(
+                    onPressed: () =>
+                        context.push(AppRoutes.movieReviews(booking.movieId)),
+                    child: const Text('Xem đánh giá phim'),
+                  ),
                 AppButton(
                   label: 'Tải lại đơn',
                   variant: AppButtonVariant.secondary,
-                  onPressed: () =>
-                      ref.invalidate(ticketBookingProvider(bookingId)),
+                  onPressed: _exporting
+                      ? null
+                      : () {
+                          ref.invalidate(ticketBookingProvider(bookingId));
+                          ref.invalidate(ordersProvider);
+                        },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   booking.status == BookingStatus.used
                       ? 'Vé đã được soát và không thể sử dụng lại.'
                       : booking.status == BookingStatus.paid
-                      ? 'Đưa mã QR này tại cổng soát vé. Không chia sẻ mã vé cho người khác.'
+                      ? booking.qrCode?.trim().isNotEmpty == true
+                            ? 'Đưa mã QR này tại cổng soát vé. Chỉ chia sẻ với người sử dụng vé.'
+                            : 'Vui lòng tải lại đơn để lấy mã QR.'
                       : 'Vé chỉ được phát hành sau khi đơn được xác nhận thanh toán.',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.caption,

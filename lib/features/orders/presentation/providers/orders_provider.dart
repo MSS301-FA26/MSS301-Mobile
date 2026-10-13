@@ -7,15 +7,23 @@ import '../../data/repositories/remote_booking_repository.dart';
 import '../models/ticket_order.dart';
 
 final ordersProvider = FutureProvider<List<TicketOrder>>((ref) async {
-  ref.watch(authSessionProvider.select((auth) => auth.session?.user.id));
+  final userId = ref.watch(
+    authSessionProvider.select((auth) => auth.session?.user.id),
+  );
+  if (userId == null) return [];
   final bookingRepository = ref.watch(bookingRepositoryProvider);
   final bookings = await bookingRepository.getBookings(
-    bookingRepository is RemoteBookingRepository ? 0 : 1,
+    bookingRepository is RemoteBookingRepository ? userId : 1,
   );
   final movies = bookingRepository is RemoteBookingRepository
       ? const []
       : await ref.watch(mockCatalogRepositoryProvider).getMovies();
   return bookings
+      .where(
+        (booking) =>
+            bookingRepository is! RemoteBookingRepository ||
+            booking.userId == userId,
+      )
       .map((booking) {
         final movie = movies
             .where((item) => item.id == booking.movieId)
@@ -23,7 +31,7 @@ final ordersProvider = FutureProvider<List<TicketOrder>>((ref) async {
         return mapBookingToOrder(
           booking,
           moviePoster: movie?.posterUrl ?? movie?.avatarUrl ?? '',
-          ageRating: movie?.ageRating ?? 'P',
+          ageRating: movie?.ageRating ?? '',
         );
       })
       .toList(growable: false);

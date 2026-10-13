@@ -733,9 +733,15 @@ final bookingCompletionProvider =
       BookingCompletionController.new,
     );
 
-final ticketBookingProvider = FutureProvider.family<BookingDto?, int>((
-  ref,
-  id,
-) {
-  return ref.watch(seatHoldRepositoryProvider).getBooking(id);
-});
+final ticketBookingProvider = FutureProvider.autoDispose
+    .family<BookingDto?, int>((ref, id) async {
+      final userId = ref.watch(
+        authSessionProvider.select((auth) => auth.session?.user.id),
+      );
+      if (userId == null) return null;
+      final repository = ref.watch(seatHoldRepositoryProvider);
+      final booking = await repository.getBooking(id);
+      return repository.canEnterMockCheckout || booking.userId == userId
+          ? booking
+          : null;
+    });

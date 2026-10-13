@@ -16,7 +16,7 @@ class RemoteBookingRepository implements BookingRepository {
       final response = await _request(
         () => _dio.get(
           '/api/v1/bookings',
-          queryParameters: {'page': page, 'size': 20},
+          queryParameters: {'page': page, 'size': 20, 'sort': 'createdAt,desc'},
         ),
       );
       final envelope = _data(response);
@@ -35,7 +35,11 @@ class RemoteBookingRepository implements BookingRepository {
       final totalPages = envelope['totalPages'];
       if (data.isEmpty ||
           (totalPages is num ? page + 1 >= totalPages : data.length < 20)) {
-        return bookings;
+        final unique = {for (final booking in bookings) booking.id: booking}
+            .values
+            .toList();
+        unique.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return unique;
       }
       page++;
     }

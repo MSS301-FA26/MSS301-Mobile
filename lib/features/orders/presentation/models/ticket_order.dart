@@ -49,7 +49,7 @@ class TicketOrder {
   String get statusLabel => switch (status) {
     BookingStatus.holding => 'Đang giữ ghế',
     BookingStatus.pendingPayment => 'Chờ thanh toán',
-    BookingStatus.paid => 'Sắp chiếu',
+    BookingStatus.paid => 'Đã thanh toán',
     BookingStatus.used => 'Đã xem',
     BookingStatus.cancelled => 'Đã hủy',
     BookingStatus.expired => 'Đã hết hạn',
@@ -97,7 +97,7 @@ TicketOrder mapBookingToOrder(
     moviePoster:
         booking.moviePosterSnapshot ?? booking.posterUrl ?? moviePoster,
     ageRating: ageRating,
-    format: '2D • Phụ đề',
+    format: '',
     cinemaLocation: '$cinema • $room',
     roomName: room,
     showtimeAt: booking.showtimeStartSnapshot ?? booking.showtimeStart,

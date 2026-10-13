@@ -64,7 +64,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
             ),
             const SizedBox(height: AppSpacing.md),
             if (visible.isEmpty)
-              const _EmptyOrders()
+              _EmptyOrders(history: _tab == OrdersTab.completed)
             else
               for (final order in visible)
                 Padding(
@@ -91,7 +91,11 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
                                 onBookAgain: () => context.go(
                                   AppRoutes.showtimesForMovie(order.movieId),
                                 ),
-                                onRate: null,
+                                onRate: order.status == BookingStatus.used
+                                    ? () => context.push(
+                                        AppRoutes.movieReviews(order.movieId),
+                                      )
+                                    : null,
                               ),
                               if (order.status == BookingStatus.used)
                                 TextButton(
@@ -111,23 +115,27 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
 }
 
 class _EmptyOrders extends StatelessWidget {
-  const _EmptyOrders();
+  const _EmptyOrders({required this.history});
+  final bool history;
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 64),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 64),
       child: Column(
         children: [
-          Icon(
+          const Icon(
             Icons.confirmation_number_outlined,
             size: 48,
             color: AppColors.textDisabled,
           ),
-          SizedBox(height: AppSpacing.sm),
-          Text('Chưa có vé sắp chiếu nào', style: AppTextStyles.sectionTitle),
-          SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Text(
+            history ? 'Chưa có lịch sử đơn' : 'Chưa có vé sắp chiếu nào',
+            style: AppTextStyles.sectionTitle,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const Text(
             'Hãy chọn một bộ phim yêu thích và đặt chỗ ngay hôm nay!',
             textAlign: TextAlign.center,
             style: AppTextStyles.caption,

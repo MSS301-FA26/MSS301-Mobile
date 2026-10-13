@@ -28,6 +28,11 @@ abstract final class AppRoutes {
   static const paymentPattern = '/payment/:paymentId';
   static const ticketPattern = '/ticket/:bookingId';
 
+  static String movieReviews(int movieId) => Uri(
+    path: movieDetail(movieId),
+    queryParameters: {'section': 'reviews'},
+  ).toString();
+
   static String movieDetail(int movieId) => '/movie/$movieId';
 
   static String showtimesForMovie(int movieId) =>
