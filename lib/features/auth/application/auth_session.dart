@@ -155,6 +155,22 @@ class AuthSessionController extends Notifier<AuthState> {
     }
   }
 
+  void updateUserProfile(AuthUser user) {
+    final session = state.session;
+    if (session == null || session.user.id != user.id) return;
+    state = state.copyWith(
+      session: AuthSession(
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+        tokenType: session.tokenType,
+        expiresInMs: session.expiresInMs,
+        user: user,
+        roles: session.roles,
+      ),
+      clearMessage: true,
+    );
+  }
+
   Future<bool> logout() async {
     try {
       await ref.read(authRepositoryProvider).logout();

@@ -41,7 +41,7 @@ class WalletTile extends StatelessWidget {
                 const Text('Số dư ví CineWallet', style: AppTextStyles.caption),
                 const SizedBox(height: 3),
                 Text(
-                  user.walletBalance.format(),
+                  user.walletBalance?.format() ?? 'Chưa tải được số dư',
                   style: const TextStyle(
                     color: AppColors.text,
                     fontSize: 16,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../models/account_summary.dart';
+import 'profile_avatar.dart';
 
 class AccountProfileCard extends StatelessWidget {
   const AccountProfileCard({super.key, required this.user});
@@ -31,14 +32,16 @@ class AccountProfileCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.gold, width: 2),
                 ),
-                child: Text(
-                  user.initials,
-                  style: const TextStyle(
-                    color: AppColors.gold,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+                child: user.avatarUrl?.isNotEmpty == true
+                    ? ProfileAvatar(url: user.avatarUrl)
+                    : Text(
+                        user.initials,
+                        style: const TextStyle(
+                          color: AppColors.gold,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
               ),
               const Positioned(
                 right: -2,

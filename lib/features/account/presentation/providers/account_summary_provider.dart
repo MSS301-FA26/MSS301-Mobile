@@ -5,14 +5,36 @@ import '../../../../core/network/api_exception.dart';
 import '../../data/models/account_dto.dart';
 import '../../data/repositories/account_providers.dart';
 import '../models/account_summary.dart';
+import '../../application/profile_controller.dart';
+import '../../../auth/application/auth_session.dart';
 
 final accountSummaryProvider = FutureProvider<AccountSummary>((ref) async {
-  final profileRepository = ref.watch(profileRepositoryProvider);
+  final userId = ref.watch(
+    authSessionProvider.select((auth) => auth.session?.user.id),
+  );
+  if (userId == null) {
+    throw const ApiException(
+      type: ApiErrorType.unauthorized,
+      message: 'Vui lòng đăng nhập.',
+    );
+  }
+  final profile = await ref.watch(currentProfileProvider.future);
   final walletRepository = ref.watch(walletRepositoryProvider);
   final loyaltyRepository = ref.watch(loyaltyRepositoryProvider);
-  final profile = await profileRepository.getProfile(DemoIds.user);
-  final wallet = await walletRepository.getWallet(DemoIds.user);
-  final loyalty = await loyaltyRepository.getLoyalty(DemoIds.user);
+  WalletDto? wallet;
+  LoyaltyDto? loyalty;
+  await Future.wait([
+    Future<void>(() async {
+      try {
+        wallet = await walletRepository.getWallet(userId);
+      } catch (_) {}
+    }),
+    Future<void>(() async {
+      try {
+        loyalty = await loyaltyRepository.getLoyalty(userId);
+      } catch (_) {}
+    }),
+  ]);
   return mapAccountSummary(profile, wallet, loyalty);
 });
 

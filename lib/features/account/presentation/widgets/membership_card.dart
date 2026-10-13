@@ -102,7 +102,9 @@ class MembershipCard extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.bottomLeft,
                   child: Text(
-                    _formatNumber(user.points),
+                    user.points == null
+                        ? 'Chưa tải được'
+                        : _formatNumber(user.points!),
                     style: const TextStyle(
                       color: AppColors.gold,
                       fontSize: 32,
@@ -117,7 +119,7 @@ class MembershipCard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 3),
                   child: Text(
-                    'pts (~${_formatNumber(user.points * 10)}đ)',
+                    'điểm',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

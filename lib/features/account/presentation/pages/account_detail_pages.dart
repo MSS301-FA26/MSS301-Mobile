@@ -12,6 +12,11 @@ import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../data/models/account_dto.dart';
 import '../../data/repositories/account_providers.dart';
 import '../providers/account_summary_provider.dart';
+import '../../application/profile_controller.dart';
+import '../../../auth/application/auth_session.dart';
+import '../widgets/profile_avatar.dart';
+import '../../../movie/data/repositories/catalog_providers.dart';
+import '../../../../core/time/vietnam_time.dart';
 
 class ProfileEditPage extends ConsumerStatefulWidget {
   const ProfileEditPage({super.key});
@@ -25,9 +30,10 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _birthYear = TextEditingController();
-  var _loaded = false;
-  var _saving = false;
-  String? _message;
+  UserProfileDto? _profile;
+  String? _loadError;
+  bool _requested = false;
+  int? _editingUser;
 
   @override
   void dispose() {
@@ -37,109 +43,198 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     super.dispose();
   }
 
-  Future<void> _load() async {
-    final profile = await ref
-        .read(profileRepositoryProvider)
-        .getProfile(DemoIds.user);
-    if (!mounted) return;
-    _name.text = profile.fullName;
-    _phone.text = profile.phone ?? '';
-    _birthYear.text = profile.birthYear?.toString() ?? '';
-    setState(() => _loaded = true);
+  Future<void> _load({bool retry = false}) async {
+    final userId = ref.read(authSessionProvider).session?.user.id;
+    if (retry) ref.invalidate(currentProfileProvider);
+    try {
+      final profile = await ref.read(currentProfileProvider.future);
+      if (!mounted || userId != ref.read(authSessionProvider).session?.user.id) {
+        return;
+      }
+      setState(() {
+        _profile = profile;
+        _loadError = null;
+        _name.text = profile.fullName;
+        _phone.text = profile.phone ?? '';
+        _birthYear.text = profile.birthYear?.toString() ?? '';
+      });
+    } catch (error) {
+      if (mounted && userId == ref.read(authSessionProvider).session?.user.id) {
+        setState(() => _loadError = profileErrorMessage(error));
+      }
+    }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _saving = true;
-      _message = null;
-    });
-    try {
-      await ref
-          .read(profileRepositoryProvider)
-          .updateProfile(
-            DemoIds.user,
-            UserProfileUpdateDto(
-              fullName: _name.text.trim(),
-              phone: _phone.text.trim(),
-              birthYear: int.tryParse(_birthYear.text.trim()),
+    final saved = await ref
+        .read(profileMutationProvider.notifier)
+        .save(
+          UserProfileUpdateDto(
+            fullName: _name.text.trim(),
+            phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+            birthYear: int.tryParse(_birthYear.text.trim()),
+          ),
+        );
+    if (saved && mounted) await _load();
+  }
+
+  Future<void> _avatar() async {
+    final controller = TextEditingController();
+    final form = GlobalKey<FormState>();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đổi ảnh đại diện'),
+        content: Form(
+          key: form,
+          child: TextFormField(
+            controller: controller,
+            key: const ValueKey('avatar-url'),
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'URL ảnh',
+              hintText: 'https://...',
             ),
-          );
-      ref.invalidate(accountSummaryProvider);
-      if (mounted) setState(() => _message = 'Đã lưu hồ sơ.');
-    } catch (error) {
-      if (mounted) setState(() => _message = error.toString());
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+            validator: (value) {
+              final uri = Uri.tryParse(value?.trim() ?? '');
+              return uri == null ||
+                      uri.host.isEmpty ||
+                      !['http', 'https'].contains(uri.scheme)
+                  ? 'Nhập URL ảnh http/https hợp lệ.'
+                  : null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (form.currentState!.validate()) {
+                Navigator.pop(context, controller.text.trim());
+              }
+            },
+            child: const Text('Cập nhật'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (url == null || !mounted) return;
+    final saved = await ref.read(profileMutationProvider.notifier).avatar(url);
+    if (saved && mounted) await _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) {
+    final userId = ref.watch(
+      authSessionProvider.select((auth) => auth.session?.user.id),
+    );
+    ref.watch(currentProfileProvider);
+    final mutation = ref.watch(profileMutationProvider);
+    if (_editingUser != userId) {
+      _editingUser = userId;
+      _requested = false;
+      _profile = null;
+      _loadError = null;
+      _name.clear();
+      _phone.clear();
+      _birthYear.clear();
+    }
+    if (!_requested) {
+      _requested = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_loaded) _load();
+        if (mounted) _load();
       });
     }
     return _AccountScaffold(
       title: 'Hồ sơ cá nhân',
-      child: !_loaded
-          ? const Center(child: CircularProgressIndicator())
+      child: _profile == null
+          ? _loadError != null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(_loadError!, textAlign: TextAlign.center),
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _loadError = null);
+                          _load(retry: true);
+                        },
+                        child: const Text('Thử lại'),
+                      ),
+                    ],
+                  )
+                : const Center(child: CircularProgressIndicator())
           : Form(
               key: _formKey,
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 children: [
-                  const CircleAvatar(
-                    radius: 42,
-                    child: Icon(Icons.person_rounded, size: 44),
+                  Center(
+                    child: ProfileAvatar(url: _profile!.avatarUrl, radius: 42),
+                  ),
+                  TextButton(
+                    key: const ValueKey('profile-avatar'),
+                    onPressed: mutation.busy ? null : _avatar,
+                    child: const Text('Đổi ảnh đại diện'),
+                  ),
+                  Text(
+                    _profile!.email,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.caption,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   TextFormField(
+                    key: const ValueKey('profile-name'),
                     controller: _name,
+                    readOnly: mutation.busy,
                     decoration: const InputDecoration(labelText: 'Họ và tên'),
-                    validator: (value) => (value?.trim().length ?? 0) < 2
-                        ? 'Họ tên không hợp lệ'
-                        : null,
+                    validator: (v) => profileNameError(v ?? ''),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   TextFormField(
+                    key: const ValueKey('profile-phone'),
                     controller: _phone,
+                    readOnly: mutation.busy,
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
                       labelText: 'Số điện thoại',
                     ),
-                    validator: (value) {
-                      final phone = value?.trim() ?? '';
-                      return phone.isNotEmpty && phone.length < 9
-                          ? 'Số điện thoại không hợp lệ'
-                          : null;
-                    },
+                    validator: (v) => profilePhoneError(v ?? ''),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   TextFormField(
+                    key: const ValueKey('profile-birth-year'),
                     controller: _birthYear,
+                    readOnly: mutation.busy,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'Năm sinh'),
-                    validator: (value) {
-                      final year = int.tryParse(value ?? '');
-                      return year != null && (year < 1900 || year > 2020)
-                          ? 'Năm sinh không hợp lệ'
-                          : null;
-                    },
-                  ),
-                  if (_message != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      _message!,
-                      style: const TextStyle(color: AppColors.gold),
+                    validator: (v) => profileBirthYearError(
+                      v ?? '',
+                      vietnamCalendar(ref.read(appClockProvider).now()).year,
                     ),
-                  ],
+                  ),
+                  if (_loadError != null)
+                    Text(_loadError!, style: AppTextStyles.caption),
+                  if (mutation.message != null &&
+                      mutation.operation != 'password')
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                      ),
+                      child: Text(
+                        mutation.message!,
+                        key: const ValueKey('profile-message'),
+                      ),
+                    ),
                   const SizedBox(height: AppSpacing.lg),
                   AppButton(
                     key: const ValueKey('profile-save'),
-                    label: _saving ? 'Đang lưu…' : 'Lưu thay đổi',
-                    onPressed: _saving ? null : _save,
+                    label: mutation.busy ? 'Đang cập nhật…' : 'Lưu thay đổi',
+                    onPressed: mutation.busy ? null : _save,
                   ),
                 ],
               ),
@@ -464,60 +559,110 @@ class _PointsPageState extends ConsumerState<PointsPage> {
   }
 }
 
-class SecurityPage extends StatefulWidget {
+class SecurityPage extends ConsumerStatefulWidget {
   const SecurityPage({super.key});
-
   @override
-  State<SecurityPage> createState() => _SecurityPageState();
+  ConsumerState<SecurityPage> createState() => _SecurityPageState();
 }
 
-class _SecurityPageState extends State<SecurityPage> {
+class _SecurityPageState extends ConsumerState<SecurityPage> {
+  final _form = GlobalKey<FormState>();
   final _current = TextEditingController();
   final _next = TextEditingController();
-  String? _message;
-
+  final _confirm = TextEditingController();
+  int? _userId;
   @override
   void dispose() {
     _current.dispose();
     _next.dispose();
+    _confirm.dispose();
     super.dispose();
   }
 
+  Future<void> _change() async {
+    if (!_form.currentState!.validate()) return;
+    final saved = await ref
+        .read(profileMutationProvider.notifier)
+        .password(_current.text, _next.text, _confirm.text);
+    if (saved && mounted) {
+      _current.clear();
+      _next.clear();
+      _confirm.clear();
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => _AccountScaffold(
-    title: 'Bảo mật',
-    child: ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      children: [
-        TextField(
-          controller: _current,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+  Widget build(BuildContext context) {
+    final id = ref.watch(
+      authSessionProvider.select((auth) => auth.session?.user.id),
+    );
+    if (_userId != id) {
+      _userId = id;
+      _current.clear();
+      _next.clear();
+      _confirm.clear();
+    }
+    final mutation = ref.watch(profileMutationProvider);
+    return _AccountScaffold(
+      title: 'Bảo mật',
+      child: Form(
+        key: _form,
+        child: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            TextFormField(
+              key: const ValueKey('password-current'),
+              controller: _current,
+              obscureText: true,
+              readOnly: mutation.busy,
+              decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+              validator: (v) => v == null || v.isEmpty
+                  ? 'Vui lòng nhập mật khẩu hiện tại.'
+                  : null,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextFormField(
+              key: const ValueKey('password-new'),
+              controller: _next,
+              obscureText: true,
+              readOnly: mutation.busy,
+              decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
+              validator: (v) => v == _current.text
+                  ? 'Mật khẩu mới phải khác mật khẩu hiện tại.'
+                  : newPasswordError(v ?? ''),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextFormField(
+              key: const ValueKey('password-confirm'),
+              controller: _confirm,
+              obscureText: true,
+              readOnly: mutation.busy,
+              decoration: const InputDecoration(
+                labelText: 'Xác nhận mật khẩu mới',
+              ),
+              validator: (v) => v != _next.text || v == null || v.isEmpty
+                  ? 'Xác nhận mật khẩu chưa khớp.'
+                  : null,
+            ),
+            if (mutation.message != null && mutation.operation == 'password')
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Text(
+                  mutation.message!,
+                  key: const ValueKey('password-message'),
+                ),
+              ),
+            const SizedBox(height: AppSpacing.md),
+            AppButton(
+              key: const ValueKey('password-save'),
+              label: mutation.busy ? 'Đang cập nhật…' : 'Đổi mật khẩu',
+              onPressed: mutation.busy ? null : _change,
+            ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        TextField(
-          controller: _next,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
-        ),
-        if (_message != null) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(_message!, style: const TextStyle(color: AppColors.gold)),
-        ],
-        const SizedBox(height: AppSpacing.md),
-        AppButton(
-          label: 'Đổi mật khẩu',
-          onPressed: () {
-            setState(() {
-              _message = _current.text.length >= 6 && _next.text.length >= 8
-                  ? 'Đổi mật khẩu mock thành công.'
-                  : 'Mật khẩu hiện tại tối thiểu 6 và mật khẩu mới tối thiểu 8 ký tự.';
-            });
-          },
-        ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _AccountScaffold extends StatelessWidget {

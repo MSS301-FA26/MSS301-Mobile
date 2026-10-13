@@ -9,6 +9,8 @@ import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../auth/application/auth_session.dart';
 import '../providers/account_summary_provider.dart';
+import '../../application/profile_controller.dart';
+import '../models/account_summary.dart';
 import '../widgets/account_menu.dart';
 import '../widgets/account_profile_card.dart';
 import '../widgets/membership_card.dart';
@@ -77,13 +79,16 @@ class AccountPage extends ConsumerWidget {
       );
     }
     final accountState = ref.watch(accountSummaryProvider);
-    if (accountState.isLoading) {
+    final profileState = accountState.hasValue
+        ? null
+        : ref.watch(currentProfileProvider);
+    if (accountState.isLoading && profileState?.hasValue != true) {
       return const AppShell(
         currentIndex: 4,
         body: RepositoryStatePane.loading(),
       );
     }
-    if (accountState.hasError) {
+    if (accountState.hasError && profileState?.hasValue != true) {
       return AppShell(
         currentIndex: 4,
         body: RepositoryStatePane.error(
@@ -91,7 +96,9 @@ class AccountPage extends ConsumerWidget {
         ),
       );
     }
-    final user = accountState.requireValue;
+    final user =
+        accountState.value ??
+        mapAccountSummary(profileState!.requireValue, null, null);
     return AppShell(
       currentIndex: 4,
       body: ListView(
@@ -100,6 +107,11 @@ class AccountPage extends ConsumerWidget {
           AccountProfileCard(user: user),
           const SizedBox(height: AppSpacing.md),
           MembershipCard(user: user, onQr: null),
+          if (user.points == null || user.walletBalance == null)
+            TextButton(
+              onPressed: () => ref.invalidate(accountSummaryProvider),
+              child: const Text('Tải lại điểm và số dư ví'),
+            ),
           const SizedBox(height: AppSpacing.md),
           WalletTile(user: user, onManage: () => context.go(AppRoutes.wallet)),
           const SizedBox(height: AppSpacing.md),
@@ -118,7 +130,7 @@ class AccountPage extends ConsumerWidget {
               AccountMenuItemData(
                 icon: Icons.stars_rounded,
                 label: 'CinePoints',
-                trailing: '${user.points}',
+                trailing: user.points?.toString() ?? 'Chưa tải được',
                 onTap: () => context.go(AppRoutes.points),
               ),
               AccountMenuItemData(
@@ -201,9 +213,7 @@ class AccountPage extends ConsumerWidget {
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Đăng xuất?'),
-                      content: const Text(
-                        'Bạn có chắc muốn kết thúc phiên mock?',
-                      ),
+                      content: const Text('Bạn có chắc muốn đăng xuất?'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context, false),
