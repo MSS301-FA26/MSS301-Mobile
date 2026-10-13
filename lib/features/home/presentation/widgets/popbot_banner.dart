@@ -69,7 +69,7 @@ class PopBotBanner extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            'XEM TRƯỚC',
+                            'TRÒ CHUYỆN',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -92,7 +92,7 @@ class PopBotBanner extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Chưa biết xem gì tối nay? Nhắn cho PopBot tâm trạng, thể loại ưa thích hoặc bạn đồng hành để nhận ngay rạp & suất chiếu lý tưởng trong 3 giây.',
+            'Chưa biết xem gì tối nay? Hỏi PopBot về phim, thể loại yêu thích, rạp và suất chiếu.',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,

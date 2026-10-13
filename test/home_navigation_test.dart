@@ -109,23 +109,50 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
   });
 
-  testWidgets('preview quick actions are visibly disabled', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'quick actions enable food/chat/points and keep unsupported VIP disabled',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await pumpTestApp(tester);
+      await pumpTestApp(tester);
 
-    await tester.tap(
-      find.byKey(const ValueKey('bottom-nav-icon-0')).hitTestable(),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-nav-icon-0')).hitTestable(),
+      );
+      await tester.pumpAndSettle();
 
-    final foodAction = find.byKey(const ValueKey('quick-action-Bắp & Nước'));
-    expect(foodAction, findsOneWidget);
-    expect(tester.widget<InkWell>(foodAction).onTap, isNull);
-    expect(find.text('Sắp có'), findsNWidgets(4));
-    expect(find.byType(SnackBar), findsNothing);
-  });
+      final foodAction = find.byKey(const ValueKey('quick-action-Bắp & Nước'));
+      expect(foodAction, findsOneWidget);
+      expect(tester.widget<InkWell>(foodAction).onTap, isNotNull);
+      expect(
+        tester
+            .widget<InkWell>(
+              find.byKey(const ValueKey('quick-action-PopBot AI')),
+            )
+            .onTap,
+        isNotNull,
+      );
+      expect(
+        tester
+            .widget<InkWell>(
+              find.byKey(const ValueKey('quick-action-CinePoints')),
+            )
+            .onTap,
+        isNotNull,
+      );
+      expect(
+        tester
+            .widget<InkWell>(
+              find.byKey(const ValueKey('quick-action-Ưu đãi VIP')),
+            )
+            .onTap,
+        isNull,
+      );
+      expect(find.text('Sắp có'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+    },
+  );
 
   testWidgets('bottom navigation tabs navigate to destinations', (
     tester,

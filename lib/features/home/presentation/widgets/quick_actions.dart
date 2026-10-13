@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/routing/app_routes.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -15,10 +18,14 @@ class QuickActions extends StatelessWidget {
             Color foreground,
             Color background,
             Color? border,
+            String? route,
+            String subtitle,
           })
         >[
           (
             label: 'Bắp & Nước',
+            route: AppRoutes.foodShop,
+            subtitle: 'Đặt ngay',
             icon: Icons.fastfood_outlined,
             foreground: AppColors.lavender,
             background: AppColors.purple.withValues(alpha: 0.3),
@@ -26,6 +33,8 @@ class QuickActions extends StatelessWidget {
           ),
           (
             label: 'PopBot AI',
+            route: AppRoutes.chat,
+            subtitle: 'Trò chuyện',
             icon: Icons.smart_toy_outlined,
             foreground: AppColors.lavender,
             background: AppColors.purple.withValues(alpha: 0.4),
@@ -33,6 +42,8 @@ class QuickActions extends StatelessWidget {
           ),
           (
             label: 'Ưu đãi VIP',
+            route: null,
+            subtitle: 'Sắp có',
             icon: Icons.stars_outlined,
             foreground: AppColors.gold,
             background: AppColors.goldSurface,
@@ -40,6 +51,8 @@ class QuickActions extends StatelessWidget {
           ),
           (
             label: 'CinePoints',
+            route: AppRoutes.points,
+            subtitle: 'Điểm thưởng',
             icon: Icons.loyalty_outlined,
             foreground: AppColors.text,
             background: AppColors.surfaceRaised,
@@ -59,7 +72,9 @@ class QuickActions extends StatelessWidget {
                 borderRadius: AppRadii.card,
                 child: InkWell(
                   key: ValueKey('quick-action-${actions[i].label}'),
-                  onTap: null,
+                  onTap: actions[i].route == null
+                      ? null
+                      : () => context.push(actions[i].route!),
                   borderRadius: AppRadii.card,
                   child: Container(
                     height: AppSpacing.quickActionHeight,
@@ -98,19 +113,24 @@ class QuickActions extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     height: 1.1,
-                                    color: AppColors.textDisabled,
+                                    color: actions[i].route == null
+                                        ? AppColors.textDisabled
+                                        : AppColors.textSecondary,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                const Text(
-                                  'Sắp có',
+                                Text(
+                                  actions[i].subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 9,
-                                    color: AppColors.textDisabled,
+                                    color: AppColors.textMuted,
                                   ),
                                 ),
                               ],

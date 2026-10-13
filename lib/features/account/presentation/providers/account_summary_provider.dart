@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/demo/demo_scenario.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../data/models/account_dto.dart';
 import '../../data/repositories/account_providers.dart';
@@ -41,7 +40,16 @@ final accountSummaryProvider = FutureProvider<AccountSummary>((ref) async {
 final loyaltyOverviewProvider =
     FutureProvider<(LoyaltyDto, LoyaltyConfigurationDto)>((ref) async {
       final repository = ref.watch(loyaltyRepositoryProvider);
-      final points = await repository.getLoyalty(DemoIds.user);
+      final userId = ref.watch(
+        authSessionProvider.select((auth) => auth.session?.user.id),
+      );
+      if (userId == null) {
+        throw const ApiException(
+          type: ApiErrorType.unauthorized,
+          message: 'Vui lòng đăng nhập.',
+        );
+      }
+      final points = await repository.getLoyalty(userId);
       final configuration = await repository.getConfiguration();
       return (points, configuration);
     });
@@ -65,14 +73,28 @@ final loyaltyRedeemControllerProvider =
     );
 
 class LoyaltyRedeemController extends Notifier<LoyaltyRedeemState> {
+  int _generation = 0;
   @override
-  LoyaltyRedeemState build() => const LoyaltyRedeemState();
+  LoyaltyRedeemState build() {
+    ref.watch(authSessionProvider.select((auth) => auth.session?.user.id));
+    _generation++;
+    return const LoyaltyRedeemState();
+  }
 
   Future<void> redeem(int points) async {
     if (state.isSubmitting) return;
+    if (ref.read(authSessionProvider).session == null) {
+      state = const LoyaltyRedeemState(
+        status: LoyaltyRedeemStatus.error,
+        message: 'Vui lòng đăng nhập trước khi đổi điểm.',
+      );
+      return;
+    }
+    final generation = _generation;
     state = const LoyaltyRedeemState(status: LoyaltyRedeemStatus.submitting);
     try {
       await ref.read(loyaltyRepositoryProvider).redeemPoints(points);
+      if (!ref.mounted || generation != _generation) return;
       ref.invalidate(loyaltyOverviewProvider);
       ref.invalidate(accountSummaryProvider);
       state = const LoyaltyRedeemState(
@@ -80,6 +102,7 @@ class LoyaltyRedeemController extends Notifier<LoyaltyRedeemState> {
         message: 'Đổi điểm thành công. Số dư đã được cập nhật từ hệ thống.',
       );
     } catch (error) {
+      if (!ref.mounted || generation != _generation) return;
       state = LoyaltyRedeemState(
         status: LoyaltyRedeemStatus.error,
         message: _safeRedeemError(error),

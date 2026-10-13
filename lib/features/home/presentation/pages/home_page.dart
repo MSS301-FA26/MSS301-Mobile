@@ -185,7 +185,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             const QuickActions(),
             const SizedBox(height: AppSpacing.xl),
-            const PopBotBanner(onOpen: null),
+            PopBotBanner(onOpen: () => context.push(AppRoutes.chat)),
             const SizedBox(height: AppSpacing.xl),
           ],
         ),

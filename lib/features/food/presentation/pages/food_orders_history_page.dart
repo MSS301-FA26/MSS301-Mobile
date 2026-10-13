@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/routing/app_routes.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
@@ -30,7 +33,11 @@ class FoodOrdersHistoryPage extends ConsumerWidget {
                 itemCount: items.length,
                 separatorBuilder: (_, _) =>
                     const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (_, index) => FoodOrderCard(order: items[index]),
+                itemBuilder: (_, index) => InkWell(
+                  onTap: () =>
+                      context.push(AppRoutes.foodOrderDetail(items[index].id)),
+                  child: FoodOrderCard(order: items[index]),
+                ),
               ),
       ),
     );
