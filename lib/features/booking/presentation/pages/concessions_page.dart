@@ -69,13 +69,11 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
       child: AppShell(
         currentIndex: 2,
         showBottomNavigation: false,
+        bookingTitle: 'Bắp nước',
+        bookingSubtitle: 'Bước 3/4',
+        onBookingBack: state.isBusy ? null : () => _backToSeats(state),
         body: Column(
           children: [
-            _BookingHeader(
-              title: 'Bắp nước',
-              subtitle: 'Không bắt buộc • Có thể bỏ qua',
-              onBack: () => _backToSeats(state),
-            ),
             const BookingProgress(currentStep: 2),
             BookingHoldCountdown(booking: state.booking),
             if (state.message != null &&
@@ -299,32 +297,6 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
       ),
     );
   }
-}
-
-class _BookingHeader extends StatelessWidget {
-  const _BookingHeader({
-    required this.title,
-    required this.subtitle,
-    required this.onBack,
-  });
-
-  final String title;
-  final String subtitle;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) => SafeArea(
-    bottom: false,
-    child: ListTile(
-      leading: IconButton(
-        tooltip: 'Quay lại',
-        onPressed: onBack,
-        icon: const Icon(Icons.arrow_back_rounded),
-      ),
-      title: Text(title, style: AppTextStyles.sectionTitle),
-      subtitle: Text(subtitle, style: AppTextStyles.caption),
-    ),
-  );
 }
 
 class _BookingProblem extends StatelessWidget {

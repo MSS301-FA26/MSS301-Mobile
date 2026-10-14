@@ -1,6 +1,6 @@
 # UI-03 — Khám phá và lịch chiếu
 
-Trạng thái: **đã triển khai, test/build Android đạt; chờ review UI, QA suất thật và iOS**. Ưu tiên: **trung bình**. Liên quan: plan chức năng 03, 04.
+Trạng thái: **đã triển khai; người dùng xác nhận danh sách phim hiển thị và giao diện khá ổn; còn QA suất thật và iOS**. Ưu tiên: **trung bình**. Liên quan: plan chức năng 03, 04.
 
 ## Việc cần làm
 
@@ -28,4 +28,6 @@ Grid không tràn với tên dài/chữ lớn; giờ chiếu dễ quét mắt; r
 - Analyzer, diff check và build Android đạt; 36 test liên quan pass, thêm test full-page 320 px/chữ 1,8 lần, bộ 11 test UI-03 pass sau sửa cuối.
 - Emulator: Khám phá tải 6 phim thật, không còn 0.0; Lịch chiếu hiển thị đúng trạng thái trống. BE hiện không trả suất chiếu trong lượt QA này; chưa xác nhận UI suất chọn bằng dữ liệu BE thật.
 - Ảnh và chi tiết: [UI03-RESULTS.md](UI03-RESULTS.md).
+- Phản hồi mới của người dùng: đã xem được danh sách phim, giao diện khá ổn. Đã ghi nhận review phần danh sách/bộ lọc Khám phá; không coi đây là nghiệm thu suất chiếu thật hoặc iOS.
+- Bộ lọc thể loại sau phản hồi: một hàng cuộn ngang, mục chọn vàng–đen, bỏ viền trắng và màu tím mặc định; tên dài không bị cắt. Đã kiểm tra lọc Gia Đình còn 2 phim thật.
 

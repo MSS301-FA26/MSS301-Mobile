@@ -27,6 +27,9 @@ class CheckoutPage extends ConsumerWidget {
       return AppShell(
         currentIndex: 2,
         showBottomNavigation: false,
+        bookingTitle: 'Xác nhận đơn',
+        bookingSubtitle: 'Bước 4/4',
+        onBookingBack: () => context.go(AppRoutes.concessions(bookingId)),
         body: Center(
           child: AppButton(
             label: 'Quay lại bắp nước',
@@ -45,28 +48,13 @@ class CheckoutPage extends ConsumerWidget {
       child: AppShell(
         currentIndex: 2,
         showBottomNavigation: false,
+        bookingTitle: 'Xác nhận đơn',
+        bookingSubtitle: 'Bước 4/4',
+        onBookingBack: state.isBusy
+            ? null
+            : () => context.go(AppRoutes.concessions(bookingId)),
         body: Column(
           children: [
-            SafeArea(
-              bottom: false,
-              child: ListTile(
-                leading: IconButton(
-                  tooltip: 'Sửa bắp nước',
-                  onPressed: state.isBusy
-                      ? null
-                      : () => context.go(AppRoutes.concessions(bookingId)),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-                title: const Text(
-                  'Xác nhận đơn',
-                  style: AppTextStyles.sectionTitle,
-                ),
-                subtitle: Text(
-                  booking.bookingCode,
-                  style: AppTextStyles.caption,
-                ),
-              ),
-            ),
             const BookingProgress(currentStep: 3),
             BookingHoldCountdown(booking: booking),
             Expanded(

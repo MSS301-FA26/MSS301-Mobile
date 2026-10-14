@@ -158,6 +158,13 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
       child: AppShell(
         currentIndex: 2,
         showBottomNavigation: false,
+        bookingTitle: 'Thanh toán',
+        bookingSubtitle: 'Bước 4/4',
+        onBookingBack:
+            state.isBusy &&
+                state.phase != BookingCompletionPhase.verifyingBooking
+            ? null
+            : () => Navigator.of(context).maybePop(),
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(

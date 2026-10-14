@@ -16,11 +16,17 @@ class AppShell extends ConsumerWidget {
     required this.body,
     required this.currentIndex,
     this.showBottomNavigation = true,
+    this.bookingTitle,
+    this.bookingSubtitle,
+    this.onBookingBack,
   });
 
   final Widget body;
   final int currentIndex;
   final bool showBottomNavigation;
+  final String? bookingTitle;
+  final String? bookingSubtitle;
+  final VoidCallback? onBookingBack;
 
   static const _tabRoutes = [
     AppRoutes.home,
@@ -34,11 +40,51 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: CinemaHeader(
-        onHome: () => _navigate(context, ref, AppRoutes.home),
-        onSearch: () => _navigate(context, ref, AppRoutes.discover),
-        onAccount: () => _navigate(context, ref, AppRoutes.account),
-      ),
+      appBar: bookingTitle != null
+          ? AppBar(
+              key: const ValueKey('booking-header'),
+              backgroundColor: AppColors.background,
+              surfaceTintColor: Colors.transparent,
+              toolbarHeight:
+                  56 *
+                  (MediaQuery.textScalerOf(context).scale(16) / 16).clamp(
+                    1.0,
+                    1.8,
+                  ),
+              leading: IconButton(
+                key: const ValueKey('booking-header-back'),
+                tooltip: 'Quay lại',
+                onPressed: onBookingBack,
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    bookingTitle!,
+                    style: AppTextStyles.cardTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (bookingSubtitle != null)
+                    Text(bookingSubtitle!, style: AppTextStyles.caption),
+                ],
+              ),
+              actions: [
+                IconButton(
+                  key: const ValueKey('header-home-logo'),
+                  tooltip: 'Về trang chủ',
+                  onPressed: () => _navigate(context, ref, AppRoutes.home),
+                  icon: const Icon(Icons.home_outlined),
+                ),
+              ],
+            )
+          : CinemaHeader(
+              onHome: () => _navigate(context, ref, AppRoutes.home),
+              onSearch: () => _navigate(context, ref, AppRoutes.discover),
+              onAccount: () => _navigate(context, ref, AppRoutes.account),
+            ),
       bottomNavigationBar: showBottomNavigation
           ? CinemaBottomNav(
               currentIndex: currentIndex,

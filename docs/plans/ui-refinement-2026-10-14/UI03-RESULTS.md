@@ -1,6 +1,6 @@
 # UI-03 — Khám phá và Lịch chiếu
 
-Ngày 14/10/2026. Code, kiểm chứng tự động và APK Android đạt; chờ review UI, QA lịch có suất thật và iOS.
+Ngày 14/10/2026. Code, kiểm chứng tự động và APK Android đạt. Người dùng đã xác nhận xem được danh sách phim và đánh giá giao diện khá ổn; còn QA lịch có suất thật và iOS.
 
 ## Thay đổi
 
@@ -37,6 +37,8 @@ Ngày 14/10/2026. Code, kiểm chứng tự động và APK Android đạt; ch�
 
 ## Còn mở
 
-- BE QA hiện không trả suất chiếu cho màn Lịch chiếu: chưa có screenshot trạng thái chọn/disabled trên lịch thật. Các trạng thái này đã kiểm chứng bằng widget test; cần QA lại khi có suất thật.
+Cập nhật sau chuyển DB chung Neon: gateway trả 13 suất, emulator hiển thị lịch thật. Đã lọc ngày 15/10, chọn suất PHIM JAVA 09:40, thấy ✓ Đã chọn và CTA Vé & Ghế. Trạng thái Chưa mở bán cũng hiển thị từ dữ liệu thật. Ảnh: [Lịch Neon](D:/MSS/.qa-runtime/shared-db-showtimes.png), [Lọc ngày và chọn suất](D:/MSS/.qa-runtime/shared-db-showtimes-selected.png). Không tạo booking/hold trong kiểm tra này.
+
+- QA lịch có dữ liệu thật đã kiểm tra các bước nêu trên; còn các trạng thái lỗi mạng/quá giờ và iOS trên thiết bị thật.
 - Contract điểm tổng hợp chưa có trong MovieDto: chưa tích hợp rating; không tạo điểm thay thế.
-- Review thẩm mỹ của người dùng, QA iOS và chữ lớn trên thiết bị thật.
+- Review danh sách phim/bộ lọc đã có phản hồi tích cực từ người dùng. Còn QA iOS, chữ lớn trên thiết bị thật và trạng thái lịch chiếu có dữ liệu thật.
