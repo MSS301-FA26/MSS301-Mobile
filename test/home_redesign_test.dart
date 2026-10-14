@@ -129,7 +129,7 @@ void main() {
     },
   );
 
-  test('banner API maps canonical mobile image, CTA and relative URL without invented target', () async {
+  test('banner API prefers desktop image like FE and maps CTA without invented target', () async {
     final dio = Dio(BaseOptions(baseUrl: 'http://localhost:8080'));
     var requests = 0;
     dio.interceptors.add(
@@ -167,7 +167,7 @@ void main() {
     final banners = await HomeBannerRepository(dio).getBanners();
     expect(requests, 1);
     expect(banners, hasLength(2));
-    expect(banners.first.image, 'http://localhost:8080/uploads/banner.jpg');
+    expect(banners.first.image, 'http://localhost:8080/desktop.jpg');
     expect(banners.first.movieId, 2);
     expect(banners.last.movieId, isNull);
     expect(banners.last.url, isNull);

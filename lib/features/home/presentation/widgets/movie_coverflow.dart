@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -259,11 +260,40 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                                               borderRadius: AppRadii.small,
                                               child: ColoredBox(
                                                 color: AppColors.surface,
-                                                child: AppImage(
-                                                  asset: widget
-                                                      .movies[index]
-                                                      .posterAsset,
-                                                  fit: BoxFit.contain,
+                                                child: Stack(
+                                                  fit: StackFit.expand,
+                                                  children: [
+                                                    ExcludeSemantics(
+                                                      child: ImageFiltered(
+                                                        imageFilter:
+                                                            ui.ImageFilter.blur(
+                                                              sigmaX: 18,
+                                                              sigmaY: 18,
+                                                              tileMode: ui
+                                                                  .TileMode
+                                                                  .clamp,
+                                                            ),
+                                                        child: Transform.scale(
+                                                          scale: 1.12,
+                                                          child: AppImage(
+                                                            asset: widget
+                                                                .movies[index]
+                                                                .posterAsset,
+                                                            fit: BoxFit.cover,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const ColoredBox(
+                                                      color: Color(0x59000000),
+                                                    ),
+                                                    AppImage(
+                                                      asset: widget
+                                                          .movies[index]
+                                                          .posterAsset,
+                                                      fit: BoxFit.contain,
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ),

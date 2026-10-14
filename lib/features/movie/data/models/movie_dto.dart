@@ -68,6 +68,7 @@ class MovieDto {
     this.trailerUrl,
     this.posterUrl,
     this.avatarUrl,
+    this.bannerUrl,
     this.releaseDate,
     this.endDate,
     this.language,
@@ -86,6 +87,7 @@ class MovieDto {
   final String? trailerUrl;
   final String? posterUrl;
   final String? avatarUrl;
+  final String? bannerUrl;
   final int durationMinutes;
   final DateTime? releaseDate;
   final DateTime? endDate;
@@ -109,6 +111,7 @@ class MovieDto {
     trailerUrl: json['trailerUrl']?.toString(),
     posterUrl: json['posterUrl']?.toString(),
     avatarUrl: json['avatarUrl']?.toString(),
+    bannerUrl: json['bannerUrl']?.toString(),
     durationMinutes: intFromJson(json['durationMinutes'] ?? 0),
     releaseDate: nullableDateTimeFromJson(json['releaseDate']),
     endDate: nullableDateTimeFromJson(json['endDate']),

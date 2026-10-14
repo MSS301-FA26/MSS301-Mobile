@@ -206,7 +206,13 @@ class _PromotionalBannerCarouselState
                               color: AppColors.surface,
                               child: Image(
                                 image: provider,
-                                fit: BoxFit.contain,
+                                fit: BoxFit.cover,
+                                alignment: switch (banner.focalPoint
+                                    .toUpperCase()) {
+                                  'LEFT' => Alignment.centerLeft,
+                                  'RIGHT' => Alignment.centerRight,
+                                  _ => Alignment.center,
+                                },
                                 semanticLabel: banner.title,
                                 errorBuilder: (_, _, _) => const Center(
                                   child: Icon(
