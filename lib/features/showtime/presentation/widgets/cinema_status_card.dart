@@ -36,20 +36,19 @@ class CinemaStatusCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
-                    Flexible(
-                      child: Text(
-                        'CineAI Central',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.label.copyWith(
-                          color: AppColors.text,
-                          fontSize: 14,
-                        ),
+                    Text(
+                      'CineAI Central',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.label.copyWith(
+                        color: AppColors.text,
+                        fontSize: 14,
                       ),
                     ),
-                    SizedBox(width: 6),
                     _OpenBadge(),
                   ],
                 ),

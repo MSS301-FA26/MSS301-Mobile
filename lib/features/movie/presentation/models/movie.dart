@@ -28,7 +28,7 @@ class Movie {
   final String title;
   final String ageRating;
   final String duration;
-  final double rating;
+  final double? rating;
   final String ratingCount;
   final String genre;
   final String tagline;

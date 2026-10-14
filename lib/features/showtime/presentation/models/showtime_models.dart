@@ -19,6 +19,16 @@ class ShowtimeSlot {
   final ShowtimeStatus status;
 
   bool get isBookable => status == ShowtimeStatus.open;
+  bool isBookableAt(DateTime now) => isBookable && startAt.isAfter(now);
+  String? unavailableReason(DateTime now) {
+    if (status == ShowtimeStatus.cancelled) return 'Đã hủy';
+    if (status == ShowtimeStatus.completed) return 'Đã kết thúc';
+    if (!startAt.isAfter(now)) return 'Đã qua giờ';
+    if (status == ShowtimeStatus.scheduled) return 'Chưa mở bán';
+    if (status != ShowtimeStatus.open) return 'Không khả dụng';
+    return null;
+  }
+
   String get time => _time(startAt);
   String get endTime => '~${_time(endAt)}';
   String get priceDisplay => price.format();

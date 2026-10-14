@@ -1,7 +1,7 @@
 # Kế hoạch tinh chỉnh UI Mobile
 
 Ngày lập: **14/10/2026**. Người yêu cầu: **Tzee314**.
-Trạng thái: **UI-01 và UI-02 đã triển khai; UI-02 đã kiểm tra Android, các batch còn lại chờ triển khai**.
+Trạng thái: **UI-01, UI-02 và UI-03 đã triển khai; UI-03 còn QA suất thật và iOS, các batch còn lại chờ triển khai**.
 Baseline: Mobile `3a67680` và các thay đổi local banner/poster; BE `9921498`.
 
 ## Mục tiêu và phạm vi
@@ -33,7 +33,7 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 | 3 | [UI-05](05-CONCESSIONS.md) | Ảnh bắp nước, giá và bộ chọn số lượng | Pending |
 | 4 | [UI-06](06-CHECKOUT-AND-PAYMENT.md) | Tổng tiền, countdown và thao tác thanh toán | Pending |
 | 5 | [UI-02](02-HOME.md) | Giảm khoảng trống, cân đối khối PopBot | Analyzer/28 test/build/Android đạt; chờ phản hồi UI và iOS |
-| 6 | [UI-03](03-DISCOVER-AND-SHOWTIMES.md) | Thẻ phim dễ đọc, giờ chiếu/trạng thái chọn rõ | Pending |
+| 6 | [UI-03](03-DISCOVER-AND-SHOWTIMES.md) | Thẻ phim dễ đọc, giờ chiếu/trạng thái chọn rõ | Test/analyzer/build đạt; Android Khám phá/empty đạt; chờ QA suất thật, review và iOS |
 | 7 | [UI-07](07-ORDERS-AND-TICKET.md) | Tên dài, màu trạng thái, vé QR | Pending |
 | 8 | [UI-08](08-ACCOUNT.md) | Thu gọn thông tin trùng, tên dài và retry | Pending |
 | 9 | [UI-09](09-POPBOT-CHAT.md) | Nhận diện bot, gợi ý, chờ/retry | Pending |
@@ -52,5 +52,5 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 
 ## Cách cập nhật kết quả
 
-Mỗi plan ghi ngày, commit hoặc diff, file sửa, ảnh trước/sau và kết quả kiểm chứng. Kết quả: [UI01-RESULTS.md](UI01-RESULTS.md), [UI02-RESULTS.md](UI02-RESULTS.md). Các plan khác giữ pending, dù một số thành phần dùng chung đã được cải thiện từ UI-01.
+Mỗi plan ghi ngày, commit hoặc diff, file sửa, ảnh trước/sau và kết quả kiểm chứng. Kết quả: [UI01-RESULTS.md](UI01-RESULTS.md), [UI02-RESULTS.md](UI02-RESULTS.md), [UI03-RESULTS.md](UI03-RESULTS.md). Các plan khác giữ pending, dù một số thành phần dùng chung đã được cải thiện từ UI-01.
 

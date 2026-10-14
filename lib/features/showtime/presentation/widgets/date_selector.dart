@@ -73,8 +73,8 @@ class _DatePill extends StatelessWidget {
       onTap: onTap,
       borderRadius: AppRadii.card,
       child: Container(
-        width: 66,
-        height: 60,
+        constraints: const BoxConstraints(minWidth: 76, minHeight: 64),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? AppColors.surfaceRaised : AppColors.surface,
@@ -92,7 +92,7 @@ class _DatePill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.meta.copyWith(
-                color: selected ? AppColors.gold : AppColors.textDisabled,
+                color: selected ? AppColors.gold : AppColors.textSecondary,
                 fontWeight: FontWeight.w800,
               ),
             ),

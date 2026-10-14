@@ -68,7 +68,8 @@ class _SegmentButton extends StatelessWidget {
         borderRadius: AppRadii.control,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          height: 48,
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? AppColors.gold : Colors.transparent,
@@ -76,8 +77,7 @@ class _SegmentButton extends StatelessWidget {
           ),
           child: Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,

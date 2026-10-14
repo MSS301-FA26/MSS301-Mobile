@@ -105,7 +105,9 @@ class HeroCard extends StatelessWidget {
                             color: AppColors.gold,
                           ),
                           Text(
-                            movie.ratingCount.isEmpty
+                            movie.rating == null
+                                ? 'Chưa có đánh giá'
+                                : movie.ratingCount.isEmpty
                                 ? '${movie.rating}'
                                 : '${movie.rating} (${movie.ratingCount})',
                             style: const TextStyle(

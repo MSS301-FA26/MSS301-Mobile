@@ -176,21 +176,22 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
                                     style: AppTextStyles.screenTitle,
                                   ),
                                   const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.star_rounded,
-                                        color: AppColors.gold,
-                                        size: 18,
-                                      ),
-                                      Text(
-                                        ' ${movie.rating}/10',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
+                                  if (movie.rating != null)
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.star_rounded,
+                                          color: AppColors.gold,
+                                          size: 18,
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                        Text(
+                                          ' ${movie.rating}/10',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                 ],
                               ),
                             ),

@@ -34,7 +34,7 @@ Movie mapMovieToPresentation(MovieDto movie) {
     title: movie.title,
     ageRating: movie.ageRating ?? 'P',
     duration: '${movie.durationMinutes} phút',
-    rating: 0,
+    rating: null,
     ratingCount: '',
     genre: genres.isEmpty ? 'Đang cập nhật' : genres.join(', '),
     genreTags: genres,
