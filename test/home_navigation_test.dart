@@ -9,7 +9,9 @@ import 'package:mss301_mobile/features/home/presentation/pages/home_page.dart';
 import 'package:mss301_mobile/features/orders/presentation/pages/orders_page.dart';
 import 'package:mss301_mobile/features/showtime/presentation/pages/showtimes_page.dart';
 import 'package:mss301_mobile/features/showtime/presentation/widgets/date_selector.dart';
-import 'package:mss301_mobile/features/movie/presentation/providers/movies_provider.dart';
+import 'package:mss301_mobile/features/movie/data/models/catalog_enums.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/home_preview_provider.dart';
+import 'package:mss301_mobile/features/home/data/home_banner_repository.dart';
 
 import 'support/pump_test_app.dart';
 
@@ -23,7 +25,7 @@ void main() {
 
       await pumpTestApp(tester);
 
-      expect(find.text('Phim đang chiếu'), findsOneWidget);
+      expect(find.text('Đang chiếu'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('hero-open-1')));
       await tester.pumpAndSettle();
 
@@ -35,7 +37,7 @@ void main() {
 
       await tester.tap(find.byTooltip('Quay lại'));
       await tester.pumpAndSettle();
-      expect(find.text('Phim đang chiếu'), findsOneWidget);
+      expect(find.text('Đang chiếu'), findsOneWidget);
     });
   }
 
@@ -45,6 +47,7 @@ void main() {
 
     await pumpTestApp(tester);
 
+    await tester.ensureVisible(find.text('Xem trailer'));
     await tester.tap(find.text('Xem trailer'));
     await tester.pumpAndSettle();
     expect(find.textContaining('nội dung mô phỏng'), findsOneWidget);
@@ -62,8 +65,12 @@ void main() {
 
     await pumpTestApp(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.drag(
+      find.byKey(const ValueKey('movie-coverflow')),
+      const Offset(-120, 0),
+    );
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('hero-book-2')));
     await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
 
@@ -102,23 +109,50 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
   });
 
-  testWidgets('preview quick actions are visibly disabled', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'quick actions enable food/chat/points and keep unsupported VIP disabled',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await pumpTestApp(tester);
+      await pumpTestApp(tester);
 
-    await tester.tap(
-      find.byKey(const ValueKey('bottom-nav-icon-0')).hitTestable(),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('bottom-nav-icon-0')).hitTestable(),
+      );
+      await tester.pumpAndSettle();
 
-    final foodAction = find.byKey(const ValueKey('quick-action-Bắp & Nước'));
-    expect(foodAction, findsOneWidget);
-    expect(tester.widget<InkWell>(foodAction).onTap, isNull);
-    expect(find.text('Sắp có'), findsNWidgets(4));
-    expect(find.byType(SnackBar), findsNothing);
-  });
+      final foodAction = find.byKey(const ValueKey('quick-action-Bắp & Nước'));
+      expect(foodAction, findsOneWidget);
+      expect(tester.widget<InkWell>(foodAction).onTap, isNotNull);
+      expect(
+        tester
+            .widget<InkWell>(
+              find.byKey(const ValueKey('quick-action-PopBot AI')),
+            )
+            .onTap,
+        isNotNull,
+      );
+      expect(
+        tester
+            .widget<InkWell>(
+              find.byKey(const ValueKey('quick-action-CinePoints')),
+            )
+            .onTap,
+        isNotNull,
+      );
+      expect(
+        tester
+            .widget<InkWell>(
+              find.byKey(const ValueKey('quick-action-Ưu đãi VIP')),
+            )
+            .onTap,
+        isNull,
+      );
+      expect(find.text('Sắp có'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+    },
+  );
 
   testWidgets('bottom navigation tabs navigate to destinations', (
     tester,
@@ -176,16 +210,16 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          moviesProvider.overrideWith(
-            (ref) => throw StateError('catalog unavailable'),
-          ),
+          homeBannersProvider.overrideWith((ref) async => const []),
+          homeCategoryMoviesProvider(MovieStatus.nowShowing)
+              .overrideWith((ref) => throw StateError('catalog unavailable')),
         ],
         child: const MaterialApp(home: HomePage()),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Đã xảy ra lỗi'), findsOneWidget);
+    expect(find.text('Không thể tải danh sách phim.'), findsOneWidget);
     expect(find.text('Thử lại'), findsOneWidget);
   });
 }

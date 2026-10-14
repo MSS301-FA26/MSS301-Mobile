@@ -12,6 +12,7 @@ class AccountSummary {
     required this.joinYear,
     required this.points,
     required this.walletBalance,
+    this.avatarUrl,
   });
 
   final int userId;
@@ -21,24 +22,30 @@ class AccountSummary {
   final String membershipTier;
   final String memberCode;
   final int joinYear;
-  final int points;
-  final VndMoney walletBalance;
+  final int? points;
+  final String? avatarUrl;
+  final VndMoney? walletBalance;
 }
 
 AccountSummary mapAccountSummary(
   UserProfileDto profile,
-  WalletDto wallet,
-  LoyaltyDto loyalty,
+  WalletDto? wallet,
+  LoyaltyDto? loyalty,
 ) => AccountSummary(
   userId: profile.id,
   name: profile.fullName,
   initials: _initials(profile.fullName),
   email: profile.email,
-  membershipTier: loyalty.points >= 1000 ? 'Diamond VIP' : 'Member',
+  membershipTier: loyalty == null
+      ? 'Chưa xác định'
+      : loyalty.points >= 1000
+      ? 'Diamond VIP'
+      : 'Member',
   memberCode: 'CP-${profile.id.toString().padLeft(7, '0')}',
   joinYear: profile.createdAt.year,
-  points: loyalty.points,
-  walletBalance: wallet.balance,
+  points: loyalty?.points,
+  avatarUrl: profile.avatarUrl,
+  walletBalance: wallet?.balance,
 );
 
 String _initials(String name) {

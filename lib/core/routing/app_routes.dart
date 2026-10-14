@@ -1,5 +1,9 @@
 abstract final class AppRoutes {
   static const home = '/home';
+  static const foodShop = '/food-order';
+  static const foodOrderDetailPattern = '/food-order/:orderId';
+  static const chat = '/chat';
+  static String foodOrderDetail(int id) => '/food-order/$id';
   static const discover = '/discover';
   static const showtimes = '/showtimes';
   static const orders = '/orders';

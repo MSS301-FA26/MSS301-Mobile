@@ -19,10 +19,30 @@ import '../../features/preview/presentation/pages/preview_feature_page.dart';
 import '../../features/seat/presentation/pages/seat_selection_page.dart';
 import '../../features/showtime/presentation/pages/showtimes_page.dart';
 import 'app_routes.dart';
+import '../../features/food/presentation/pages/standalone_food_page.dart';
+import '../../features/food/presentation/pages/food_checkout_page.dart';
+import '../../features/popbot/presentation/chat_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: AppRoutes.home,
   routes: [
+    GoRoute(
+      path: AppRoutes.foodShop,
+      builder: (context, state) => const AuthGuard(child: StandaloneFoodPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.foodOrderDetailPattern,
+      builder: (context, state) => AuthGuard(
+        child: FoodCheckoutPage(
+          orderId: int.parse(state.pathParameters['orderId']!),
+          expectedTotal: state.extra is int ? state.extra as int : null,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.chat,
+      builder: (context, state) => const PopBotChatPage(),
+    ),
     GoRoute(path: '/', redirect: (context, state) => AppRoutes.home),
     GoRoute(
       path: AppRoutes.home,
