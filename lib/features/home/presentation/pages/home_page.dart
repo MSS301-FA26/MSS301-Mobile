@@ -180,7 +180,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Divider(height: 28),
             ),
             const QuickActions(),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.md),
             PopBotBanner(onOpen: () => context.push(AppRoutes.chat)),
             const SizedBox(height: AppSpacing.xl),
           ],

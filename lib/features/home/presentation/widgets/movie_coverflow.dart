@@ -170,14 +170,16 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                   onHorizontalDragCancel: () => _settle(_selected),
                   child: SizedBox(
                     width: width,
-                    height: posterHeight + 42,
+                    height: posterHeight + 28,
                     child: Stack(
                       clipBehavior: Clip.hardEdge,
                       children: [
                         Positioned.fill(
                           child: IgnorePointer(
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 400),
+                              duration: MediaQuery.disableAnimationsOf(context)
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 400),
                               decoration: BoxDecoration(
                                 gradient: RadialGradient(
                                   radius: 0.83,
@@ -193,7 +195,7 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                         for (final index in visible)
                           Positioned(
                             left: (width - posterWidth) / 2,
-                            top: 20,
+                            top: 14,
                             width: posterWidth,
                             height: posterHeight,
                             child: Builder(
@@ -315,7 +317,7 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                     AppSpacing.md,
                     4,
                     AppSpacing.md,
-                    16,
+                    8,
                   ),
                   child: Column(
                     children: [
@@ -325,7 +327,9 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                           1.0,
                         ),
                         child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 230),
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 230),
                           reverseDuration: Duration.zero,
                           transitionBuilder: (child, animation) =>
                               FadeTransition(
@@ -350,12 +354,12 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                                   textAlign: TextAlign.center,
                                   style: AppTextStyles.sectionTitle,
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 6),
                                 Wrap(
                                   alignment: WrapAlignment.center,
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   spacing: 12,
-                                  runSpacing: 8,
+                                  runSpacing: 4,
                                   children: [
                                     if (movie.ageRating.isNotEmpty)
                                       AgeBadge(rating: movie.ageRating),
@@ -373,7 +377,7 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                                 ),
                                 if (movie.genreTags.isNotEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.only(top: 4),
                                     child: Text(
                                       movie.genreTags.join(' · '),
                                       textAlign: TextAlign.center,
@@ -387,7 +391,7 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
                         child: AppButton(
@@ -405,6 +409,10 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                       ),
                       if (movie.trailerUrl?.isNotEmpty == true)
                         TextButton.icon(
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(48, 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
                           onPressed: moving
                               ? null
                               : () => widget.onTrailer(movie),

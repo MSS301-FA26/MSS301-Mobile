@@ -74,6 +74,7 @@ void main() {
       final calls = <MovieStatus>[];
       await pumpTestApp(
         tester,
+        size: const Size(390, 900),
         providerOverrides: [
           homeCategoryMoviesProvider.overrideWith((ref, status) async {
             calls.add(status);
