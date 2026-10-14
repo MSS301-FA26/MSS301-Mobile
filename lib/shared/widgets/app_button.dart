@@ -11,7 +11,7 @@ class AppButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.variant = AppButtonVariant.primary,
-    this.height = 46,
+    this.height = 48,
     this.loading = false,
   });
 
@@ -28,20 +28,21 @@ class AppButton extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (loading)
+        if (loading) ...[
           const SizedBox(
             width: 18,
             height: 18,
             child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        else if (icon != null) ...[
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ] else if (icon != null) ...[
           Icon(icon, size: 18),
           const SizedBox(width: AppSpacing.xxs),
         ],
         Flexible(
           child: Text(
             label,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.button,
           ),
@@ -59,8 +60,9 @@ class AppButton extends StatelessWidget {
       ),
     );
 
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     return SizedBox(
-      height: height,
+      height: (height < 48 ? 48 : height) * (textScale < 1 ? 1 : textScale),
       child: switch (variant) {
         AppButtonVariant.primary => FilledButton(
           onPressed: loading ? null : onPressed,
@@ -70,8 +72,16 @@ class AppButton extends StatelessWidget {
         AppButtonVariant.purple => FilledButton(
           onPressed: loading ? null : onPressed,
           style: style.copyWith(
-            backgroundColor: const WidgetStatePropertyAll(AppColors.purple),
-            foregroundColor: const WidgetStatePropertyAll(AppColors.text),
+            backgroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? AppColors.disabled
+                  : AppColors.purple,
+            ),
+            foregroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? AppColors.textMuted
+                  : AppColors.text,
+            ),
           ),
           child: buttonChild,
         ),
@@ -91,8 +101,16 @@ class AppButton extends StatelessWidget {
         AppButtonVariant.danger => FilledButton(
           onPressed: loading ? null : onPressed,
           style: style.copyWith(
-            backgroundColor: const WidgetStatePropertyAll(AppColors.error),
-            foregroundColor: const WidgetStatePropertyAll(AppColors.text),
+            backgroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? AppColors.disabled
+                  : AppColors.error,
+            ),
+            foregroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? AppColors.textMuted
+                  : AppColors.text,
+            ),
           ),
           child: buttonChild,
         ),

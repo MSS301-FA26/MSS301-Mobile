@@ -42,7 +42,12 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
     final reviews = ref.watch(movieReviewsProvider(movieId));
     final recommendations = ref.watch(movieRecommendationsProvider(movieId));
     if (movieState.isLoading) {
-      return const Scaffold(body: RepositoryStatePane.loading());
+      return const Scaffold(
+        body: RepositoryStatePane.loading(
+          layout: RepositorySkeleton.poster,
+          title: 'Đang tải thông tin phim…',
+        ),
+      );
     }
     if (movieState.hasError) {
       return Scaffold(

@@ -219,7 +219,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Không thể tải danh sách phim.'), findsOneWidget);
+    expect(find.text('Chưa tải được phim'), findsOneWidget);
     expect(find.text('Thử lại'), findsOneWidget);
   });
 }

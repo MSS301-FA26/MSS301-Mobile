@@ -48,7 +48,8 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     if (retry) ref.invalidate(currentProfileProvider);
     try {
       final profile = await ref.read(currentProfileProvider.future);
-      if (!mounted || userId != ref.read(authSessionProvider).session?.user.id) {
+      if (!mounted ||
+          userId != ref.read(authSessionProvider).session?.user.id) {
         return;
       }
       setState(() {
@@ -331,8 +332,18 @@ class _WalletPageState extends ConsumerState<WalletPage> {
     child: FutureBuilder(
       future: _data,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return RepositoryStatePane.error(
+            title: 'Chưa tải được ví',
+            message: 'Chưa lấy được số dư và giao dịch. Vui lòng thử lại.',
+            onRetry: () => setState(_reload),
+          );
+        }
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const RepositoryStatePane.loading(
+            layout: RepositorySkeleton.account,
+            title: 'Đang tải ví…',
+          );
         }
         final (wallet, transactions, withdrawals) = snapshot.requireData;
         return ListView(

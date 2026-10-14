@@ -89,7 +89,10 @@ class _TicketPageState extends ConsumerState<TicketPage> {
       currentIndex: 3,
       showBottomNavigation: false,
       body: bookingState.when(
-        loading: () => const RepositoryStatePane.loading(),
+        loading: () => const RepositoryStatePane.loading(
+          layout: RepositorySkeleton.poster,
+          title: 'Đang tải vé…',
+        ),
         error: (_, _) => RepositoryStatePane.error(
           onRetry: () => ref.invalidate(ticketBookingProvider(bookingId)),
         ),

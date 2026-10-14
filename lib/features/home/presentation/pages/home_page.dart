@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../booking/presentation/widgets/resume_booking_banner.dart';
 import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/data/models/catalog_enums.dart';
@@ -126,45 +127,40 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ],
               ),
             ),
+            if (movies.hasError && movies.hasValue)
+              RepositoryStatePane.error(
+                compact: true,
+                message: 'Chưa cập nhật được phim. Danh sách đã tải vẫn được giữ lại.',
+                onRetry: () =>
+                    ref.invalidate(homeCategoryMoviesProvider(_category)),
+              ),
             movies.when(
+              skipError: movies.hasValue,
               loading: () => const SizedBox(
-                height: 320,
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                height: 420,
+                child: RepositoryStatePane.loading(
+                  layout: RepositorySkeleton.poster,
+                  title: 'Đang tải phim…',
+                ),
               ),
               error: (_, _) => SizedBox(
                 height: 280,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.cloud_off_outlined,
-                      color: AppColors.textMuted,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Không thể tải danh sách phim.',
-                      style: AppTextStyles.caption,
-                    ),
-                    TextButton.icon(
-                      onPressed: () =>
-                          ref.invalidate(homeCategoryMoviesProvider(_category)),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Thử lại'),
-                    ),
-                  ],
+                child: RepositoryStatePane.error(
+                  title: 'Chưa tải được phim',
+                  onRetry: () =>
+                      ref.invalidate(homeCategoryMoviesProvider(_category)),
                 ),
               ),
               data: (items) => items.isEmpty
                   ? SizedBox(
                       height: 280,
-                      child: Center(
-                        child: Text(
-                          _category == MovieStatus.nowShowing
-                              ? 'Chưa có phim đang chiếu'
-                              : 'Chưa có phim sắp chiếu',
-                          style: AppTextStyles.caption,
-                        ),
+                      child: RepositoryStatePane.empty(
+                        title: _category == MovieStatus.nowShowing
+                            ? 'Chưa có phim đang chiếu'
+                            : 'Chưa có phim sắp chiếu',
+                        icon: Icons.movie_outlined,
+                        message: 'Bạn có thể khám phá các phim khác.',
+                        onAction: () => context.push(AppRoutes.discover),
                       ),
                     )
                   : MovieCoverflow(

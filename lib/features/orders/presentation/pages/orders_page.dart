@@ -26,17 +26,36 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
   @override
   Widget build(BuildContext context) {
     final ordersState = ref.watch(ordersProvider);
-    if (ordersState.isLoading) {
-      return const AppShell(
-        currentIndex: 3,
-        body: RepositoryStatePane.loading(),
+    Widget pending(Widget content) => AppShell(
+      currentIndex: 3,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: OrdersSegmentedTabs(
+              selected: _tab,
+              upcomingCount: null,
+              completedCount: null,
+              onSelected: (tab) => setState(() => _tab = tab),
+            ),
+          ),
+          Expanded(child: content),
+        ],
+      ),
+    );
+    if (ordersState.isLoading && !ordersState.hasValue) {
+      return pending(
+        const RepositoryStatePane.loading(
+          layout: RepositorySkeleton.orders,
+          title: 'Đang tải đơn của bạn…',
+        ),
       );
     }
-    if (ordersState.hasError) {
-      return AppShell(
-        currentIndex: 3,
-        body: RepositoryStatePane.error(
+    if (ordersState.hasError && !ordersState.hasValue) {
+      return pending(
+        RepositoryStatePane.error(
           onRetry: () => ref.invalidate(ordersProvider),
+          title: 'Chưa tải được đơn của bạn',
         ),
       );
     }
@@ -50,12 +69,23 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(ordersProvider);
-          await ref.read(ordersProvider.future);
+          try {
+            await ref.read(ordersProvider.future);
+          } catch (_) {
+            /* Inline retry preserves previous orders. */
+          }
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
+            if (ordersState.hasError)
+              RepositoryStatePane.error(
+                compact: true,
+                message:
+                    'Chưa cập nhật được đơn. Các đơn đã tải vẫn được giữ lại.',
+                onRetry: () => ref.invalidate(ordersProvider),
+              ),
             OrdersSegmentedTabs(
               selected: _tab,
               upcomingCount: upcoming.length,
@@ -120,28 +150,12 @@ class _EmptyOrders extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 64),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.confirmation_number_outlined,
-            size: 48,
-            color: AppColors.textDisabled,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            history ? 'Chưa có lịch sử đơn' : 'Chưa có vé sắp chiếu nào',
-            style: AppTextStyles.sectionTitle,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          const Text(
-            'Hãy chọn một bộ phim yêu thích và đặt chỗ ngay hôm nay!',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.caption,
-          ),
-        ],
-      ),
+    return RepositoryStatePane.empty(
+      compact: true,
+      title: history ? 'Chưa có lịch sử đơn' : 'Chưa có vé sắp chiếu nào',
+      message: 'Hãy chọn một bộ phim yêu thích và đặt chỗ ngay hôm nay!',
+      icon: Icons.confirmation_number_outlined,
+      onAction: () => context.go(AppRoutes.discover),
     );
   }
 }

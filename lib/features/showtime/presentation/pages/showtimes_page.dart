@@ -96,20 +96,38 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
       date: selectedDate,
     );
     final showtimesState = ref.watch(showtimesProvider(showtimesQuery));
-    if (moviesState.isLoading || showtimesState.isLoading) {
-      return const AppShell(
-        currentIndex: 2,
-        body: RepositoryStatePane.loading(),
+    Widget pending(Widget content) => AppShell(
+      currentIndex: 2,
+      body: Column(
+        children: [
+          const BookingProgress(currentStep: 0),
+          DateSelector(
+            dates: dates,
+            selectedIndex: _selectedDate,
+            onSelected: (index) => setState(() => _selectedDate = index),
+          ),
+          Expanded(child: content),
+        ],
+      ),
+    );
+    if ((moviesState.isLoading || showtimesState.isLoading) &&
+        !(moviesState.hasValue && showtimesState.hasValue)) {
+      return pending(
+        const RepositoryStatePane.loading(
+          layout: RepositorySkeleton.showtimes,
+          title: 'Đang tải lịch chiếu…',
+        ),
       );
     }
-    if (moviesState.hasError || showtimesState.hasError) {
-      return AppShell(
-        currentIndex: 2,
-        body: RepositoryStatePane.error(
+    if ((moviesState.hasError || showtimesState.hasError) &&
+        !(moviesState.hasValue && showtimesState.hasValue)) {
+      return pending(
+        RepositoryStatePane.error(
           onRetry: () {
             ref.invalidate(moviesProvider);
             ref.invalidate(showtimesProvider(showtimesQuery));
           },
+          title: 'Chưa tải được lịch chiếu',
         ),
       );
     }
@@ -125,6 +143,15 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
           Expanded(
             child: ListView(
               children: [
+                if (moviesState.hasError || showtimesState.hasError)
+                  RepositoryStatePane.error(
+                    compact: true,
+                    message: 'Chưa cập nhật được lịch chiếu. Kiểm tra lại trước khi chọn suất.',
+                    onRetry: () {
+                      ref.invalidate(moviesProvider);
+                      ref.invalidate(showtimesProvider(showtimesQuery));
+                    },
+                  ),
                 const BookingProgress(currentStep: 0),
                 CinemaStatusCard(
                   onInfo: () => showModalBottomSheet<void>(
@@ -148,7 +175,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                       Icon(
                         Icons.lock_clock_outlined,
                         size: 16,
-                        color: AppColors.textDisabled,
+                        color: AppColors.textMuted,
                       ),
                       SizedBox(width: AppSpacing.xs),
                       Expanded(
@@ -193,10 +220,15 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                                     _selectedMovieId == movieShowtime.movieId
                                     ? _selectedSlot?.id
                                     : null,
-                                onSlotSelected: (slot) => setState(() {
-                                  _selectedMovieId = movieShowtime.movieId;
-                                  _selectedSlot = slot;
-                                }),
+                                onSlotSelected:
+                                    moviesState.hasError ||
+                                        showtimesState.hasError
+                                    ? null
+                                    : (slot) => setState(() {
+                                        _selectedMovieId =
+                                            movieShowtime.movieId;
+                                        _selectedSlot = slot;
+                                      }),
                               ),
                             );
                           },
@@ -239,8 +271,12 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                     ),
                     FilledButton.icon(
                       key: const ValueKey('showtime-continue'),
-                      onPressed: () =>
-                          _openSeatSelection(_selectedMovieId!, _selectedSlot!),
+                      onPressed: moviesState.hasError || showtimesState.hasError
+                          ? null
+                          : () => _openSeatSelection(
+                              _selectedMovieId!,
+                              _selectedSlot!,
+                            ),
                       icon: const Icon(Icons.arrow_forward_rounded),
                       label: const Text('Vé & Ghế'),
                     ),

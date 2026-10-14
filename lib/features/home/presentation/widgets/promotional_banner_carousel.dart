@@ -128,14 +128,13 @@ class _PromotionalBannerCarouselState
             aspectRatio: 2.1,
             child: ClipRRect(
               borderRadius: AppRadii.small,
-              child: state.isLoading
-                  ? const ColoredBox(
-                      color: AppColors.surface,
-                      child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+              child: state.isLoading && banners.isEmpty
+                  ? Semantics(
+                      liveRegion: true,
+                      label: 'Đang tải banner',
+                      child: const ColoredBox(color: AppColors.surfaceRaised),
                     )
-                  : state.hasError
+                  : state.hasError && banners.isEmpty
                   ? ColoredBox(
                       color: AppColors.surface,
                       child: Center(
@@ -228,6 +227,12 @@ class _PromotionalBannerCarouselState
                     ),
             ),
           ),
+          if (state.hasError && banners.isNotEmpty)
+            TextButton.icon(
+              onPressed: () => ref.invalidate(homeBannersProvider),
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Chưa cập nhật được banner. Thử lại'),
+            ),
           if (banners.length > 1)
             Padding(
               padding: const EdgeInsets.only(top: 10),

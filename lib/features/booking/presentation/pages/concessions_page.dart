@@ -7,6 +7,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../../shared/widgets/app_image.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../application/booking_completion_controller.dart';
@@ -89,7 +90,10 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
               ),
             Expanded(
               child: state.phase == BookingCompletionPhase.loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const RepositoryStatePane.loading(
+                      layout: RepositorySkeleton.foods,
+                      title: 'Đang tải bắp nước…',
+                    )
                   : state.phase == BookingCompletionPhase.expired ||
                         state.phase == BookingCompletionPhase.error
                   ? _BookingProblem(

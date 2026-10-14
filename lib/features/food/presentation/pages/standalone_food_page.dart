@@ -8,6 +8,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/money/vnd_money.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../movie/data/models/cinema_dto.dart';
@@ -162,22 +163,14 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
           ),
           Expanded(
             child: catalog.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Không thể tải danh mục bắp nước.',
-                      style: AppTextStyles.caption,
-                    ),
-                    TextButton(
-                      onPressed: () =>
-                          ref.invalidate(standaloneFoodCatalogProvider),
-                      child: const Text('Thử lại'),
-                    ),
-                  ],
-                ),
+              skipError: catalog.hasValue,
+              loading: () => const RepositoryStatePane.loading(
+                layout: RepositorySkeleton.foods,
+                title: 'Đang tải bắp nước…',
+              ),
+              error: (_, _) => RepositoryStatePane.error(
+                title: 'Chưa tải được bắp nước',
+                onRetry: () => ref.invalidate(standaloneFoodCatalogProvider),
               ),
               data: (data) {
                 final products = data.products;
@@ -195,6 +188,13 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                       child: ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
+                          if (catalog.hasError)
+                            RepositoryStatePane.error(
+                              compact: true,
+                              message: 'Chưa cập nhật được sản phẩm. Giá và khả dụng sẽ được kiểm tra lại khi đặt.',
+                              onRetry: () =>
+                                  ref.invalidate(standaloneFoodCatalogProvider),
+                            ),
                           DropdownButtonFormField<int>(
                             key: ValueKey(
                               'food-cinema-${ref.watch(authSessionProvider).session?.user.id}',
