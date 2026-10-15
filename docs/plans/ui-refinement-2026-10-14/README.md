@@ -1,7 +1,7 @@
 # Kế hoạch tinh chỉnh UI Mobile
 
 Ngày lập: **14/10/2026**. Người yêu cầu: **Tzee314**.
-Trạng thái: **UI-01 đến UI-04 đã triển khai; UI-03 đã có phản hồi tích cực về danh sách phim, UI-04 còn QA booking thật/review/iOS; các batch còn lại chờ triển khai**.
+Trạng thái: **UI-01 đến UI-05 đã triển khai; UI-03 đã có phản hồi tích cực về danh sách phim; UI-05 được người dùng duyệt ngày 15/10, còn QA E2E/iOS; UI-04 còn review và QA; các batch còn lại chờ triển khai**.
 Baseline: Mobile `3a67680` và các thay đổi local banner/poster; BE `9921498`.
 
 ## Mục tiêu và phạm vi
@@ -30,7 +30,7 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 | --- | --- | --- | --- |
 | 1 | [UI-01](01-SHARED-STATES-AND-TYPOGRAPHY.md) | Loading/error/empty, chữ, spacing và nút dùng chung | Code/analyzer/155 test/build đạt; chờ review và QA thật/iOS |
 | 2 | [UI-04](04-BOOKING-HEADER-AND-SEATS.md) | Header booking gọn, thẻ vé và sơ đồ ghế | Code/21 test/analyzer đạt; chờ QA booking thật, review và iOS |
-| 3 | [UI-05](05-CONCESSIONS.md) | Ảnh bắp nước, giá và bộ chọn số lượng | Pending |
+| 3 | [UI-05](05-CONCESSIONS.md) | Ảnh bắp nước, giá và bộ chọn số lượng | UI được người dùng duyệt 15/10; code/test/build đạt, còn QA iOS/E2E |
 | 4 | [UI-06](06-CHECKOUT-AND-PAYMENT.md) | Tổng tiền, countdown và thao tác thanh toán | Pending |
 | 5 | [UI-02](02-HOME.md) | Giảm khoảng trống, cân đối khối PopBot | Analyzer/28 test/build/Android đạt; chờ phản hồi UI và iOS |
 | 6 | [UI-03](03-DISCOVER-AND-SHOWTIMES.md) | Thẻ phim dễ đọc, giờ chiếu/trạng thái chọn rõ | Người dùng xác nhận danh sách phim khá ổn; còn QA suất thật và iOS |
@@ -52,5 +52,5 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 
 ## Cách cập nhật kết quả
 
-Mỗi plan ghi ngày, commit hoặc diff, file sửa, ảnh trước/sau và kết quả kiểm chứng. Kết quả: [UI01-RESULTS.md](UI01-RESULTS.md), [UI02-RESULTS.md](UI02-RESULTS.md), [UI03-RESULTS.md](UI03-RESULTS.md), [UI04-RESULTS.md](UI04-RESULTS.md). Các plan khác giữ pending, dù một số thành phần dùng chung đã được cải thiện từ UI-01.
+Mỗi plan ghi ngày, commit hoặc diff, file sửa, ảnh trước/sau và kết quả kiểm chứng. Kết quả: [UI01-RESULTS.md](UI01-RESULTS.md), [UI02-RESULTS.md](UI02-RESULTS.md), [UI03-RESULTS.md](UI03-RESULTS.md), [UI04-RESULTS.md](UI04-RESULTS.md), [UI05-RESULTS.md](UI05-RESULTS.md). Các plan khác giữ pending, dù một số thành phần dùng chung đã được cải thiện từ UI-01.
 

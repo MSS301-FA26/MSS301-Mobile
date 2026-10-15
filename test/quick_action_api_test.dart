@@ -159,7 +159,7 @@ void main() {
       );
       expect(
         FoodOrderDto.fromJson(order()).expiresAt,
-        DateTime.utc(2026, 10, 14, 10, 3),
+        DateTime.parse('2026-10-14T10:03:00+07:00').toUtc(),
       );
     },
   );

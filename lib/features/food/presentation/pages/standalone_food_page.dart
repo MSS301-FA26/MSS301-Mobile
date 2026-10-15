@@ -9,7 +9,8 @@ import '../../../../core/money/vnd_money.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
-import '../../../../shared/widgets/app_button.dart';
+import '../widgets/food_product_card.dart';
+import '../widgets/food_cart_bar.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../movie/data/models/cinema_dto.dart';
 import '../../../movie/data/models/food_quote_dto.dart';
@@ -67,6 +68,50 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
   void dispose() {
     _cancel?.cancel();
     super.dispose();
+  }
+
+  Future<void> _choosePickup(List<CinemaDto> cinemas) async {
+    if (_busy || _uncertain || cinemas.isEmpty) return;
+    final generation = _generation;
+    final selected = await showModalBottomSheet<CinemaDto>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * .65,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Chọn rạp nhận bắp nước',
+                  style: AppTextStyles.sectionTitle,
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: cinemas.length,
+                  itemBuilder: (context, index) {
+                    final cinema = cinemas[index];
+                    return ListTile(
+                      key: ValueKey('food-pickup-${cinema.id}'),
+                      leading: const Icon(Icons.storefront_outlined),
+                      title: Text(cinema.name),
+                      subtitle: Text(cinema.address),
+                      onTap: () => Navigator.pop(context, cinema),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || generation != _generation || selected == null) return;
+    setState(() => _cinema = selected);
   }
 
   Future<void> _create(List<FoodProductDto> products, VndMoney estimate) async {
@@ -197,7 +242,7 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                             ),
                           DropdownButtonFormField<int>(
                             key: ValueKey(
-                              'food-cinema-${ref.watch(authSessionProvider).session?.user.id}',
+                              'food-cinema-${ref.watch(authSessionProvider).session?.user.id}-${_cinema?.id}',
                             ),
                             initialValue: _cinema?.id,
                             isExpanded: true,
@@ -223,95 +268,55 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                                     ),
                                   ),
                           ),
+                          const SizedBox(height: 8),
+                          if (_cinema != null)
+                            Text(
+                              '${_cinema!.name}\n${_cinema!.address}',
+                              style: AppTextStyles.caption.copyWith(
+                                fontSize: 13,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Mua riêng, không cần đặt vé • Tối đa 8 mỗi loại',
+                            style: AppTextStyles.caption,
+                          ),
                           const SizedBox(height: 16),
                           if (products.isEmpty)
-                            const Text(
-                              'Chưa có sản phẩm bắp nước.',
-                              style: AppTextStyles.caption,
+                            const RepositoryStatePane.empty(
+                              compact: true,
+                              title: 'Chưa có bắp nước',
+                              message: 'Vui lòng quay lại sau.',
+                              icon: Icons.fastfood_outlined,
                             ),
                           if (data.cinemas.isEmpty)
-                            const Text(
-                              'Chưa có rạp nhận hàng.',
-                              style: AppTextStyles.caption,
+                            const RepositoryStatePane.empty(
+                              compact: true,
+                              title: 'Chưa có rạp nhận hàng',
+                              message: 'Chưa thể tạo đơn lúc này.',
+                              icon: Icons.storefront_outlined,
                             ),
                           for (final product in products)
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      product.name,
-                                      style: AppTextStyles.cardTitle,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      '${product.isCombo ? 'Combo' : 'Sản phẩm'} · ${product.price.format()}',
-                                      style: AppTextStyles.caption,
-                                    ),
-                                    if (!product.isAvailable)
-                                      const Text(
-                                        'Hiện không thể đặt sản phẩm này.',
-                                        style: AppTextStyles.caption,
-                                      ),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        IconButton(
-                                          key: ValueKey(
-                                            'food-minus-${product.selectionKey}',
-                                          ),
-                                          onPressed:
-                                              _busy ||
-                                                  _uncertain ||
-                                                  (_quantities[product
-                                                              .selectionKey] ??
-                                                          0) ==
-                                                      0
-                                              ? null
-                                              : () => setState(
-                                                  () =>
-                                                      _quantities[product
-                                                              .selectionKey] =
-                                                          (_quantities[product
-                                                                  .selectionKey] ??
-                                                              0) -
-                                                          1,
-                                                ),
-                                          icon: const Icon(Icons.remove),
-                                        ),
-                                        Text(
-                                          '${_quantities[product.selectionKey] ?? 0}',
-                                        ),
-                                        IconButton(
-                                          key: ValueKey(
-                                            'food-plus-${product.selectionKey}',
-                                          ),
-                                          onPressed:
-                                              _busy ||
-                                                  _uncertain ||
-                                                  !product.isAvailable ||
-                                                  (_quantities[product
-                                                              .selectionKey] ??
-                                                          0) >=
-                                                      8
-                                              ? null
-                                              : () => setState(
-                                                  () =>
-                                                      _quantities[product
-                                                              .selectionKey] =
-                                                          (_quantities[product
-                                                                  .selectionKey] ??
-                                                              0) +
-                                                          1,
-                                                ),
-                                          icon: const Icon(Icons.add),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: FoodProductCard(
+                                product: product,
+                                quantity:
+                                    _quantities[product.selectionKey] ?? 0,
+                                enabled: !_busy && !_uncertain,
+                                onChange: (delta) => setState(() {
+                                  final quantity =
+                                      ((_quantities[product.selectionKey] ??
+                                                  0) +
+                                              delta)
+                                          .clamp(0, 8);
+                                  if (quantity == 0) {
+                                    _quantities.remove(product.selectionKey);
+                                  } else {
+                                    _quantities[product.selectionKey] =
+                                        quantity;
+                                  }
+                                }),
                               ),
                             ),
                           if (_error != null)
@@ -325,29 +330,25 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                         ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Tạm tính: ${estimate.format()}',
-                            style: AppTextStyles.cardTitle,
-                          ),
-                          const SizedBox(height: 10),
-                          AppButton(
-                            key: const ValueKey('food-create-order'),
-                            label: _busy ? 'Đang tạo đơn…' : 'Xác nhận đơn',
-                            onPressed:
-                                _busy ||
-                                    _uncertain ||
-                                    _cinema == null ||
-                                    _quantities.values.every((q) => q == 0)
-                                ? null
-                                : () => _create(products, estimate),
-                          ),
-                        ],
-                      ),
+                    FoodCartBar(
+                      total: estimate,
+                      quantity: _quantities.values.fold(0, (a, b) => a + b),
+                      detail: _cinema?.name ?? 'Chọn rạp nhận hàng',
+                      label: _busy
+                          ? 'Đang tạo đơn…'
+                          : _cinema == null
+                          ? 'Chọn rạp nhận'
+                          : 'Xác nhận đơn',
+                      buttonKey: const ValueKey('food-create-order'),
+                      onContinue:
+                          _busy ||
+                              _uncertain ||
+                              data.cinemas.isEmpty ||
+                              _quantities.values.every((q) => q == 0)
+                          ? null
+                          : _cinema == null
+                          ? () => _choosePickup(data.cinemas)
+                          : () => _create(products, estimate),
                     ),
                   ],
                 );

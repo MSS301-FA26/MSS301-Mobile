@@ -1,6 +1,17 @@
 # UI-05 — Bắp nước kèm vé và đơn độc lập
 
-Trạng thái: **pending**. Ưu tiên: **cao**. Liên quan: plan chức năng 06, 09.
+Trạng thái: **UI đã được người dùng duyệt — “plan 5 đã ổn” (15/10/2026)**. Code/analyzer/test/build Android đạt; QA iOS và E2E đặt/thanh toán thật còn mở. Ưu tiên: **cao**. Liên quan: plan chức năng 06, 09.
+
+Kết quả và giới hạn kiểm chứng: [UI05-RESULTS.md](UI05-RESULTS.md).
+
+## Đã triển khai
+
+- Dùng chung `FoodProductCard` cho bắp nước kèm vé và đơn độc lập: ảnh API giữ tỷ lệ trong khung 80×80, loading/error fallback bằng icon bắp/nước, tên/mô tả/giá dễ đọc.
+- Thẻ đã chọn có nền/viền vàng; trạng thái không khả dụng và giới hạn 8 rõ ràng; vẫn giảm được món không khả dụng đang có trong giỏ.
+- `FoodCartBar` cố định tổng tiền, số lượng và CTA; tự xếp dọc trên màn hẹp hoặc chữ lớn, có SafeArea.
+- Booking ghi rõ không bắt buộc, nút `Bỏ qua · Tiếp tục` khi giỏ trống; giữ countdown ở trên danh sách.
+- Đơn độc lập hiển thị tên/địa chỉ rạp nhận và nhắc rạp ở thanh tổng giỏ; đổi rạp giữ lựa chọn món.
+- Giữ contract BE hiện tại: chỉ `ACTIVE` được thêm; `LOW_STOCK` ghi sắp hết/tạm ngừng đặt. Không đổi giá, quy tắc khả dụng, API tạo đơn hoặc cơ chế chống gửi lặp.
 
 ## Việc cần làm
 
