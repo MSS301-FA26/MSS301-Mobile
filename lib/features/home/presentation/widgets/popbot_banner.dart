@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/popbot_avatar.dart';
 
 class PopBotBanner extends StatelessWidget {
   const PopBotBanner({super.key, required this.onOpen});
@@ -25,18 +26,7 @@ class PopBotBanner extends StatelessWidget {
       children: [
         Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.purple.withValues(alpha: 0.35),
-                borderRadius: AppRadii.control,
-              ),
-              child: const Icon(
-                Icons.smart_toy_rounded,
-                color: AppColors.lavender,
-              ),
-            ),
+            const PopBotAvatar(),
             const SizedBox(width: 12),
             const Expanded(
               child: Column(

@@ -1,6 +1,8 @@
 # UI-09 — PopBot chat
 
-Trạng thái: **pending**. Ưu tiên: **trung bình**. Liên quan: plan chức năng 11.
+Trạng thái: **đã triển khai UI ngày 15/10/2026; analyzer/19 test/build Android đạt; chờ review, QA iOS và chat AI thành công**. Ưu tiên: **trung bình**. Liên quan: plan chức năng 11.
+
+Kết quả: [UI09-RESULTS.md](UI09-RESULTS.md).
 
 ## Việc cần làm
 
@@ -13,8 +15,8 @@ Trạng thái: **pending**. Ưu tiên: **trung bình**. Liên quan: plan chức 
 
 ## Dependency và file dự kiến
 
-AI runtime hiện thiếu OPENAI_API_KEY; style empty/loading/error có thể thực hiện độc lập. Không coi chat trả lời thật đã QA khi dịch vụ còn lỗi.
-`lib/features/popbot/presentation/chat_page.dart`, `lib/features/home/presentation/widgets/popbot_banner.dart`.
+Runtime kiểm tra ngày 15/10: `recommendation-service` đang chạy nhưng trả HTTP 403 cho `POST /api/v1/chat/message` khi gửi từ emulator và thử lại. Chưa xác nhận chat LLM thành công; chưa kết luận nguyên nhân là thiếu API key. Phần UI đã kiểm thử với repository kiểm soát trong test và trạng thái lỗi thật trên Android.
+`lib/features/popbot/presentation/chat_page.dart`, `lib/features/home/presentation/widgets/popbot_banner.dart`, `lib/shared/widgets/popbot_avatar.dart`.
 
 ## Tiêu chí hoàn thành và QA
 
