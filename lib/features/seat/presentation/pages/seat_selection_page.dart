@@ -17,6 +17,7 @@ import '../../../showtime/data/models/showtime_dto.dart';
 import '../../../booking/presentation/widgets/booking_progress.dart';
 import '../../../booking/presentation/widgets/booking_hold_countdown.dart';
 import '../../application/booking_entry_session.dart';
+import '../../application/seat_quote_provider.dart';
 import '../../../booking/application/booking_completion_controller.dart';
 import '../providers/seat_map_provider.dart';
 
@@ -278,11 +279,18 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     final selectedSeats = seatMap.seats
         .where((seat) => session.selectedSeatIds.contains(seat.seatId))
         .toList(growable: false);
-    final total = selectedSeats.fold(VndMoney.zero, (value, seat) {
-      final type =
-          session.assignments[seat.seatId]?.ticketType ?? TicketType.adult;
-      return value + _ticketPrice(seatMap.showtime, seat, type);
-    });
+    final quoteState = ref.watch(seatQuoteProvider);
+    final quote = quoteState.isLoading || quoteState.hasError
+        ? null
+        : quoteState.asData?.value;
+    final total = session.hasActiveHold
+        ? session.booking!.tickets.fold(
+            VndMoney.zero,
+            (value, ticket) => value + ticket.lineTotal,
+          )
+        : selectedSeats.isEmpty
+        ? VndMoney.zero
+        : quote?.ticketSubtotal;
     if (session.hasActiveHold && _timer == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _timer == null) _startTimer();
@@ -317,6 +325,14 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _ShowtimeSummary(seatMap: seatMap),
+                    if ((seatMap.showtime.surchargeAmount?.amount ?? 0) >
+                        0) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Phụ thu suất chiếu: ${seatMap.showtime.surchargeAmount!.format()}/vé. Báo giá đã bao gồm phụ thu.',
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.md),
                     _TicketSelector(
                       session: session,
@@ -387,6 +403,13 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                         style: const TextStyle(color: AppColors.adultBadge),
                       ),
                     ],
+                    if (!holding && quoteState.hasError)
+                      TextButton.icon(
+                        key: const ValueKey('seat-quote-retry'),
+                        onPressed: () => ref.invalidate(seatQuoteProvider),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Chưa lấy được giá vé. Thử lại'),
+                      ),
                   ],
                 ),
               ),
@@ -396,7 +419,10 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
               total: total,
               holding: holding,
               submitting: submitting,
-              onContinue: submitting || !session.assignmentComplete
+              onContinue:
+                  submitting ||
+                      !session.assignmentComplete ||
+                      (!holding && quote == null)
                   ? null
                   : () async {
                       if (holding && session.booking != null) {
@@ -865,7 +891,7 @@ class _SeatActionBar extends StatelessWidget {
     required this.onContinue,
   });
   final List<ShowtimeSeatDto> selectedSeats;
-  final VndMoney total;
+  final VndMoney? total;
   final bool holding, submitting;
   final VoidCallback? onContinue;
   @override
@@ -883,7 +909,7 @@ class _SeatActionBar extends StatelessWidget {
           style: AppTextStyles.caption,
         ),
         Text(
-          total.format(),
+          total?.format() ?? 'Đang cập nhật giá',
           style: AppTextStyles.sectionTitle.copyWith(
             color: AppColors.gold,
             fontWeight: FontWeight.w900,
@@ -946,24 +972,3 @@ Color _ticketColor(TicketType type) => switch (type) {
   TicketType.child => const Color(0xFF22C99A),
   _ => AppColors.gold,
 };
-
-VndMoney _ticketPrice(
-  ShowtimeDto showtime,
-  ShowtimeSeatDto seat,
-  TicketType ticketType,
-) {
-  final value = switch ((ticketType, seat.seatType.normalized)) {
-    (TicketType.adult, CatalogSeatType.standard) => showtime.adultStandardPrice,
-    (TicketType.student, CatalogSeatType.standard) =>
-      showtime.studentStandardPrice,
-    (TicketType.child, CatalogSeatType.standard) => showtime.childStandardPrice,
-    (TicketType.adult, CatalogSeatType.vip) => showtime.adultVipPrice,
-    (TicketType.student, CatalogSeatType.vip) => showtime.studentVipPrice,
-    (TicketType.child, CatalogSeatType.vip) => showtime.childVipPrice,
-    (TicketType.adult, CatalogSeatType.couple) => showtime.adultCouplePrice,
-    (TicketType.student, CatalogSeatType.couple) => showtime.studentCouplePrice,
-    (TicketType.child, CatalogSeatType.couple) => showtime.childCouplePrice,
-    _ => null,
-  };
-  return value ?? seat.unitPrice ?? VndMoney.zero;
-}

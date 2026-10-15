@@ -33,7 +33,7 @@ void main() {
     },
   );
 
-  test('showtime and booking use Vietnam schedules but UTC hold deadlines', () {
+  test('showtime and booking interpret offset-less times as Vietnam time', () {
     final showtime = ShowtimeDto.fromJson({
       'id': 1,
       'movieId': 1,
@@ -57,7 +57,7 @@ void main() {
       'status': 'HOLDING',
       'createdAt': '2026-10-11T06:00:00',
       'showtimeStartSnapshot': '2026-10-12T10:00:00',
-      'holdExpiresAt': '2026-10-11T06:03:00',
+      'holdExpiresAt': '2026-10-11T13:03:00',
     });
     expect(booking.showtimeStartSnapshot, showtime.startTime);
     expect(

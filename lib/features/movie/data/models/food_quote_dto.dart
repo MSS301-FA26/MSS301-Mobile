@@ -281,38 +281,36 @@ class CheckoutQuoteDto {
   final QuoteMovieSummaryDto? movie;
   final QuoteCinemaSummaryDto? cinema;
 
-  factory CheckoutQuoteDto.fromJson(Map<String, Object?> json) =>
-      CheckoutQuoteDto(
-        quoteId: json['quoteId']?.toString() ?? '',
-        validUntil: serverDeadlineFromJson(json['validUntil']),
-        showtime: QuoteShowtimeSnapshotDto.fromJson(
-          Map<String, Object?>.from(json['showtime']! as Map),
-        ),
-        seats: listFromJson(json['seats'], QuoteSeatSnapshotDto.fromJson),
-        tickets: listFromJson(json['tickets'], QuoteTicketSnapshotDto.fromJson),
-        foods: listFromJson(json['foods'], QuoteFoodSnapshotDto.fromJson),
-        foodItems: listFromJson(
-          json['foodItems'],
-          QuoteFoodSnapshotDto.fromJson,
-        ),
-        ticketSubtotal: VndMoney.fromJson(json['ticketSubtotal']),
-        foodSubtotal: VndMoney.fromJson(json['foodSubtotal']),
-        subtotal: VndMoney.fromJson(json['subtotal']),
-        discount: VndMoney.fromJson(json['discount']),
-        cinePointsDiscount: VndMoney.fromJson(json['cinePointsDiscount']),
-        fees: VndMoney.fromJson(json['fees']),
-        tax: VndMoney.fromJson(json['tax']),
-        total: VndMoney.fromJson(json['total']),
-        voucherMessage: json['voucherMessage']?.toString(),
-        movie: json['movie'] == null
-            ? null
-            : QuoteMovieSummaryDto.fromJson(
-                Map<String, Object?>.from(json['movie']! as Map),
-              ),
-        cinema: json['cinema'] == null
-            ? null
-            : QuoteCinemaSummaryDto.fromJson(
-                Map<String, Object?>.from(json['cinema']! as Map),
-              ),
-      );
+  factory CheckoutQuoteDto.fromJson(
+    Map<String, Object?> json,
+  ) => CheckoutQuoteDto(
+    quoteId: json['quoteId']?.toString() ?? '',
+    validUntil: serverDeadlineFromJson(json['validUntil'], vietnamTime: false),
+    showtime: QuoteShowtimeSnapshotDto.fromJson(
+      Map<String, Object?>.from(json['showtime']! as Map),
+    ),
+    seats: listFromJson(json['seats'], QuoteSeatSnapshotDto.fromJson),
+    tickets: listFromJson(json['tickets'], QuoteTicketSnapshotDto.fromJson),
+    foods: listFromJson(json['foods'], QuoteFoodSnapshotDto.fromJson),
+    foodItems: listFromJson(json['foodItems'], QuoteFoodSnapshotDto.fromJson),
+    ticketSubtotal: VndMoney.fromJson(json['ticketSubtotal']),
+    foodSubtotal: VndMoney.fromJson(json['foodSubtotal']),
+    subtotal: VndMoney.fromJson(json['subtotal']),
+    discount: VndMoney.fromJson(json['discount']),
+    cinePointsDiscount: VndMoney.fromJson(json['cinePointsDiscount']),
+    fees: VndMoney.fromJson(json['fees']),
+    tax: VndMoney.fromJson(json['tax']),
+    total: VndMoney.fromJson(json['total']),
+    voucherMessage: json['voucherMessage']?.toString(),
+    movie: json['movie'] == null
+        ? null
+        : QuoteMovieSummaryDto.fromJson(
+            Map<String, Object?>.from(json['movie']! as Map),
+          ),
+    cinema: json['cinema'] == null
+        ? null
+        : QuoteCinemaSummaryDto.fromJson(
+            Map<String, Object?>.from(json['cinema']! as Map),
+          ),
+  );
 }
