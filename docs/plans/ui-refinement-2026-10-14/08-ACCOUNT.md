@@ -1,6 +1,16 @@
 # UI-08 — Tài khoản, hồ sơ và thẻ thành viên
 
-Trạng thái: **pending**. Ưu tiên: **trung bình**. Liên quan: plan chức năng 02, 10.
+Trạng thái: **đã hoàn tất triển khai; analyzer/23 test/build Android đạt, chờ người dùng review và QA iOS** (15/10/2026). Ưu tiên: **trung bình**. Liên quan: plan chức năng 02, 10.
+
+Kết quả: [UI08-RESULTS.md](UI08-RESULTS.md).
+
+## Đã triển khai
+
+- Hồ sơ cho tên/email xuống dòng đầy đủ, avatar gọn; badge hạng chỉ ở thẻ thành viên.
+- Thẻ thành viên bỏ chiều cao cố định và thông tin tên lặp; giữ hạng, điểm, mã hội viên. Không hiện nút QR chưa có chức năng.
+- Điểm/ví có thông báo chưa tải và retry nhỏ cạnh vùng lỗi, phân biệt với số 0 thật. Quản lý ví chuyển sang nút phụ; bỏ giá trị điểm lặp trong menu.
+- Menu tự xuống dòng, nội dung phụ không chiếm ngang tên mục. Form có SafeArea, thông báo validation nhiều dòng, dialog avatar cuộn khi bàn phím/chữ lớn.
+- Không đổi login/register, credential, API cập nhật hồ sơ/mật khẩu hoặc repository/provider nghiệp vụ.
 
 ## Việc cần làm
 

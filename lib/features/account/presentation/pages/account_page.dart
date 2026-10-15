@@ -119,14 +119,23 @@ class AccountPage extends ConsumerWidget {
               onRetry: () => ref.invalidate(accountSummaryProvider),
             ),
           const SizedBox(height: AppSpacing.md),
-          MembershipCard(user: user, onQr: null),
-          if (user.points == null || user.walletBalance == null)
-            TextButton(
-              onPressed: () => ref.invalidate(accountSummaryProvider),
-              child: const Text('Tải lại điểm và số dư ví'),
-            ),
+          MembershipCard(
+            user: user,
+            onQr: null,
+            refreshing: accountState.isLoading,
+            onRetry: accountState.isLoading
+                ? null
+                : () => ref.invalidate(accountSummaryProvider),
+          ),
           const SizedBox(height: AppSpacing.md),
-          WalletTile(user: user, onManage: () => context.go(AppRoutes.wallet)),
+          WalletTile(
+            user: user,
+            onManage: () => context.go(AppRoutes.wallet),
+            refreshing: accountState.isLoading,
+            onRetry: accountState.isLoading
+                ? null
+                : () => ref.invalidate(accountSummaryProvider),
+          ),
           const SizedBox(height: AppSpacing.md),
           AccountMenu(
             items: [
@@ -143,7 +152,6 @@ class AccountPage extends ConsumerWidget {
               AccountMenuItemData(
                 icon: Icons.stars_rounded,
                 label: 'CinePoints',
-                trailing: user.points?.toString() ?? 'Chưa tải được',
                 onTap: () => context.go(AppRoutes.points),
               ),
               AccountMenuItemData(

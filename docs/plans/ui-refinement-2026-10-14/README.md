@@ -1,7 +1,7 @@
 # Kế hoạch tinh chỉnh UI Mobile
 
 Ngày lập: **14/10/2026**. Người yêu cầu: **Tzee314**.
-Trạng thái: **UI-01 đến UI-07 đã triển khai; UI-03 đã có phản hồi tích cực về danh sách phim; UI-05/UI-06 được người dùng duyệt ngày 15/10; UI-07 chờ review và QA quét/lưu/chia sẻ/iOS; các batch còn lại chờ triển khai**.
+Trạng thái: **UI-01 đến UI-08 đã triển khai; UI-03 đã có phản hồi tích cực về danh sách phim; UI-05/UI-06 được người dùng duyệt ngày 15/10; UI-07/UI-08 chờ review và QA thiết bị; các batch còn lại chờ triển khai**.
 Baseline: Mobile `3a67680` và các thay đổi local banner/poster; BE `9921498`.
 
 ## Mục tiêu và phạm vi
@@ -35,7 +35,7 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 | 5 | [UI-02](02-HOME.md) | Giảm khoảng trống, cân đối khối PopBot | Analyzer/28 test/build/Android đạt; chờ phản hồi UI và iOS |
 | 6 | [UI-03](03-DISCOVER-AND-SHOWTIMES.md) | Thẻ phim dễ đọc, giờ chiếu/trạng thái chọn rõ | Người dùng xác nhận danh sách phim khá ổn; còn QA suất thật và iOS |
 | 7 | [UI-07](07-ORDERS-AND-TICKET.md) | Tên dài, màu trạng thái, vé QR | Analyzer/30 test/build Android đạt; chờ review và QA thiết bị/check-in |
-| 8 | [UI-08](08-ACCOUNT.md) | Thu gọn thông tin trùng, tên dài và retry | Pending |
+| 8 | [UI-08](08-ACCOUNT.md) | Thu gọn thông tin trùng, tên dài và retry | Hoàn tất code/analyzer/23 test/build Android; chờ review và iOS |
 | 9 | [UI-09](09-POPBOT-CHAT.md) | Nhận diện bot, gợi ý, chờ/retry | Pending |
 | Xuyên suốt, chốt đợt UI-01–10 | [UI-10](10-DEVICE-REVIEW.md) | So sánh trước/sau, thiết bị và phản hồi | Pending |
 
@@ -62,6 +62,7 @@ Các plan dưới đây **mới được lập, chưa triển khai**. Hoàn tấ
 
 Kết quả UI-06: [UI06-RESULTS.md](UI06-RESULTS.md).
 Kết quả UI-07: [UI07-RESULTS.md](UI07-RESULTS.md).
+Kết quả UI-08: [UI08-RESULTS.md](UI08-RESULTS.md).
 
 - Kiểm tra chiều rộng 320, 360, 390, 430 logical px và tăng cỡ chữ: không overflow, không che CTA, không mất thông tin quan trọng.
 - Vùng chạm tối thiểu 48 logical px; thân nút có thể gọn hơn nếu vùng chạm đủ lớn.

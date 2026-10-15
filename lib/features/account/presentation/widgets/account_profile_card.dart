@@ -6,118 +6,66 @@ import 'profile_avatar.dart';
 
 class AccountProfileCard extends StatelessWidget {
   const AccountProfileCard({super.key, required this.user});
-
   final AccountSummary user;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: const BorderRadius.all(Radius.circular(24)),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.goldSurface,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.gold, width: 2),
-                ),
-                child: user.avatarUrl?.isNotEmpty == true
-                    ? ProfileAvatar(url: user.avatarUrl)
-                    : Text(
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceRaised,
+      borderRadius: AppRadii.card,
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 52,
+              height: 52,
+              child: user.avatarUrl?.trim().isNotEmpty == true
+                  ? ProfileAvatar(url: user.avatarUrl, radius: 26)
+                  : CircleAvatar(
+                      radius: 26,
+                      backgroundColor: AppColors.goldSurface,
+                      child: Text(
                         user.initials,
-                        style: const TextStyle(
-                          color: AppColors.gold,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-              ),
-              const Positioned(
-                right: -2,
-                bottom: -2,
-                child: CircleAvatar(
-                  radius: 11,
-                  backgroundColor: AppColors.gold,
-                  child: Icon(
-                    Icons.stars_rounded,
-                    size: 14,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        user.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.cardTitle.copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.goldSurface,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: AppColors.goldBorder),
-                      ),
-                      child: Text(
-                        user.membershipTier.toUpperCase(),
-                        style: const TextStyle(
                           color: AppColors.gold,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  user.email,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Thành viên CinePremier từ ${user.joinYear}',
-                  style: const TextStyle(
-                    color: AppColors.textDisabled,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.name,
+                    style: AppTextStyles.cardTitle.copyWith(fontSize: 18),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    user.email,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 14,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Thành viên từ ${user.joinYear}',
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }
