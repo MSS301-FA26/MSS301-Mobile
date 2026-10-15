@@ -9,14 +9,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/checkout_summary.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../payment/application/payment_launcher.dart';
 import '../../data/models/food_order_dto.dart';
 import '../../data/repositories/standalone_food_repository.dart';
 import '../../data/repositories/food_order_providers.dart';
-import '../widgets/food_order_card.dart';
 import 'standalone_food_page.dart';
 
 class FoodCheckoutPage extends ConsumerStatefulWidget {
@@ -82,6 +82,7 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
     setState(() {
       _busy = true;
       _error = null;
+      if (sync) _message = 'Đang kiểm tra kết quả với hệ thống…';
     });
     try {
       final repo = ref.read(standaloneFoodRepositoryProvider);
@@ -89,7 +90,16 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
           ? await repo.sync(widget.orderId, cancelToken: cancel)
           : await repo.get(widget.orderId, cancelToken: cancel);
       if (!mounted || generation != _generation) return;
-      setState(() => _order = order);
+      setState(() {
+        _order = order;
+        if (sync) {
+          _message = order.status == FoodOrderStatus.paid
+              ? 'Thanh toán đã được xác nhận. Mã nhận hàng đã sẵn sàng.'
+              : order.status == FoodOrderStatus.pendingPayment
+              ? 'Đơn vẫn chờ thanh toán. Nếu đã trả tiền, hãy kiểm tra lại sau.'
+              : 'Trạng thái mới nhất: ${order.status.label}.';
+        }
+      });
       ref.invalidate(myFoodOrdersProvider);
     } catch (error) {
       if (mounted && generation == _generation) {
@@ -108,7 +118,7 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
     setState(() {
       _busy = true;
       _error = null;
-      _message = null;
+      _message = 'Đang mở VNPay…';
     });
     try {
       final payment = await ref
@@ -231,47 +241,80 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
               style: AppTextStyles.sectionTitle,
             ),
           ),
+          if (order?.status == FoodOrderStatus.pendingPayment &&
+              seconds != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.timer_outlined,
+                    color: AppColors.gold,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      seconds == 0
+                          ? 'Hết thời gian • Hãy kiểm tra kết quả đơn'
+                          : seconds <= 60
+                          ? 'Sắp hết thời gian thanh toán'
+                          : 'Thời gian thanh toán còn lại',
+                      style: AppTextStyles.caption,
+                    ),
+                  ),
+                  Text(
+                    '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
+                    style: AppTextStyles.cardTitle.copyWith(
+                      color: AppColors.gold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: order == null
-                ? Center(
-                    child: _busy
-                        ? const CircularProgressIndicator()
-                        : Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _error ?? 'Chưa tải được đơn.',
-                                textAlign: TextAlign.center,
-                              ),
-                              TextButton(
-                                onPressed: () => _refresh(),
-                                child: const Text('Thử lại'),
-                              ),
-                            ],
-                          ),
-                  )
+                ? _busy
+                      ? const RepositoryStatePane.loading(
+                          title: 'Đang tải đơn…',
+                        )
+                      : RepositoryStatePane.error(
+                          title: 'Chưa tải được đơn',
+                          message: _error,
+                          onRetry: () => _refresh(),
+                        )
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      FoodOrderCard(order: order),
+                      CheckoutSection(
+                        title: 'Thông tin đơn',
+                        children: [
+                          CheckoutLine(
+                            'Mã đơn',
+                            order.orderCode.isEmpty
+                                ? '#${order.id}'
+                                : order.orderCode,
+                            stacked: true,
+                          ),
+                          CheckoutLine(
+                            'Trạng thái',
+                            order.status.label,
+                            emphasized: true,
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
-                      if (changed)
-                        const Text(
-                          'Giá đã được cập nhật. Hãy kiểm tra tổng tiền mới trước khi xác nhận thanh toán.',
-                          style: AppTextStyles.body,
-                        ),
-                      if (order.status == FoodOrderStatus.pendingPayment &&
-                          seconds != null)
-                        Text(
-                          'Thời gian thanh toán còn lại: ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
-                          style: AppTextStyles.caption,
-                        ),
-                      if (order.status == FoodOrderStatus.pendingPayment &&
-                          !_pending)
-                        const Text(
-                          'Thời gian thanh toán đơn đã hết.',
-                          style: AppTextStyles.caption,
-                        ),
+                      CheckoutSection(
+                        title: 'Bắp nước',
+                        children: [
+                          for (final item in order.items)
+                            CheckoutLine(
+                              '${item.productName} x ${item.quantity}',
+                              item.lineTotal.format(),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       if (order.status == FoodOrderStatus.paid &&
                           order.qrCode?.isNotEmpty == true)
                         Center(
@@ -281,25 +324,6 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                             child: QrImageView(data: order.qrCode!, size: 200),
                           ),
                         ),
-                      if (_message != null)
-                        Text(_message!, style: AppTextStyles.caption),
-                      if (_error != null)
-                        Text(_error!, style: AppTextStyles.caption),
-                      const SizedBox(height: 16),
-                      if (_pending)
-                        AppButton(
-                          key: const ValueKey('food-pay'),
-                          label: _busy
-                              ? 'Đang xử lý…'
-                              : changed
-                              ? 'Xác nhận giá mới & thanh toán'
-                              : 'Thanh toán VNPay',
-                          onPressed: _busy ? null : _pay,
-                        ),
-                      TextButton(
-                        onPressed: _busy ? null : () => _refresh(sync: true),
-                        child: const Text('Kiểm tra trạng thái thanh toán'),
-                      ),
                       if (_pending)
                         TextButton(
                           onPressed: _busy ? null : _cancelOrder,
@@ -312,6 +336,31 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                     ],
                   ),
           ),
+          if (order != null)
+            PaymentActionBar(
+              total: order.totalAmount,
+              buttonKey: ValueKey(_pending ? 'food-pay' : 'food-refresh'),
+              icon: _pending ? Icons.lock_outline : Icons.refresh,
+              label: _busy
+                  ? 'Đang xử lý…'
+                  : !_pending
+                  ? 'Kiểm tra kết quả đơn'
+                  : changed
+                  ? 'Xác nhận giá mới & thanh toán'
+                  : 'Thanh toán VNPay',
+              notice: [
+                if (changed && _pending)
+                  'Giá đã thay đổi. Kiểm tra tổng mới trước khi thanh toán.',
+                ?_message,
+                ?_error,
+              ].where((message) => message.isNotEmpty).join('\n'),
+              loading: _busy,
+              onPressed: _busy
+                  ? null
+                  : _pending
+                  ? _pay
+                  : () => _refresh(sync: true),
+            ),
         ],
       ),
     );

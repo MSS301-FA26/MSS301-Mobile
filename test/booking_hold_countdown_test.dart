@@ -62,6 +62,10 @@ void main() {
       await tester.pump();
       expect(find.text('01:19'), findsOneWidget);
 
+      clock.advance(const Duration(seconds: 30));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Sắp hết thời gian giữ ghế'), findsOneWidget);
+
       clock.advance(const Duration(minutes: 2));
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('00:00'), findsOneWidget);

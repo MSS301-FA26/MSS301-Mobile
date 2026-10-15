@@ -122,8 +122,10 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
         ? 'Đang mở VNPay'
         : state.phase == BookingCompletionPhase.verifyingBooking
         ? 'Đang xác minh booking'
+        : state.phase == BookingCompletionPhase.error
+        ? 'Chưa xác định kết quả'
         : realPayment
-        ? 'VNPay'
+        ? 'Chờ kết quả thanh toán'
         : 'VNPay Mock';
 
     return PopScope(
@@ -166,200 +168,241 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
             ? null
             : () => Navigator.of(context).maybePop(),
         body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                children: [
-                  BookingHoldCountdown(booking: state.booking),
-                  const SizedBox(height: AppSpacing.md),
-                  Icon(icon, size: 76, color: color),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.sectionTitle,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    state.message ??
-                        (ready
-                            ? 'Thanh toán thành công. Vé của bạn đã sẵn sàng.'
-                            : 'Mở VNPay để thanh toán. Khi quay lại ứng dụng, trạng thái đơn sẽ được kiểm tra tự động.'),
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.caption,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  if (!realPayment &&
-                      state.payment?.paymentUrl != null &&
-                      !ready) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceRaised,
-                        borderRadius: AppRadii.card,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Text(
-                        state.payment!.paymentUrl!,
-                        key: const ValueKey('payment-url'),
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.caption,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                  ],
-                  if (busy)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                      child: CircularProgressIndicator(),
-                    ),
-                  if (realPayment &&
-                      state.payment?.paymentUrl != null &&
-                      !ready &&
-                      !failed &&
-                      !expired &&
-                      state.phase !=
-                          BookingCompletionPhase.verifyingBooking) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        key: const ValueKey('payment-launch'),
-                        label: 'Mở cổng thanh toán',
-                        onPressed: busy
-                            ? null
-                            : () => ref
+          child: Column(
+            children: [
+              BookingHoldCountdown(booking: state.booking),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      children: [
+                        Icon(icon, size: 76, color: color),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.sectionTitle,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          state.message ??
+                              (ready
+                                  ? 'Thanh toán thành công. Vé của bạn đã sẵn sàng.'
+                                  : failed
+                                  ? 'Giao dịch chưa thành công. Kiểm tra đơn trước khi thử lại.'
+                                  : expired
+                                  ? 'Hạn giữ ghế đã hết. Nếu đã thanh toán, hãy kiểm tra lại đơn để nhận kết quả từ hệ thống.'
+                                  : state.phase ==
+                                        BookingCompletionPhase.verifyingBooking
+                                  ? 'Đã nhận kết quả thanh toán, đang chờ hệ thống xác nhận vé.'
+                                  : 'Mở VNPay để thanh toán. Khi quay lại, ứng dụng sẽ kiểm tra kết quả. Không cần tạo giao dịch mới khi kết quả chưa rõ.'),
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.caption,
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        if (state.payment != null) ...[
+                          Text(
+                            state.payment!.amount.format(),
+                            style: AppTextStyles.sectionTitle.copyWith(
+                              color: AppColors.gold,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                        ],
+                        if (!realPayment &&
+                            state.payment?.paymentUrl != null &&
+                            !ready) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(AppSpacing.sm),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceRaised,
+                              borderRadius: AppRadii.card,
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Text(
+                              state.payment!.paymentUrl!,
+                              key: const ValueKey('payment-url'),
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                        ],
+                        if (busy)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: AppSpacing.sm,
+                            ),
+                            child: CircularProgressIndicator(),
+                          ),
+                        if (realPayment &&
+                            state.payment?.paymentUrl != null &&
+                            !ready &&
+                            !failed &&
+                            !expired &&
+                            state.phase !=
+                                BookingCompletionPhase.verifyingBooking) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              key: const ValueKey('payment-launch'),
+                              label: 'Mở cổng thanh toán',
+                              onPressed: busy
+                                  ? null
+                                  : () => ref
+                                        .read(
+                                          bookingCompletionProvider.notifier,
+                                        )
+                                        .openPaymentGateway(
+                                          mode: PaymentLaunchMode.deepLink,
+                                        ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              key: const ValueKey('payment-refresh'),
+                              label: 'Kiểm tra trạng thái',
+                              variant: AppButtonVariant.secondary,
+                              onPressed: busy
+                                  ? null
+                                  : () => ref
+                                        .read(
+                                          bookingCompletionProvider.notifier,
+                                        )
+                                        .refreshPaymentStatus(),
+                            ),
+                          ),
+                        ],
+                        if (realPayment &&
+                            !ready &&
+                            (failed ||
+                                expired ||
+                                state.phase ==
+                                    BookingCompletionPhase.verifyingBooking ||
+                                state.phase ==
+                                    BookingCompletionPhase.error)) ...[
+                          AppButton(
+                            label: 'Kiểm tra lại đơn',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: busy
+                                ? null
+                                : () async {
+                                    await ref
+                                        .read(
+                                          bookingCompletionProvider.notifier,
+                                        )
+                                        .attachPayment(widget.paymentId);
+                                    if (mounted) _startPolling();
+                                  },
+                          ),
+                        ],
+                        if (!realPayment &&
+                            !busy &&
+                            !ready &&
+                            !failed &&
+                            !expired) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              key: const ValueKey('payment-open-webview'),
+                              label: 'Mở VNPay trong app',
+                              icon: Icons.open_in_browser_rounded,
+                              onPressed: () => ref
+                                  .read(bookingCompletionProvider.notifier)
+                                  .openPaymentGateway(),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              key: const ValueKey('payment-open-deeplink'),
+                              label: 'Mở bằng app ngân hàng',
+                              icon: Icons.account_balance_wallet_rounded,
+                              variant: AppButtonVariant.secondary,
+                              onPressed: () => ref
                                   .read(bookingCompletionProvider.notifier)
                                   .openPaymentGateway(
                                     mode: PaymentLaunchMode.deepLink,
                                   ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        key: const ValueKey('payment-refresh'),
-                        label: 'Kiểm tra trạng thái',
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () => ref
-                            .read(bookingCompletionProvider.notifier)
-                            .refreshPaymentStatus(),
-                      ),
-                    ),
-                  ],
-                  if (realPayment && !ready) ...[
-                    AppButton(
-                      label: 'Kiểm tra lại đơn',
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () async {
-                        await ref
-                            .read(bookingCompletionProvider.notifier)
-                            .attachPayment(widget.paymentId);
-                        if (mounted) _startPolling();
-                      },
-                    ),
-                  ],
-                  if (!realPayment &&
-                      !busy &&
-                      !ready &&
-                      !failed &&
-                      !expired) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        key: const ValueKey('payment-open-webview'),
-                        label: 'Mở VNPay trong app',
-                        icon: Icons.open_in_browser_rounded,
-                        onPressed: () => ref
-                            .read(bookingCompletionProvider.notifier)
-                            .openPaymentGateway(),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        key: const ValueKey('payment-open-deeplink'),
-                        label: 'Mở bằng app ngân hàng',
-                        icon: Icons.account_balance_wallet_rounded,
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () => ref
-                            .read(bookingCompletionProvider.notifier)
-                            .openPaymentGateway(
-                              mode: PaymentLaunchMode.deepLink,
                             ),
-                      ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              key: const ValueKey('payment-success'),
+                              label: 'Mô phỏng callback thành công',
+                              onPressed: () async {
+                                final success = await ref
+                                    .read(bookingCompletionProvider.notifier)
+                                    .simulateSuccess();
+                                if (success) ref.invalidate(ordersProvider);
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              key: const ValueKey('payment-failure'),
+                              label: 'Mô phỏng callback bị từ chối',
+                              variant: AppButtonVariant.secondary,
+                              onPressed: () => ref
+                                  .read(bookingCompletionProvider.notifier)
+                                  .simulateFailure(),
+                            ),
+                          ),
+                        ],
+                        if (failed) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              key: const ValueKey('payment-retry'),
+                              label: 'Thử lại',
+                              onPressed: () async {
+                                final payment = await ref
+                                    .read(bookingCompletionProvider.notifier)
+                                    .retryPayment();
+                                if (payment != null && context.mounted) {
+                                  context.go(AppRoutes.payment(payment.id));
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                        if (ready) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              key: const ValueKey('open-ticket'),
+                              label: 'Mở vé QR',
+                              icon: Icons.qr_code_rounded,
+                              onPressed: () => context.go(
+                                AppRoutes.ticket(state.booking!.id),
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (expired) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              label: 'Chọn lại suất chiếu',
+                              onPressed: () => context.go(AppRoutes.showtimes),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        key: const ValueKey('payment-success'),
-                        label: 'Mô phỏng callback thành công',
-                        onPressed: () async {
-                          final success = await ref
-                              .read(bookingCompletionProvider.notifier)
-                              .simulateSuccess();
-                          if (success) ref.invalidate(ordersProvider);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        key: const ValueKey('payment-failure'),
-                        label: 'Mô phỏng callback bị từ chối',
-                        variant: AppButtonVariant.secondary,
-                        onPressed: () => ref
-                            .read(bookingCompletionProvider.notifier)
-                            .simulateFailure(),
-                      ),
-                    ),
-                  ],
-                  if (failed) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        key: const ValueKey('payment-retry'),
-                        label: 'Thử lại',
-                        onPressed: () async {
-                          final payment = await ref
-                              .read(bookingCompletionProvider.notifier)
-                              .retryPayment();
-                          if (payment != null && context.mounted) {
-                            context.go(AppRoutes.payment(payment.id));
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                  if (ready) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        key: const ValueKey('open-ticket'),
-                        label: 'Mở vé QR',
-                        icon: Icons.qr_code_rounded,
-                        onPressed: () =>
-                            context.go(AppRoutes.ticket(state.booking!.id)),
-                      ),
-                    ),
-                  ],
-                  if (expired) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        label: 'Chọn lại suất chiếu',
-                        onPressed: () => context.go(AppRoutes.showtimes),
-                      ),
-                    ),
-                  ],
-                ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
