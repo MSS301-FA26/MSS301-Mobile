@@ -1,6 +1,16 @@
 # UI-07 — Đơn của tôi và vé QR
 
-Trạng thái: **pending**. Ưu tiên: **trung bình**. Liên quan: plan chức năng 08, 09.
+Trạng thái: **đã triển khai; analyzer/30 test/build Android đạt; chờ người dùng review, QA quét/check-in và iOS** (15/10/2026). Ưu tiên: **trung bình**. Liên quan: plan chức năng 08, 09.
+
+Kết quả và giới hạn kiểm chứng: [UI07-RESULTS.md](UI07-RESULTS.md).
+
+## Đã triển khai
+
+- Thẻ đơn vé: mã đơn ở dòng riêng, tên phim tối đa hai dòng, thông tin rạp/giờ/ghế tách rõ và không cố định chiều cao nội dung.
+- Badge có chữ/icon/màu theo lifecycle cho vé và đơn bắp nước. Nút tiếp tục, mở vé, hoàn/đổi preview và đánh giá được giới hạn theo trạng thái.
+- Chi tiết vé dùng dòng thông tin thích ứng màn hẹp/chữ lớn, không cắt còn ba dòng như trước; bỏ diễn đạt mock khỏi thẻ đơn.
+- QR PAID giữ nguyên dữ liệu BE, nền trắng, kích thước co theo màn hình và quiet zone bốn module; USED vẫn chỉ là vé lịch sử, không hiện lại QR sử dụng.
+- Giữ luồng tải lại, phân trang, cache theo tài khoản và revalidate trước lưu/chia sẻ; không thay repository/provider nghiệp vụ.
 
 ## Việc cần làm
 
