@@ -1,7 +1,9 @@
 # UI-12 — Danh mục bắp nước và trình bày combo
 
-Ngày lập: **15/10/2026**. Trạng thái: **planned — sau UI-10 và UI-11**.
+Ngày lập: **15/10/2026**. Cập nhật: **16/10/2026**. Trạng thái: **đã triển khai; analyzer/59 test/build Android đạt; đã kiểm tra catalog thật trên emulator, chờ review và iOS/E2E**.
 Thứ tự trong đợt mới: **2**. Tham chiếu: danh sách combo ảnh 3.
+
+Kết quả: [UI12-RESULTS.md](UI12-RESULTS.md). Đã có nhóm Tất cả/Combo/Sản phẩm dùng chung, sheet chi tiết, ảnh lớn hơn, tóm tắt booking và tách tiền vé khỏi tạm tính bắp nước. Giữ nguyên API đặt hàng, giới hạn 8 và deadline BE.
 
 ## Mục tiêu
 

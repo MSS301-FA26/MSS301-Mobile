@@ -224,7 +224,16 @@ void main() {
       await tester.pump();
       expect(find.text('9 sản phẩm • Tạm tính'), findsOneWidget);
       final pickup = find.byType(DropdownButtonFormField<int>);
-      await tester.ensureVisible(pickup);
+      await tester.scrollUntilVisible(
+        pickup,
+        -250,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await tester.tap(pickup);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Central').last);

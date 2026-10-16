@@ -13,6 +13,7 @@ class FoodCartBar extends StatelessWidget {
     required this.buttonKey,
     required this.onContinue,
     this.detail,
+    this.ticketSubtotal,
   });
 
   final VndMoney total;
@@ -21,6 +22,7 @@ class FoodCartBar extends StatelessWidget {
   final Key buttonKey;
   final VoidCallback? onContinue;
   final String? detail;
+  final VndMoney? ticketSubtotal;
 
   @override
   Widget build(BuildContext context) => SafeArea(
@@ -37,6 +39,14 @@ class FoodCartBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (ticketSubtotal != null) ...[
+                Text(
+                  'Tiền vé: ${ticketSubtotal!.format()}',
+                  key: const ValueKey('food-ticket-subtotal'),
+                  style: AppTextStyles.body,
+                ),
+                const SizedBox(height: 6),
+              ],
               Text(
                 quantity == 0
                     ? 'Chưa chọn bắp nước'

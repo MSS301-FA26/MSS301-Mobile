@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../widgets/food_product_card.dart';
 import '../widgets/food_cart_bar.dart';
+import '../widgets/food_catalog_groups.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../movie/data/models/cinema_dto.dart';
 import '../../../movie/data/models/food_quote_dto.dart';
@@ -59,6 +60,7 @@ class StandaloneFoodPage extends ConsumerStatefulWidget {
 
 class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
   final _quantities = <String, int>{};
+  FoodCatalogGroup _group = FoodCatalogGroup.all;
   CinemaDto? _cinema;
   bool _busy = false, _uncertain = false;
   String? _error;
@@ -176,6 +178,7 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
           _generation++;
           setState(() {
             _quantities.clear();
+            _group = FoodCatalogGroup.all;
             _cinema = null;
             _error = null;
             _busy = false;
@@ -219,6 +222,7 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
               ),
               data: (data) {
                 final products = data.products;
+                final visibleProducts = foodProductsInGroup(products, _group);
                 final estimate = products.fold<VndMoney>(
                   VndMoney.zero,
                   (total, product) =>
@@ -229,6 +233,13 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                 );
                 return Column(
                   children: [
+                    FoodCatalogGroups(
+                      products: products,
+                      selected: _group,
+                      onSelected: _busy
+                          ? null
+                          : (group) => setState(() => _group = group),
+                    ),
                     Expanded(
                       child: ListView(
                         padding: const EdgeInsets.all(16),
@@ -289,6 +300,13 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                               message: 'Vui lòng quay lại sau.',
                               icon: Icons.fastfood_outlined,
                             ),
+                          if (products.isNotEmpty && visibleProducts.isEmpty)
+                            const RepositoryStatePane.empty(
+                              compact: true,
+                              title: 'Chưa có sản phẩm trong nhóm này',
+                              message: 'Bạn có thể chọn nhóm khác.',
+                              icon: Icons.fastfood_outlined,
+                            ),
                           if (data.cinemas.isEmpty)
                             const RepositoryStatePane.empty(
                               compact: true,
@@ -296,7 +314,7 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                               message: 'Chưa thể tạo đơn lúc này.',
                               icon: Icons.storefront_outlined,
                             ),
-                          for (final product in products)
+                          for (final product in visibleProducts)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: FoodProductCard(

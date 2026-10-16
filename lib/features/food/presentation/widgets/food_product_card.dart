@@ -44,7 +44,7 @@ class FoodProductCard extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _FoodImage(product: product),
+            _FoodImage(product: product, size: 104),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -63,6 +63,14 @@ class FoodProductCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.cardTitle.copyWith(fontSize: 16),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    product.price.format(),
+                    style: AppTextStyles.cardTitle.copyWith(
+                      color: AppColors.gold,
+                      fontSize: 18,
+                    ),
+                  ),
                   if (product.description?.trim().isNotEmpty == true) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -72,6 +80,11 @@ class FoodProductCard extends StatelessWidget {
                       style: AppTextStyles.caption.copyWith(fontSize: 13),
                     ),
                   ],
+                  TextButton(
+                    key: ValueKey('food-details-${product.selectionKey}'),
+                    onPressed: () => _showDetails(context),
+                    child: const Text('Xem chi tiết'),
+                  ),
                 ],
               ),
             ),
@@ -83,13 +96,6 @@ class FoodProductCard extends StatelessWidget {
           runSpacing: 6,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Text(
-              product.price.format(),
-              style: AppTextStyles.cardTitle.copyWith(
-                color: AppColors.gold,
-                fontSize: 18,
-              ),
-            ),
             Text(
               _availability,
               style: AppTextStyles.caption.copyWith(
@@ -151,11 +157,85 @@ class FoodProductCard extends StatelessWidget {
       ],
     ),
   );
+
+  void _showDetails(BuildContext context) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    backgroundColor: AppColors.surface,
+    builder: (context) => SafeArea(
+      top: false,
+      child: SizedBox(
+        key: ValueKey('food-details-sheet-${product.selectionKey}'),
+        height: MediaQuery.sizeOf(context).height * .8,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      product.isCombo ? 'Chi tiết combo' : 'Chi tiết sản phẩm',
+                      style: AppTextStyles.cardTitle,
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('food-details-close'),
+                    tooltip: 'Đóng chi tiết',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(child: _FoodImage(product: product, size: 190)),
+                    const SizedBox(height: 20),
+                    Text(product.name, style: AppTextStyles.sectionTitle),
+                    const SizedBox(height: 12),
+                    Text(
+                      product.price.format(),
+                      style: AppTextStyles.sectionTitle.copyWith(
+                        color: AppColors.gold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(_availability, style: AppTextStyles.body),
+                    const SizedBox(height: 20),
+                    Text(
+                      product.isCombo ? 'Thông tin combo' : 'Mô tả sản phẩm',
+                      style: AppTextStyles.cardTitle,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      product.description?.trim().isNotEmpty == true
+                          ? product.description!.trim()
+                          : 'Thông tin chi tiết đang được cập nhật.',
+                      style: AppTextStyles.body,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _FoodImage extends StatelessWidget {
-  const _FoodImage({required this.product});
+  const _FoodImage({required this.product, this.size = 104});
   final FoodProductDto product;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -176,8 +256,8 @@ class _FoodImage extends StatelessWidget {
       borderRadius: AppRadii.control,
       child: SizedBox(
         key: ValueKey('food-image-${product.selectionKey}'),
-        width: 80,
-        height: 80,
+        width: size,
+        height: size,
         child: ColoredBox(
           color: AppColors.surfaceRaised,
           child: valid
