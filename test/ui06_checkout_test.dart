@@ -86,7 +86,7 @@ class _FixedCompletion extends BookingCompletionController {
 }
 
 void main() {
-  for (final width in [320.0, 430.0]) {
+  for (final width in [320.0, 360.0, 390.0, 430.0]) {
     testWidgets(
       'checkout long order keeps price update and payment visible at $width',
       (tester) async {

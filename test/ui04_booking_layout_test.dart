@@ -72,7 +72,7 @@ void main() {
       initialLocation: AppRoutes.seatSelection(1002),
       size: const Size(390, 844),
       providerOverrides: [
-          mockCatalogRepositoryProvider.overrideWithValue(_SurchargeCatalog()),
+        mockCatalogRepositoryProvider.overrideWithValue(_SurchargeCatalog()),
       ],
     );
     await tester.tap(find.byKey(const ValueKey('ticket-plus-adult')));
@@ -150,7 +150,7 @@ void main() {
     },
   );
 
-  for (final width in [320.0, 430.0]) {
+  for (final width in [320.0, 360.0, 390.0, 430.0]) {
     testWidgets(
       'wide seat map scrolls to last seat with large text at $width',
       (tester) async {

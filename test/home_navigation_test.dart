@@ -30,10 +30,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Chi tiết phim'), findsOneWidget);
-      expect(
-        find.textContaining('Dữ liệu phim được tải từ CatalogRepository'),
-        findsOneWidget,
-      );
+      expect(find.text('Thông tin phim'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Quay lại'));
       await tester.pumpAndSettle();
@@ -50,7 +47,7 @@ void main() {
     await tester.ensureVisible(find.text('Xem trailer'));
     await tester.tap(find.text('Xem trailer'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('nội dung mô phỏng'), findsOneWidget);
+    expect(find.byKey(const ValueKey('movie-trailer-open')), findsOneWidget);
     await tester.tap(find.byTooltip('Đóng'));
     await tester.pumpAndSettle();
 
@@ -191,8 +188,8 @@ void main() {
       find.byKey(const ValueKey('bottom-nav-icon-3')).hitTestable(),
     );
     await tester.pumpAndSettle();
-    expect(find.text('CP-MOCK-5101'), findsOneWidget);
-    expect(find.text('INCEPTION'), findsOneWidget);
+    expect(find.text('Mã đơn: CP-MOCK-5101'), findsOneWidget);
+    expect(find.text('Inception'), findsOneWidget);
 
     await tester.tap(
       find.byKey(const ValueKey('bottom-nav-icon-4')).hitTestable(),

@@ -1,7 +1,7 @@
 # Kế hoạch tinh chỉnh UI Mobile
 
 Ngày lập: **14/10/2026**. Người yêu cầu: **Tzee314**.
-Trạng thái: **UI-01 đến UI-09 đã triển khai; UI-03 đã có phản hồi tích cực về danh sách phim; UI-05/UI-06 được người dùng duyệt ngày 15/10; UI-07/UI-08/UI-09 chờ review và QA còn lại; UI-10 chờ thực hiện**.
+Trạng thái: **UI-01 đến UI-09 đã triển khai; UI-10 đã thực hiện QA tổng hợp (218 test đạt, analyzer sạch, build Android thành công), cập nhật 16/10. UI-03 có phản hồi tích cực; UI-05/UI-06 được duyệt. Nghiệm thu toàn bộ còn mở: review, iOS, chat/ví và E2E payment/QR.**
 Baseline: Mobile `3a67680` và các thay đổi local banner/poster; BE `9921498`.
 
 ## Mục tiêu và phạm vi
@@ -37,11 +37,11 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 | 7 | [UI-07](07-ORDERS-AND-TICKET.md) | Tên dài, màu trạng thái, vé QR | Analyzer/30 test/build Android đạt; chờ review và QA thiết bị/check-in |
 | 8 | [UI-08](08-ACCOUNT.md) | Thu gọn thông tin trùng, tên dài và retry | Hoàn tất code/analyzer/23 test/build Android; chờ review và iOS |
 | 9 | [UI-09](09-POPBOT-CHAT.md) | Nhận diện bot, gợi ý, chờ/retry | Analyzer/19 test/build Android đạt; API chat thật trả 403, còn QA AI thành công và iOS |
-| Xuyên suốt, chốt đợt UI-01–10 | [UI-10](10-DEVICE-REVIEW.md) | So sánh trước/sau, thiết bị và phản hồi | Pending |
+| Xuyên suốt, chốt đợt UI-01–10 | [UI-10](10-DEVICE-REVIEW.md) | So sánh trước/sau, thiết bị và phản hồi | Đã QA: 218 test/analyzer/build đạt, Android có ảnh; nghiệm thu toàn bộ còn mở, xem UI10-RESULTS |
 
 ## Đợt tiếp theo sau UI-10 — tham khảo ảnh ngày 15/10
 
-Các plan dưới đây **mới được lập, chưa triển khai**. Hoàn tất đợt UI-01–10 trước rồi thực hiện theo thứ tự UI-11 → UI-12 → UI-13 → UI-14. Đây là số thứ tự **UI**, không thay thế plan chức năng 11–12 hiện có.
+Các plan dưới đây **mới được lập, chưa triển khai**. Đợt QA UI-10 đã thực hiện; có thể tiếp tục theo thứ tự UI-11 → UI-12 → UI-13 → UI-14 và theo dõi các ca nghiệm thu còn mở trong UI10-RESULTS. Đây là số thứ tự **UI**, không thay thế plan chức năng 11–12 hiện có.
 
 | Thứ tự sau UI-10 | Plan | Điều chỉnh | Phụ thuộc chính |
 | --- | --- | --- | --- |
@@ -64,6 +64,7 @@ Kết quả UI-06: [UI06-RESULTS.md](UI06-RESULTS.md).
 Kết quả UI-07: [UI07-RESULTS.md](UI07-RESULTS.md).
 Kết quả UI-08: [UI08-RESULTS.md](UI08-RESULTS.md).
 Kết quả UI-09: [UI09-RESULTS.md](UI09-RESULTS.md).
+Kết quả UI-10: [UI10-RESULTS.md](UI10-RESULTS.md).
 
 - Kiểm tra chiều rộng 320, 360, 390, 430 logical px và tăng cỡ chữ: không overflow, không che CTA, không mất thông tin quan trọng.
 - Vùng chạm tối thiểu 48 logical px; thân nút có thể gọn hơn nếu vùng chạm đủ lớn.
@@ -76,5 +77,5 @@ Kết quả UI-09: [UI09-RESULTS.md](UI09-RESULTS.md).
 
 ## Cách cập nhật kết quả
 
-Mỗi plan ghi ngày, commit hoặc diff, file sửa, ảnh trước/sau và kết quả kiểm chứng. Kết quả: [UI01-RESULTS.md](UI01-RESULTS.md), [UI02-RESULTS.md](UI02-RESULTS.md), [UI03-RESULTS.md](UI03-RESULTS.md), [UI04-RESULTS.md](UI04-RESULTS.md), [UI05-RESULTS.md](UI05-RESULTS.md). Các plan khác giữ pending, dù một số thành phần dùng chung đã được cải thiện từ UI-01.
+Mỗi plan ghi ngày, commit hoặc diff, file sửa, ảnh trước/sau và kết quả kiểm chứng. Kết quả: [UI01-RESULTS.md](UI01-RESULTS.md), [UI02-RESULTS.md](UI02-RESULTS.md), [UI03-RESULTS.md](UI03-RESULTS.md), [UI04-RESULTS.md](UI04-RESULTS.md), [UI05-RESULTS.md](UI05-RESULTS.md), cùng UI06–UI10-RESULTS ở trên. Trạng thái từng batch dựa vào bằng chứng và phản hồi thực tế; không tự duyệt batch khác từ việc dùng chung component.
 

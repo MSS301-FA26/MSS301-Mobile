@@ -46,6 +46,7 @@ Movie mapMovieToPresentation(MovieDto movie) {
     subtitleLanguage: movie.subtitleLanguage,
     trailerUrl: movie.trailerUrl,
     posterAsset: movie.posterUrl ?? movie.avatarUrl ?? '',
+    bannerAsset: movie.bannerUrl,
     format: '',
     releaseDate: movie.releaseDate,
     status: movie.status,
