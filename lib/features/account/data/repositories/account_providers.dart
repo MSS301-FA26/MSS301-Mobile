@@ -5,13 +5,14 @@ import 'account_repositories.dart';
 import 'mock_account_repositories.dart';
 import '../../../../core/network/network_providers.dart';
 import 'remote_account_repositories.dart';
+import 'remote_profile_repository.dart';
 
 final mockAccountStoreProvider = Provider<MockAccountStore>(
   (ref) => MockAccountStore(clock: ref.watch(appClockProvider)),
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
-  (ref) => ref.watch(mockAccountStoreProvider),
+  (ref) => RemoteProfileRepository(ref.watch(dioProvider)),
 );
 
 final walletRepositoryProvider = Provider<WalletRepository>(

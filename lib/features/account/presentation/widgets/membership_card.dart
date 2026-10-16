@@ -1,54 +1,83 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/app_surface.dart';
+import '../models/account_summary.dart';
 
 class MembershipCard extends StatelessWidget {
-  const MembershipCard({super.key, required this.points, required this.onQr});
-
-  final int points;
-  final VoidCallback? onQr;
+  const MembershipCard({
+    super.key,
+    required this.user,
+    required this.onQr,
+    this.onRetry,
+    this.refreshing = false,
+  });
+  final AccountSummary user;
+  final VoidCallback? onQr, onRetry;
+  final bool refreshing;
 
   @override
-  Widget build(BuildContext context) => AppSurface(
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceRaised,
+      borderRadius: AppRadii.card,
+      border: Border.all(color: AppColors.goldBorder),
+    ),
     child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Điểm tích lũy', style: AppTextStyles.cardTitle),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          _formatNumber(points),
-          style: AppTextStyles.price.copyWith(color: AppColors.gold),
-        ),
-        const SizedBox(height: AppSpacing.xxs),
-        const Text('CinePoints hiện có', style: AppTextStyles.caption),
-        const SizedBox(height: AppSpacing.md),
-        TextButton.icon(
-          key: const ValueKey('account-membership-qr'),
-          onPressed: onQr,
-          icon: const Icon(Icons.qr_code_rounded, size: AppSizes.iconSmall),
-          label: Text(onQr == null ? 'Sắp có' : 'Mã VIP'),
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.gold,
-            minimumSize: const Size(double.infinity, AppSizes.buttonHeight),
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            textStyle: AppTextStyles.button.copyWith(
-              fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Icon(Icons.stars_rounded, color: AppColors.gold, size: 22),
+            Text(
+              user.membershipTier,
+              style: AppTextStyles.cardTitle.copyWith(color: AppColors.gold),
             ),
+            if (onQr != null)
+              TextButton.icon(
+                onPressed: onQr,
+                icon: const Icon(Icons.qr_code_rounded),
+                label: const Text('Mã VIP'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text('Điểm CinePoints', style: AppTextStyles.caption),
+        const SizedBox(height: 4),
+        Text(
+          user.points == null
+              ? refreshing
+                    ? 'Đang tải điểm…'
+                    : 'Chưa tải được điểm'
+              : _formatNumber(user.points!),
+          key: const ValueKey('account-points-value'),
+          style: AppTextStyles.sectionTitle.copyWith(
+            color: AppColors.gold,
+            fontSize: user.points == null ? 16 : 28,
           ),
         ),
+        if (user.points == null && !refreshing)
+          TextButton.icon(
+            key: const ValueKey('account-points-retry'),
+            onPressed: onRetry,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textMuted,
+              minimumSize: const Size(48, 48),
+            ),
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Thử lại điểm'),
+          ),
+        const SizedBox(height: 10),
+        Text('Mã hội viên: ${user.memberCode}', style: AppTextStyles.caption),
       ],
     ),
   );
 }
 
-String _formatNumber(int value) {
-  final text = value.toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < text.length; i++) {
-    final fromEnd = text.length - i;
-    buffer.write(text[i]);
-    if (fromEnd > 1 && fromEnd % 3 == 1) buffer.write('.');
-  }
-  return buffer.toString();
-}
+String _formatNumber(int value) => value.toString().replaceAllMapped(
+  RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+  (match) => '${match[1]}.',
+);

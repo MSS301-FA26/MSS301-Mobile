@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Mobile - Android Emulator - Local BE API",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define=API_BASE_URL=http://10.0.2.2:8080",
+        "--dart-define=UI_PREVIEW=false"
+      ]
+    },
+    {
+      "name": "Mobile - Android Emulator - Home UI Preview",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define=API_BASE_URL=http://10.0.2.2:8080",
+        "--dart-define=UI_PREVIEW=true"
+      ]
+    }
+  ]
+}

@@ -6,8 +6,9 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
+import '../../data/models/booking_enums.dart';
+import '../../../booking/presentation/widgets/resume_booking_banner.dart';
 import '../providers/orders_provider.dart';
 import '../widgets/order_card.dart';
 import '../widgets/orders_segmented_tabs.dart';
@@ -25,17 +26,36 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
   @override
   Widget build(BuildContext context) {
     final ordersState = ref.watch(ordersProvider);
-    if (ordersState.isLoading) {
-      return const AppShell(
-        currentIndex: 3,
-        body: RepositoryStatePane.loading(),
+    Widget pending(Widget content) => AppShell(
+      currentIndex: 3,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: OrdersSegmentedTabs(
+              selected: _tab,
+              upcomingCount: null,
+              completedCount: null,
+              onSelected: (tab) => setState(() => _tab = tab),
+            ),
+          ),
+          Expanded(child: content),
+        ],
+      ),
+    );
+    if (ordersState.isLoading && !ordersState.hasValue) {
+      return pending(
+        const RepositoryStatePane.loading(
+          layout: RepositorySkeleton.orders,
+          title: 'Đang tải đơn của bạn…',
+        ),
       );
     }
-    if (ordersState.hasError) {
-      return AppShell(
-        currentIndex: 3,
-        body: RepositoryStatePane.error(
+    if (ordersState.hasError && !ordersState.hasValue) {
+      return pending(
+        RepositoryStatePane.error(
           onRetry: () => ref.invalidate(ordersProvider),
+          title: 'Chưa tải được đơn của bạn',
         ),
       );
     }
@@ -46,61 +66,96 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
 
     return AppShell(
       currentIndex: 3,
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          const AppSectionHeader(title: 'Vé của tôi'),
-          const SizedBox(height: AppSpacing.md),
-          OrdersSegmentedTabs(
-            selected: _tab,
-            upcomingCount: upcoming.length,
-            completedCount: completed.length,
-            onSelected: (tab) => setState(() => _tab = tab),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (visible.isEmpty)
-            _EmptyOrders(tab: _tab)
-          else
-            for (final order in visible)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: order.isUpcoming
-                    ? UpcomingOrderCard(
-                        order: order,
-                        onCancel: FeatureFlags.refundPreview
-                            ? () =>
-                                  context.go(AppRoutes.previewRefund(order.id))
-                            : null,
-                        onOpenTicket: () =>
-                            context.go(AppRoutes.ticket(order.id)),
-                      )
-                    : CompletedOrderCard(
-                        order: order,
-                        onBookAgain: () => context.go(
-                          AppRoutes.showtimesForMovie(order.movieId),
-                        ),
-                        onRate: null,
-                      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(ordersProvider);
+          try {
+            await ref.read(ordersProvider.future);
+          } catch (_) {
+            /* Inline retry preserves previous orders. */
+          }
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            if (ordersState.hasError)
+              RepositoryStatePane.error(
+                compact: true,
+                message:
+                    'Chưa cập nhật được đơn. Các đơn đã tải vẫn được giữ lại.',
+                onRetry: () => ref.invalidate(ordersProvider),
               ),
-        ],
+            OrdersSegmentedTabs(
+              selected: _tab,
+              upcomingCount: upcoming.length,
+              completedCount: completed.length,
+              onSelected: (tab) => setState(() => _tab = tab),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (visible.isEmpty)
+              _EmptyOrders(history: _tab == OrdersTab.completed)
+            else
+              for (final order in visible)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: InkWell(
+                    onTap: () => context.go(AppRoutes.ticket(order.id)),
+                    child: order.isUpcoming
+                        ? UpcomingOrderCard(
+                            order: order,
+                            onCancel: FeatureFlags.refundPreview
+                                ? () => context.go(
+                                    AppRoutes.previewRefund(order.id),
+                                  )
+                                : null,
+                            onOpenTicket: () =>
+                                order.status == BookingStatus.paid
+                                ? context.go(AppRoutes.ticket(order.id))
+                                : resumeBooking(context, ref, order.id),
+                          )
+                        : Column(
+                            children: [
+                              CompletedOrderCard(
+                                order: order,
+                                onBookAgain: () => context.go(
+                                  AppRoutes.showtimesForMovie(order.movieId),
+                                ),
+                                onRate: order.status == BookingStatus.used
+                                    ? () => context.push(
+                                        AppRoutes.movieReviews(order.movieId),
+                                      )
+                                    : null,
+                              ),
+                              if (order.status == BookingStatus.used)
+                                TextButton(
+                                  onPressed: () =>
+                                      context.go(AppRoutes.ticket(order.id)),
+                                  child: const Text('Xem vé đã sử dụng'),
+                                ),
+                            ],
+                          ),
+                  ),
+                ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _EmptyOrders extends StatelessWidget {
-  const _EmptyOrders({required this.tab});
-
-  final OrdersTab tab;
+  const _EmptyOrders({required this.history});
+  final bool history;
 
   @override
   Widget build(BuildContext context) {
     return RepositoryStatePane.empty(
-      title: tab == OrdersTab.upcoming
-          ? 'Chưa có vé sắp chiếu nào'
-          : 'Chưa có lịch sử đã xem',
+      compact: true,
+      title: history ? 'Chưa có lịch sử đơn' : 'Chưa có vé sắp chiếu nào',
       message: 'Hãy chọn một bộ phim yêu thích và đặt chỗ ngay hôm nay!',
       icon: Icons.confirmation_number_outlined,
+      onAction: () => context.go(AppRoutes.discover),
     );
   }
 }

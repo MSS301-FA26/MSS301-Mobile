@@ -6,7 +6,6 @@ import '../data/auth_models.dart';
 import '../data/auth_remote_data_source.dart';
 import '../data/auth_repository.dart';
 import '../data/remote_auth_repository.dart';
-import '../data/google_auth_adapter.dart';
 
 enum AuthStatus { initializing, authenticated, unauthenticated }
 
@@ -192,6 +191,22 @@ class AuthSessionController extends Notifier<AuthState> {
     }
   }
 
+  void updateUserProfile(AuthUser user) {
+    final session = state.session;
+    if (session == null || session.user.id != user.id) return;
+    state = state.copyWith(
+      session: AuthSession(
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+        tokenType: session.tokenType,
+        expiresInMs: session.expiresInMs,
+        user: user,
+        roles: session.roles,
+      ),
+      clearMessage: true,
+    );
+  }
+
   Future<bool> logout() async {
     _googleOperation++;
     try {
@@ -247,7 +262,6 @@ class AuthSessionController extends Notifier<AuthState> {
   }
 
   String? _googleErrorMessage(Object error) {
-    if (error is GoogleAuthException) return error.message;
     if (error is ApiException) {
       return switch (error.type) {
         ApiErrorType.cancelled => null,

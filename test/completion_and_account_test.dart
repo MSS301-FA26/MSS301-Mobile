@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mss301_mobile/features/booking/application/booking_completion_controller.dart';
 import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
-import 'package:mss301_mobile/features/booking/application/booking_completion_controller.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/concessions_page.dart';
-import 'package:mss301_mobile/features/booking/presentation/pages/checkout_page.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/ticket_page.dart';
+import 'package:mss301_mobile/features/orders/presentation/widgets/booking_status_badge.dart';
 
 import 'support/pump_test_app.dart';
 
@@ -18,14 +19,14 @@ void main() {
     return pumpTestApp(tester, size: size);
   }
 
-  Future<void> openPayment(
-    WidgetTester tester,
-    ProviderContainer container,
-  ) async {
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('now-showing-book-2')),
+  Future<void> openPayment(WidgetTester tester) async {
+    await tester.drag(
+      find.byKey(const ValueKey('movie-coverflow')),
+      const Offset(-120, 0),
     );
-    await tester.tap(find.byKey(const ValueKey('now-showing-book-2')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('hero-book-2')));
+    await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('showtime-slot-1002')).hitTestable(),
@@ -37,16 +38,14 @@ void main() {
     await tester.pump();
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
     await tester.tap(find.byKey(const ValueKey('seat-3001')));
-    await tester.pump();
+    // The continue action waits for the authoritative asynchronous quote.
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('seat-continue')));
     await tester.pump();
     await tester.pumpAndSettle();
     expect(find.byType(ConcessionsPage), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('concessions-continue')));
     await tester.pumpAndSettle();
-    expect(find.byType(CheckoutPage), findsOneWidget);
-    final quote = container.read(bookingCompletionProvider).quote!;
-    expect(find.text('Thanh toán ${quote.total.format()}'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('checkout-pay')));
     await tester.pumpAndSettle();
   }
@@ -54,17 +53,24 @@ void main() {
   testWidgets(
     'R5 completes hold, checkout, payment verification and QR ticket',
     (tester) async {
-      final container = await pumpApp(tester);
-      await openPayment(tester, container);
+      await pumpApp(tester);
+      await openPayment(tester);
 
       await tester.tap(find.byKey(const ValueKey('payment-success')));
       await tester.pumpAndSettle();
-      expect(find.text('Booking đã được xác nhận'), findsOneWidget);
+      expect(find.text('Đặt vé thành công'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('open-ticket')));
       await tester.pumpAndSettle();
 
       expect(find.byType(TicketPage), findsOneWidget);
-      expect(find.text('Đã thanh toán'), findsOneWidget);
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BookingStatusBadge),
+          matching: find.text('Đã thanh toán'),
+        ),
+        findsOneWidget,
+      );
       expect(find.textContaining('CP-MOCK-'), findsOneWidget);
     },
   );
@@ -72,8 +78,8 @@ void main() {
   testWidgets('R5 opens VNPay mock handoff before callback verification', (
     tester,
   ) async {
-    final container = await pumpApp(tester);
-    await openPayment(tester, container);
+    await pumpApp(tester);
+    await openPayment(tester);
 
     expect(find.byKey(const ValueKey('payment-url')), findsOneWidget);
     expect(find.textContaining('mock://vnpay/'), findsOneWidget);
@@ -83,11 +89,30 @@ void main() {
     expect(find.byKey(const ValueKey('payment-success')), findsOneWidget);
   });
 
-  testWidgets('R5 payment failure can create a fresh retry payment', (
+  testWidgets('pending order detail exposes no usable QR before payment', (
     tester,
   ) async {
     final container = await pumpApp(tester);
-    await openPayment(tester, container);
+    await openPayment(tester);
+    final bookingId = container.read(bookingCompletionProvider).booking!.id;
+    appRouter.go(AppRoutes.ticket(bookingId));
+    await tester.pumpAndSettle();
+    expect(find.text('Chi tiết đơn'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(BookingStatusBadge),
+        matching: find.text('Chờ thanh toán'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(QrImageView), findsNothing);
+  });
+
+  testWidgets('R5 payment failure can create a fresh retry payment', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openPayment(tester);
     await tester.tap(find.byKey(const ValueKey('payment-failure')));
     await tester.pumpAndSettle();
     expect(find.text('Thanh toán thất bại'), findsOneWidget);

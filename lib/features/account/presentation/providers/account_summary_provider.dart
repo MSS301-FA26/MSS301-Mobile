@@ -1,54 +1,84 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/demo/demo_scenario.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../data/models/account_dto.dart';
 import '../../data/repositories/account_providers.dart';
-import '../../../auth/application/auth_session.dart';
 import '../models/account_summary.dart';
+import '../../application/profile_controller.dart';
+import '../../../auth/application/auth_session.dart';
 
 final accountSummaryProvider = FutureProvider<AccountSummary>((ref) async {
-  final profileRepository = ref.watch(profileRepositoryProvider);
-  final profile = await profileRepository.getProfile(DemoIds.user);
-  return mapAccountSummary(profile);
+  final userId = ref.watch(
+    authSessionProvider.select((auth) => auth.session?.user.id),
+  );
+  if (userId == null) {
+    throw const ApiException(
+      type: ApiErrorType.unauthorized,
+      message: 'Vui lòng đăng nhập.',
+    );
+  }
+  final profile = await ref.watch(currentProfileProvider.future);
+  final walletRepository = ref.watch(walletRepositoryProvider);
+  final loyaltyRepository = ref.watch(loyaltyRepositoryProvider);
+  WalletDto? wallet;
+  LoyaltyDto? loyalty;
+  await Future.wait([
+    Future<void>(() async {
+      try {
+        wallet = await walletRepository.getWallet(userId);
+      } catch (_) {}
+    }),
+    Future<void>(() async {
+      try {
+        loyalty = await loyaltyRepository.getLoyalty(userId);
+      } catch (_) {}
+    }),
+  ]);
+  return mapAccountSummary(profile, wallet, loyalty);
 });
-
-// Each remote section owns its failure/retry. No balance or points are invented
-// when the corresponding API fails. Manual retry avoids repeated failing GETs.
-// https://riverpod.dev/docs/concepts2/retry#disabling-retry
-final accountWalletProvider = FutureProvider.autoDispose<WalletDto>((ref) {
-  final userId = ref.watch(
-    authSessionProvider.select((state) => state.session?.user.id),
-  );
-  if (userId == null) {
-    throw const ApiException(
-      type: ApiErrorType.unauthorized,
-      message: 'Authentication required.',
-    );
-  }
-  return ref.watch(walletRepositoryProvider).getWallet(userId);
-}, retry: (retryCount, error) => null);
-
-final accountLoyaltyProvider = FutureProvider.autoDispose<LoyaltyDto>((ref) {
-  final userId = ref.watch(
-    authSessionProvider.select((state) => state.session?.user.id),
-  );
-  if (userId == null) {
-    throw const ApiException(
-      type: ApiErrorType.unauthorized,
-      message: 'Authentication required.',
-    );
-  }
-  return ref.watch(loyaltyRepositoryProvider).getLoyalty(userId);
-}, retry: (retryCount, error) => null);
 
 final loyaltyOverviewProvider =
     FutureProvider<(LoyaltyDto, LoyaltyConfigurationDto)>((ref) async {
       final repository = ref.watch(loyaltyRepositoryProvider);
-      final points = await repository.getLoyalty(DemoIds.user);
+      final userId = ref.watch(
+        authSessionProvider.select((auth) => auth.session?.user.id),
+      );
+      if (userId == null) {
+        throw const ApiException(
+          type: ApiErrorType.unauthorized,
+          message: 'Vui lòng đăng nhập.',
+        );
+      }
+      final points = await repository.getLoyalty(userId);
       final configuration = await repository.getConfiguration();
       return (points, configuration);
     });
+
+final accountWalletProvider = FutureProvider<WalletDto>((ref) async {
+  final userId = ref.watch(
+    authSessionProvider.select((auth) => auth.session?.user.id),
+  );
+  if (userId == null) {
+    throw const ApiException(
+      type: ApiErrorType.unauthorized,
+      message: 'Vui lÃ²ng Ä‘Äƒng nháº­p.',
+    );
+  }
+  return ref.watch(walletRepositoryProvider).getWallet(userId);
+});
+
+final accountLoyaltyProvider = FutureProvider<LoyaltyDto>((ref) async {
+  final userId = ref.watch(
+    authSessionProvider.select((auth) => auth.session?.user.id),
+  );
+  if (userId == null) {
+    throw const ApiException(
+      type: ApiErrorType.unauthorized,
+      message: 'Vui lÃ²ng Ä‘Äƒng nháº­p.',
+    );
+  }
+  return ref.watch(loyaltyRepositoryProvider).getLoyalty(userId);
+});
 
 enum LoyaltyRedeemStatus { idle, submitting, success, error }
 
@@ -69,23 +99,36 @@ final loyaltyRedeemControllerProvider =
     );
 
 class LoyaltyRedeemController extends Notifier<LoyaltyRedeemState> {
+  int _generation = 0;
   @override
-  LoyaltyRedeemState build() => const LoyaltyRedeemState();
+  LoyaltyRedeemState build() {
+    ref.watch(authSessionProvider.select((auth) => auth.session?.user.id));
+    _generation++;
+    return const LoyaltyRedeemState();
+  }
 
   Future<void> redeem(int points) async {
     if (state.isSubmitting) return;
+    if (ref.read(authSessionProvider).session == null) {
+      state = const LoyaltyRedeemState(
+        status: LoyaltyRedeemStatus.error,
+        message: 'Vui lòng đăng nhập trước khi đổi điểm.',
+      );
+      return;
+    }
+    final generation = _generation;
     state = const LoyaltyRedeemState(status: LoyaltyRedeemStatus.submitting);
     try {
       await ref.read(loyaltyRepositoryProvider).redeemPoints(points);
+      if (!ref.mounted || generation != _generation) return;
       ref.invalidate(loyaltyOverviewProvider);
       ref.invalidate(accountSummaryProvider);
-      ref.invalidate(accountWalletProvider);
-      ref.invalidate(accountLoyaltyProvider);
       state = const LoyaltyRedeemState(
         status: LoyaltyRedeemStatus.success,
         message: 'Đổi điểm thành công. Số dư đã được cập nhật từ hệ thống.',
       );
     } catch (error) {
+      if (!ref.mounted || generation != _generation) return;
       state = LoyaltyRedeemState(
         status: LoyaltyRedeemStatus.error,
         message: _safeRedeemError(error),

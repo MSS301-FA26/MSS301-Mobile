@@ -10,6 +10,9 @@ class RedactedNetworkLogger extends Interceptor {
     'accesstoken',
     'refreshtoken',
     'password',
+    'oldpassword',
+    'newpassword',
+    'confirmpassword',
     'otp',
     'apikey',
     'secret',
@@ -35,7 +38,7 @@ class RedactedNetworkLogger extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     _write(
-      'ERROR ${err.response?.statusCode ?? err.type.name} ${err.requestOptions.uri}',
+      'ERROR ${err.response?.statusCode ?? err.type.name} ${err.requestOptions.uri} cause=${err.error.runtimeType}',
     );
     handler.next(err);
   }

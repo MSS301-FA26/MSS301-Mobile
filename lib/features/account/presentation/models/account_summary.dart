@@ -7,41 +7,44 @@ class AccountSummary {
     required this.name,
     required this.initials,
     required this.email,
-    this.membershipTier,
+    required this.membershipTier,
     required this.memberCode,
     required this.joinYear,
-    this.points,
-    this.walletBalance,
+    required this.points,
+    required this.walletBalance,
+    this.avatarUrl,
   });
 
   final int userId;
   final String name;
   final String initials;
   final String email;
-  final String? membershipTier;
+  final String membershipTier;
   final String memberCode;
   final int joinYear;
   final int? points;
+  final String? avatarUrl;
   final VndMoney? walletBalance;
 }
 
 AccountSummary mapAccountSummary(
-  UserProfileDto profile, [
+  UserProfileDto profile,
   WalletDto? wallet,
   LoyaltyDto? loyalty,
-]) => AccountSummary(
+) => AccountSummary(
   userId: profile.id,
   name: profile.fullName,
   initials: _initials(profile.fullName),
   email: profile.email,
   membershipTier: loyalty == null
-      ? null
+      ? 'Chưa xác định'
       : loyalty.points >= 1000
       ? 'Diamond VIP'
       : 'Member',
   memberCode: 'CP-${profile.id.toString().padLeft(7, '0')}',
   joinYear: profile.createdAt.year,
   points: loyalty?.points,
+  avatarUrl: profile.avatarUrl,
   walletBalance: wallet?.balance,
 );
 

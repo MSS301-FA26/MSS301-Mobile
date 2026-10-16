@@ -35,7 +35,7 @@ abstract final class AppTextStyles {
     color: AppColors.text,
   );
   static const body = TextStyle(
-    fontSize: 13,
+    fontSize: 14,
     height: 1.45,
     color: AppColors.textSecondary,
   );
@@ -66,7 +66,7 @@ abstract final class AppTextStyles {
     color: AppColors.textMuted,
   );
   static const caption = TextStyle(
-    fontSize: 11,
+    fontSize: 12,
     height: 1.3,
     color: AppColors.textMuted,
   );

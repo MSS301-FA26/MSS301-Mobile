@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/status_badge.dart';
+import '../../../../shared/widgets/checkout_summary.dart';
 import '../../data/models/food_order_dto.dart';
 
 class FoodOrderCard extends StatelessWidget {
@@ -9,7 +11,27 @@ class FoodOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final created = order.createdAt.toLocal().toString().replaceFirst('T', ' ');
+    final created = order.createdAt.toLocal().toString().split('.').first;
+    final (color, icon) = switch (order.status) {
+      FoodOrderStatus.pendingPayment => (AppColors.gold, Icons.schedule),
+      FoodOrderStatus.paid => (
+        const Color(0xFF62D9A3),
+        Icons.check_circle_outline,
+      ),
+      FoodOrderStatus.pickedUp => (
+        const Color(0xFF92B9FF),
+        Icons.shopping_bag_outlined,
+      ),
+      FoodOrderStatus.cancelled => (
+        const Color(0xFFFF9393),
+        Icons.cancel_outlined,
+      ),
+      FoodOrderStatus.expired => (
+        AppColors.textMuted,
+        Icons.timer_off_outlined,
+      ),
+      _ => (AppColors.textMuted, Icons.help_outline),
+    };
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -20,52 +42,25 @@ class FoodOrderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  order.orderCode.isEmpty ? '#${order.id}' : order.orderCode,
-                  style: AppTextStyles.cardTitle,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                order.status.label,
-                style: AppTextStyles.label.copyWith(color: AppColors.gold),
-              ),
-            ],
+          StatusBadge(label: order.status.label, color: color, icon: icon),
+          const SizedBox(height: 10),
+          Text(
+            order.orderCode.isEmpty ? '#${order.id}' : order.orderCode,
+            style: AppTextStyles.cardTitle,
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(created, style: AppTextStyles.caption),
           const SizedBox(height: AppSpacing.sm),
           for (final item in order.items)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${item.productName} × ${item.quantity}',
-                      style: AppTextStyles.body,
-                    ),
-                  ),
-                  Text(item.lineTotal.format(), style: AppTextStyles.label),
-                ],
-              ),
+            CheckoutLine(
+              '${item.productName} × ${item.quantity}',
+              item.lineTotal.format(),
             ),
           const Divider(color: AppColors.border),
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Tổng cộng', style: AppTextStyles.label),
-              ),
-              Text(
-                order.totalAmount.format(),
-                style: AppTextStyles.sectionTitle.copyWith(
-                  color: AppColors.gold,
-                ),
-              ),
-            ],
+          CheckoutLine(
+            'Tổng cộng',
+            order.totalAmount.format(),
+            emphasized: true,
           ),
         ],
       ),

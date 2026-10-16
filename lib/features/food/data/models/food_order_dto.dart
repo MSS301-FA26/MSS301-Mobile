@@ -6,14 +6,15 @@ enum FoodOrderStatus {
   paid('PAID'),
   pickedUp('PICKED_UP'),
   cancelled('CANCELLED'),
-  expired('EXPIRED');
+  expired('EXPIRED'),
+  unknown('UNKNOWN');
 
   const FoodOrderStatus(this.wireValue);
   final String wireValue;
 
   static FoodOrderStatus parse(Object? value) => values.firstWhere(
     (item) => item.wireValue == value?.toString().toUpperCase(),
-    orElse: () => FoodOrderStatus.pendingPayment,
+    orElse: () => FoodOrderStatus.unknown,
   );
 
   String get label => switch (this) {
@@ -22,6 +23,7 @@ enum FoodOrderStatus {
     pickedUp => 'Đã nhận hàng',
     cancelled => 'Đã hủy',
     expired => 'Đã hết hạn',
+    unknown => 'Trạng thái chưa xác định',
   };
 }
 
@@ -93,7 +95,7 @@ class FoodOrderDto {
     status: FoodOrderStatus.parse(json['status']),
     totalAmount: VndMoney.fromJson(json['totalAmount']),
     paidAt: nullableDateTimeFromJson(json['paidAt']),
-    expiresAt: nullableDateTimeFromJson(json['expiresAt']),
+    expiresAt: nullableServerDeadlineFromJson(json['expiresAt']),
     pickedUpAt: nullableDateTimeFromJson(json['pickedUpAt']),
     qrCode: json['qrCode']?.toString(),
     createdAt: dateTimeFromJson(json['createdAt']),

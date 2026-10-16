@@ -11,7 +11,7 @@ class AppButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.variant = AppButtonVariant.primary,
-    this.height = AppSizes.buttonHeight,
+    this.height = 48,
     this.loading = false,
     this.fullWidth = false,
   });
@@ -26,36 +26,27 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = switch (variant) {
-      AppButtonVariant.primary => AppColors.background,
-      AppButtonVariant.ghost => AppColors.textSecondary,
-      _ => AppColors.text,
-    };
     final buttonChild = Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (loading)
-          SizedBox(
+        if (loading) ...[
+          const SizedBox(
             width: 18,
             height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(foreground),
-            ),
-          )
-        else if (icon != null) ...[
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ] else if (icon != null) ...[
           Icon(icon, size: 18),
           const SizedBox(width: AppSpacing.xxs),
         ],
         Flexible(
           child: Text(
             label,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.button.copyWith(
-              fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
-            ),
+            style: AppTextStyles.button,
           ),
         ),
       ],
@@ -64,16 +55,17 @@ class AppButton extends StatelessWidget {
     final style = ButtonStyle(
       minimumSize: WidgetStatePropertyAll(Size(0, height)),
       padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       ),
       shape: const WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: AppRadii.control),
       ),
     );
 
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     return SizedBox(
-      height: height,
       width: fullWidth ? double.infinity : null,
+      height: (height < 48 ? 48 : height) * (textScale < 1 ? 1 : textScale),
       child: switch (variant) {
         AppButtonVariant.primary => FilledButton(
           onPressed: loading ? null : onPressed,
@@ -83,8 +75,16 @@ class AppButton extends StatelessWidget {
         AppButtonVariant.purple => FilledButton(
           onPressed: loading ? null : onPressed,
           style: style.copyWith(
-            backgroundColor: const WidgetStatePropertyAll(AppColors.purple),
-            foregroundColor: const WidgetStatePropertyAll(AppColors.text),
+            backgroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? AppColors.disabled
+                  : AppColors.purple,
+            ),
+            foregroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? AppColors.textMuted
+                  : AppColors.text,
+            ),
           ),
           child: buttonChild,
         ),
@@ -104,8 +104,16 @@ class AppButton extends StatelessWidget {
         AppButtonVariant.danger => FilledButton(
           onPressed: loading ? null : onPressed,
           style: style.copyWith(
-            backgroundColor: const WidgetStatePropertyAll(AppColors.error),
-            foregroundColor: const WidgetStatePropertyAll(AppColors.text),
+            backgroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? AppColors.disabled
+                  : AppColors.error,
+            ),
+            foregroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.disabled)
+                  ? AppColors.textMuted
+                  : AppColors.text,
+            ),
           ),
           child: buttonChild,
         ),

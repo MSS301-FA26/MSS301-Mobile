@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/age_badge.dart';
-import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_image.dart';
-import '../../../../shared/widgets/app_surface.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../movie/presentation/models/movie.dart';
 
 class DiscoverMovieCard extends StatelessWidget {
@@ -21,56 +20,61 @@ class DiscoverMovieCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final releaseDate = movie.releaseDate;
-    final releaseLabel = movie.isComingSoon && releaseDate != null
-        ? 'Khởi chiếu ${releaseDate.day.toString().padLeft(2, '0')}/${releaseDate.month.toString().padLeft(2, '0')}/${releaseDate.year}'
-        : movie.duration;
     return InkWell(
-      key: ValueKey('discover-movie-${movie.id}'),
       onTap: onOpen,
       borderRadius: AppRadii.card,
-      child: AppSurface(
-        padding: EdgeInsets.zero,
-        child: ClipRRect(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
           borderRadius: AppRadii.card,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: AppSizes.posterAspectRatio,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 2 / 3,
+              child: ClipRRect(
+                borderRadius: AppRadii.control,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    AppImage(
-                      asset: movie.posterAsset,
-                      borderRadius: BorderRadius.zero,
-                      semanticLabel: 'Poster ${movie.title}',
-                    ),
+                    AppImage(asset: movie.posterAsset),
                     Positioned(
-                      top: AppSpacing.xs,
-                      left: AppSpacing.xs,
+                      top: 6,
+                      left: 6,
                       child: AgeBadge(rating: movie.ageRating),
                     ),
-                    if (movie.rating > 0)
+                    if (movie.rating != null)
                       Positioned(
-                        right: AppSpacing.xs,
-                        bottom: AppSpacing.xs,
-                        child: AppSurface(
-                          color: AppColors.surfaceOverlay,
-                          padding: const EdgeInsets.all(AppSpacing.xxs),
-                          borderRadius: AppRadii.small,
+                        right: 6,
+                        bottom: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.82),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
                                 Icons.star_rounded,
-                                size: AppSizes.iconSmall,
+                                size: 12,
                                 color: AppColors.gold,
                               ),
-                              const SizedBox(width: AppSpacing.xxs),
+                              const SizedBox(width: 2),
                               Text(
-                                movie.rating.toStringAsFixed(1),
-                                style: AppTextStyles.emphasis,
+                                movie.rating!.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  color: AppColors.gold,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ],
                           ),
@@ -79,47 +83,44 @@ class DiscoverMovieCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        movie.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.cardTitle,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        movie.genre,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption,
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        releaseLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption,
-                      ),
-                      const Spacer(),
-                      AppButton(
-                        key: ValueKey('discover-book-${movie.id}'),
-                        label: 'Đặt vé',
-                        onPressed: onBook,
-                        icon: Icons.confirmation_number_outlined,
-                        variant: AppButtonVariant.secondary,
-                        fullWidth: true,
-                      ),
-                    ],
-                  ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            SizedBox(
+              height: MediaQuery.textScalerOf(context).scale(14) * 1.3 * 2,
+              child: Text(
+                movie.title.toUpperCase(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.3,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.text,
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 2),
+            Text(movie.duration, style: AppTextStyles.caption),
+            Text(
+              movie.genre,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                onPressed: movie.isNowShowing ? onBook : onOpen,
+                icon: movie.isNowShowing
+                    ? Icons.confirmation_number_outlined
+                    : Icons.arrow_forward_rounded,
+                label: movie.isNowShowing ? 'Đặt vé' : 'Chi tiết',
+                variant: AppButtonVariant.secondary,
+                height: 48,
+              ),
+            ),
+          ],
         ),
       ),
     );

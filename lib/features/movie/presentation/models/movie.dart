@@ -30,7 +30,7 @@ class Movie {
   final String ageRating;
   final bool hasAgeRating;
   final String duration;
-  final double rating;
+  final double? rating;
   final String ratingCount;
   final String genre;
   final String tagline;

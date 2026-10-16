@@ -11,12 +11,20 @@ final movieEngagementRepositoryProvider = Provider(
 final movieReviewSummaryProvider = FutureProvider.family<ReviewSummaryDto, int>(
   (ref, id) =>
       ref.watch(movieEngagementRepositoryProvider).getReviewSummary(id),
+  retry: (retryCount, error) => null,
 );
 final movieReviewsProvider = FutureProvider.family<List<ReviewDto>, int>(
   (ref, id) => ref.watch(movieEngagementRepositoryProvider).getReviews(id),
+  retry: (retryCount, error) => null,
 );
 final movieRecommendationsProvider =
-    FutureProvider.family<List<RecommendationDto>, int>(
-      (ref, id) =>
-          ref.watch(movieEngagementRepositoryProvider).getRecommendations(id),
-    );
+    FutureProvider.family<List<RecommendationDto>, int>((ref, id) async {
+      final items = await ref
+          .watch(movieEngagementRepositoryProvider)
+          .getRecommendations(id);
+      final seen = <int>{id};
+      return items
+          .where((item) => item.movieId > 0 && seen.add(item.movieId))
+          .take(12)
+          .toList(growable: false);
+    }, retry: (retryCount, error) => null);

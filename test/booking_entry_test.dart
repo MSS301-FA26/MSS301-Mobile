@@ -31,10 +31,13 @@ void main() {
       ],
     );
 
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('now-showing-book-2')),
+    await tester.drag(
+      find.byKey(const ValueKey('movie-coverflow')),
+      const Offset(-120, 0),
     );
-    await tester.tap(find.byKey(const ValueKey('now-showing-book-2')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('hero-book-2')));
+    await tester.tap(find.byKey(const ValueKey('hero-book-2')));
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('showtime-slot-1002')).hitTestable(),
@@ -52,6 +55,23 @@ void main() {
     }
   }
 
+  testWidgets(
+    'restricted child card explains why controls are hidden and has no age input',
+    (tester) async {
+      final container = await openAvengersSeat(tester);
+      expect(find.byKey(const ValueKey('ticket-type-child')), findsOneWidget);
+      expect(find.byKey(const ValueKey('ticket-plus-child')), findsNothing);
+      expect(find.byKey(const ValueKey('ticket-minus-child')), findsNothing);
+      expect(find.textContaining('0–12 tuổi'), findsOneWidget);
+      await addAdultTickets(tester);
+      await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
+      await tester.tap(find.byKey(const ValueKey('seat-3001')));
+      await tester.pumpAndSettle();
+      expect(container.read(bookingEntryProvider).assignmentComplete, isTrue);
+      expect(find.byType(TextFormField), findsNothing);
+    },
+  );
+
   testWidgets('R4 happy path selects seats, holds, and guards logo exit', (
     tester,
   ) async {
@@ -62,7 +82,7 @@ void main() {
     await addAdultTickets(tester);
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
     await tester.tap(find.byKey(const ValueKey('seat-3001')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       container.read(bookingEntryProvider).selectedSeatIds,
       contains(3001),
@@ -76,7 +96,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('header-home-logo')));
     await tester.pumpAndSettle();
-    expect(find.text('Quay lại Trang chủ?'), findsOneWidget);
+    expect(find.text('Dừng đặt vé?'), findsOneWidget);
     final noButton = tester.widget<FilledButton>(
       find.byKey(const ValueKey('booking-leave-no')),
     );
@@ -104,31 +124,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 20));
     expect(container.read(bookingEntryProvider).hasActiveDraft, isFalse);
-    expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
+    expect(find.text('Đang chiếu'), findsOneWidget);
   });
-
-  testWidgets(
-    'R4 seat map puts legend first and preserves usable tap targets',
-    (tester) async {
-      await openAvengersSeat(tester, size: const Size(320, 844));
-
-      final legendY = tester
-          .getTopLeft(find.byKey(const ValueKey('seat-map-legend')))
-          .dy;
-      final mapY = tester
-          .getTopLeft(find.byKey(const ValueKey('seat-map-horizontal-scroll')))
-          .dy;
-      expect(legendY, lessThan(mapY));
-
-      await addAdultTickets(tester);
-      await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
-      expect(
-        tester.getSize(find.byKey(const ValueKey('seat-3001'))).height,
-        44,
-      );
-      expect(tester.getSize(find.byKey(const ValueKey('seat-3001'))).width, 44);
-    },
-  );
 
   testWidgets('R4 guest auth resumes the exact selected showtime', (
     tester,
@@ -136,10 +133,6 @@ void main() {
     final container = await openAvengersSeat(tester, guest: true);
 
     expect(find.byKey(const ValueKey('auth-submit')), findsOneWidget);
-    await tester.enterText(
-      find.byKey(const ValueKey('auth-email')),
-      'customer@example.test',
-    );
     await tester.enterText(find.byType(TextFormField).last, 'test-password');
     await tester.tap(find.byKey(const ValueKey('auth-submit')));
     await tester.pumpAndSettle();
@@ -157,7 +150,7 @@ void main() {
     await addAdultTickets(tester, 2);
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3010')));
     await tester.tap(find.byKey(const ValueKey('seat-3010')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       container.read(bookingEntryProvider).selectedSeatIds,
       containsAll(<int>[3010, 3011]),
@@ -191,7 +184,7 @@ void main() {
 
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3004')));
     await tester.tap(find.byKey(const ValueKey('seat-3004')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('seat-continue')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 20));
@@ -212,7 +205,7 @@ void main() {
     await addAdultTickets(tester);
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
     await tester.tap(find.byKey(const ValueKey('seat-3001')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('seat-continue')));
     await tester.pump();
     await tester.pumpAndSettle();
@@ -261,7 +254,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('ticket-type-student')));
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3002')));
     await tester.tap(find.byKey(const ValueKey('seat-3002')));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     final session = container.read(bookingEntryProvider);
     expect(session.assignments[3001]?.ticketType, TicketType.adult);

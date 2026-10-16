@@ -6,6 +6,8 @@ import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/auth/application/auth_session.dart';
 import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
+import 'package:mss301_mobile/features/home/data/home_banner_repository.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/poster_ambient_color.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_providers.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_repository.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/mock_booking_repository.dart';
@@ -22,6 +24,8 @@ import 'package:mss301_mobile/features/account/presentation/models/account_summa
 
 import 'fake_auth_session.dart';
 
+import 'package:mss301_mobile/features/booking/application/booking_checkpoint.dart';
+
 Future<ProviderContainer> pumpTestApp(
   WidgetTester tester, {
   AuthState? authState,
@@ -37,6 +41,11 @@ Future<ProviderContainer> pumpTestApp(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        homeBannersProvider.overrideWith((ref) async => const []),
+        posterAmbientLoaderProvider.overrideWithValue(
+          (_) async => const Color(0xFF232631),
+        ),
+        bookingCheckpointStoreProvider.overrideWithValue(_MemoryCheckpoints()),
         catalogRepositoryProvider.overrideWith(
           (ref) => ref.watch(mockCatalogRepositoryProvider),
         ),
@@ -61,6 +70,9 @@ Future<ProviderContainer> pumpTestApp(
             ref.watch(bookingRepositoryProvider),
           ),
         ),
+        profileRepositoryProvider.overrideWith(
+          (ref) => ref.watch(mockAccountStoreProvider),
+        ),
         accountSummaryProvider.overrideWith((ref) async {
           final store = ref.watch(mockAccountStoreProvider);
           return mapAccountSummary(
@@ -82,6 +94,21 @@ Future<ProviderContainer> pumpTestApp(
   );
   await tester.pumpAndSettle();
   return ProviderScope.containerOf(tester.element(find.byType(CinePremierApp)));
+}
+
+class _MemoryCheckpoints implements BookingCheckpointStore {
+  final _values = <int, BookingCheckpoint>{};
+  @override
+  Future<BookingCheckpoint?> read(int userId) async => _values[userId];
+  @override
+  Future<void> save(int userId, BookingCheckpoint checkpoint) async {
+    _values[userId] = checkpoint;
+  }
+
+  @override
+  Future<void> clear(int userId) async {
+    _values.remove(userId);
+  }
 }
 
 class _FakeSeatHoldRepository implements SeatHoldRepository {

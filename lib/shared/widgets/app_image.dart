@@ -24,28 +24,39 @@ class AppImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uri = Uri.tryParse(asset);
-    final isRemote =
+    final source = asset.trim();
+    final uri = Uri.tryParse(source);
+    final isNetwork =
         uri != null &&
-        (uri.scheme == 'https' || uri.scheme == 'http') &&
-        uri.host.isNotEmpty;
-    final image = Image(
-      image: isRemote ? NetworkImage(asset) : AssetImage(asset),
-      width: width,
-      height: height,
-      fit: fit,
-      semanticLabel: semanticLabel,
-      errorBuilder: (context, error, stackTrace) => const ColoredBox(
-        color: AppColors.surfaceRaised,
-        child: Center(
-          child: Icon(
-            Icons.movie_outlined,
-            color: AppColors.textMuted,
-            size: AppSizes.iconFallback,
-          ),
-        ),
+        uri.host.isNotEmpty &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
+    Widget fallback(
+      BuildContext context,
+      Object error,
+      StackTrace? stackTrace,
+    ) => const ColoredBox(
+      color: AppColors.surfaceRaised,
+      child: Center(
+        child: Icon(Icons.movie_outlined, color: AppColors.textMuted, size: 36),
       ),
     );
+    final image = isNetwork
+        ? Image.network(
+            source,
+            width: width,
+            height: height,
+            fit: fit,
+            semanticLabel: semanticLabel,
+            errorBuilder: fallback,
+          )
+        : Image.asset(
+            source,
+            width: width,
+            height: height,
+            fit: fit,
+            semanticLabel: semanticLabel,
+            errorBuilder: fallback,
+          );
     final clipped = ClipRRect(borderRadius: borderRadius, child: image);
     if (aspectRatio == null) return clipped;
     return AspectRatio(aspectRatio: aspectRatio!, child: clipped);

@@ -1,3 +1,4 @@
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/money/vnd_money.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../data/models/showtime_dto.dart';
@@ -18,6 +19,16 @@ class ShowtimeSlot {
   final ShowtimeStatus status;
 
   bool get isBookable => status == ShowtimeStatus.open;
+  bool isBookableAt(DateTime now) => isBookable && startAt.isAfter(now);
+  String? unavailableReason(DateTime now) {
+    if (status == ShowtimeStatus.cancelled) return 'Đã hủy';
+    if (status == ShowtimeStatus.completed) return 'Đã kết thúc';
+    if (!startAt.isAfter(now)) return 'Đã qua giờ';
+    if (status == ShowtimeStatus.scheduled) return 'Chưa mở bán';
+    if (status != ShowtimeStatus.open) return 'Không khả dụng';
+    return null;
+  }
+
   String get time => _time(startAt);
   String get endTime => '~${_time(endAt)}';
   String get priceDisplay => price.format();
@@ -87,5 +98,4 @@ MovieShowtime mapShowtimesToPresentation(
   );
 }
 
-String _time(DateTime value) =>
-    '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+String _time(DateTime value) => formatVietnamTime(value);

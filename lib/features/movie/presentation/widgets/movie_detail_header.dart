@@ -32,7 +32,7 @@ class MovieDetailHeader extends StatelessWidget {
           summary.averageRating > 0;
       final rating = hasSummaryRating
           ? summary.averageRating
-          : movie.rating > 0
+          : (movie.rating ?? 0) > 0
           ? movie.rating
           : null;
       final status = switch (movie.status) {

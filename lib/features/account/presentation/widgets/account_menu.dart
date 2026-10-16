@@ -1,55 +1,93 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/money/vnd_money.dart';
-import '../../../../shared/widgets/app_surface.dart';
+import '../models/account_summary.dart';
 
 class WalletTile extends StatelessWidget {
-  const WalletTile({super.key, required this.balance, required this.onManage});
+  const WalletTile({
+    super.key,
+    required this.user,
+    required this.onManage,
+    this.onRetry,
+    this.refreshing = false,
+  });
 
-  final VndMoney balance;
+  final AccountSummary user;
   final VoidCallback? onManage;
+  final VoidCallback? onRetry;
+  final bool refreshing;
 
   @override
-  Widget build(BuildContext context) => AppSurface(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.account_balance_wallet_rounded,
-              color: AppColors.gold,
-              size: AppSizes.iconLarge,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            const Expanded(
-              child: Text('Số dư ví CineWallet', style: AppTextStyles.label),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(balance.format(), style: AppTextStyles.price),
-        const SizedBox(height: AppSpacing.md),
-        FilledButton(
-          key: const ValueKey('account-wallet-manage'),
-          onPressed: onManage,
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(double.infinity, AppSizes.buttonHeight),
-            padding: const EdgeInsets.all(AppSpacing.sm),
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: AppRadii.card,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                color: AppColors.gold,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('CineWallet', style: AppTextStyles.cardTitle),
+              ),
+            ],
           ),
-          child: Text(
-            onManage == null ? 'Sắp có' : 'Quản lý ví',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.button.copyWith(
-              fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
+          const SizedBox(height: 10),
+          Text(
+            user.walletBalance?.format() ??
+                (refreshing ? 'Đang tải số dư…' : 'Chưa tải được số dư'),
+            key: const ValueKey('account-wallet-value'),
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
             ),
           ),
-        ),
-      ],
-    ),
-  );
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              TextButton(
+                onPressed: onManage,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.text,
+                  minimumSize: const Size(48, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadii.control,
+                  ),
+                ),
+                child: Text(
+                  onManage == null ? 'Sắp có' : 'Quản lý ví',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (user.walletBalance == null && !refreshing)
+                TextButton.icon(
+                  key: const ValueKey('account-wallet-retry'),
+                  onPressed: onRetry,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    minimumSize: const Size(48, 48),
+                  ),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Thử lại số dư'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class AccountMenu extends StatelessWidget {
@@ -58,23 +96,27 @@ class AccountMenu extends StatelessWidget {
   final List<AccountMenuItemData> items;
 
   @override
-  Widget build(BuildContext context) => AppSurface(
-    padding: EdgeInsets.zero,
-    child: ClipRRect(
-      borderRadius: AppRadii.card,
-      child: Material(
-        type: MaterialType.transparency,
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: AppRadii.card,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: ClipRRect(
+        borderRadius: AppRadii.card,
         child: Column(
           children: [
             for (var i = 0; i < items.length; i++) ...[
               AccountMenuRow(item: items[i]),
-              if (i < items.length - 1) const Divider(),
+              if (i < items.length - 1)
+                const Divider(height: 1, color: AppColors.border),
             ],
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class AccountMenuItemData {
@@ -95,96 +137,56 @@ class AccountMenuItemData {
   final String? status;
 }
 
-class AccountMenuRow extends StatefulWidget {
+class AccountMenuRow extends StatelessWidget {
   const AccountMenuRow({super.key, required this.item});
 
   final AccountMenuItemData item;
 
   @override
-  State<AccountMenuRow> createState() => _AccountMenuRowState();
-}
-
-class _AccountMenuRowState extends State<AccountMenuRow> {
-  var _hasFocus = false;
-
-  @override
   Widget build(BuildContext context) {
-    final item = widget.item;
     final enabled = item.onTap != null;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      child: InkWell(
-        onTap: item.onTap,
-        onFocusChange: (focused) => setState(() => _hasFocus = focused),
-        focusColor: AppColors.goldSurface,
-        hoverColor: AppColors.surfaceRaised,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: AppRadii.control,
-            border: Border.all(
-              color: _hasFocus ? AppColors.focus : Colors.transparent,
-              width: 2,
+    return InkWell(
+      onTap: item.onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Icon(
+              item.icon,
+              size: 21,
+              color: enabled ? item.iconColor : AppColors.textDisabled,
             ),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: AppSizes.buttonHeight),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    item.icon,
-                    size: AppSizes.iconLarge,
-                    color: enabled ? item.iconColor : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.label,
-                          style: AppTextStyles.emphasis.copyWith(
-                            color: enabled
-                                ? AppColors.text
-                                : AppColors.textMuted,
-                          ),
-                        ),
-                        if (item.trailing != null || item.status != null) ...[
-                          const SizedBox(height: AppSpacing.xxs),
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.xxs,
-                            children: [
-                              if (item.trailing != null)
-                                Text(
-                                  item.trailing!,
-                                  style: AppTextStyles.label.copyWith(
-                                    color: AppColors.gold,
-                                  ),
-                                ),
-                              if (item.status != null)
-                                Text(
-                                  item.status!,
-                                  style: AppTextStyles.caption,
-                                ),
-                            ],
-                          ),
-                        ],
-                      ],
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      color: enabled ? AppColors.text : AppColors.textDisabled,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: AppSizes.iconMedium,
-                    color: AppColors.textMuted,
-                  ),
+                  if (item.trailing != null)
+                    Text(
+                      item.trailing!,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.gold,
+                      ),
+                    ),
+                  if (item.status != null)
+                    Text(item.status!, style: AppTextStyles.caption),
                 ],
               ),
             ),
-          ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: AppColors.textDisabled,
+            ),
+          ],
         ),
       ),
     );

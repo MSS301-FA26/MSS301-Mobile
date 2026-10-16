@@ -44,7 +44,6 @@ class DateSelector extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: AppSpacing.xs),
                 child: _DatePill(
-                  index: i,
                   option: dates[i],
                   selected: selectedIndex == i,
                   onTap: () => onSelected(i),
@@ -60,64 +59,52 @@ class DateSelector extends StatelessWidget {
 class _DatePill extends StatelessWidget {
   const _DatePill({
     required this.option,
-    required this.index,
     required this.selected,
     required this.onTap,
   });
 
   final DateOption option;
-  final int index;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '${option.label}, ${option.sub}',
-      child: InkWell(
-        key: ValueKey('date-option-$index'),
-        onTap: onTap,
-        borderRadius: AppRadii.card,
-        child: Container(
-          constraints: const BoxConstraints(minWidth: 82, minHeight: 64),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.xs,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadii.card,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 76, minHeight: 64),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.surfaceRaised : AppColors.surface,
+          borderRadius: AppRadii.card,
+          border: Border.all(
+            color: selected ? AppColors.gold : AppColors.border,
           ),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.gold : AppColors.surface,
-            borderRadius: AppRadii.card,
-            border: Border.all(
-              color: selected ? AppColors.gold : AppColors.border,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              option.label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.meta.copyWith(
+                color: selected ? AppColors.gold : AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          child: ExcludeSemantics(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  option.label,
-                  style: AppTextStyles.caption.copyWith(
-                    color: selected
-                        ? AppColors.background
-                        : AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  option.sub,
-                  style: AppTextStyles.emphasis.copyWith(
-                    color: selected ? AppColors.background : AppColors.text,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 3),
+            Text(
+              option.sub,
+              style: AppTextStyles.label.copyWith(
+                color: selected ? AppColors.text : AppColors.textSecondary,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -9,6 +9,9 @@ import 'package:mss301_mobile/features/account/data/models/account_enums.dart';
 import 'package:mss301_mobile/features/account/data/repositories/account_providers.dart';
 import 'package:mss301_mobile/features/account/data/repositories/account_repositories.dart';
 import 'package:mss301_mobile/features/account/presentation/providers/account_summary_provider.dart';
+import 'package:mss301_mobile/features/auth/application/auth_session.dart';
+
+import 'support/fake_auth_session.dart';
 
 void main() {
   test(
@@ -18,6 +21,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           loyaltyRepositoryProvider.overrideWith((ref) => repository),
+          authSessionProvider.overrideWith(
+            () => FakeAuthSessionController(authenticatedCustomerState()),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -63,6 +69,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           loyaltyRepositoryProvider.overrideWith((ref) => repository),
+          authSessionProvider.overrideWith(
+            () => FakeAuthSessionController(authenticatedCustomerState()),
+          ),
         ],
       );
       addTearDown(container.dispose);

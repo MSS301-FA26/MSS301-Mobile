@@ -1,3 +1,5 @@
+import '../../../../core/time/vietnam_time.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,12 +11,14 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../../../../shared/widgets/app_surface.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../../../booking/presentation/widgets/booking_progress.dart';
+import '../../../booking/presentation/widgets/booking_hold_countdown.dart';
 import '../../application/booking_entry_session.dart';
+import '../../application/seat_quote_provider.dart';
+import '../../../booking/application/booking_completion_controller.dart';
 import '../providers/seat_map_provider.dart';
 
 class SeatSelectionPage extends ConsumerStatefulWidget {
@@ -28,7 +32,6 @@ class SeatSelectionPage extends ConsumerStatefulWidget {
 
 class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
   Timer? _timer;
-  Duration _remaining = Duration.zero;
   bool _expiryDialogOpen = false;
   bool _initialized = false;
 
@@ -42,7 +45,7 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
       builder: (context) => AlertDialog(
         title: const Text('Bỏ ghế đã gán?'),
         content: const Text(
-          'Giảm số lượng vé sẽ bỏ các ghế vượt quá của loại vé này.',
+          'Giảm số lượng vé sẽ bỏ các ghế vượt quá của loại vé này. Nếu có ghế đôi, cả cặp ghế sẽ được bỏ.',
         ),
         actions: [
           FilledButton(
@@ -86,7 +89,11 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     final edited = await ref
         .read(bookingEntryProvider.notifier)
         .editHeldSelection();
-    if (edited) _timer?.cancel();
+    if (edited) {
+      _timer?.cancel();
+      ref.invalidate(bookingCompletionProvider);
+      ref.invalidate(seatMapProvider(widget.showtimeId));
+    }
   }
 
   @override
@@ -97,20 +104,17 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
 
   void _startTimer() {
     _timer?.cancel();
-    _updateRemaining();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (!mounted) return;
-      _updateRemaining();
-      final expired = await ref
-          .read(bookingEntryProvider.notifier)
-          .refreshExpiry();
-      if (expired && mounted) await _showExpiredDialog();
+      try {
+        final expired = await ref
+            .read(bookingEntryProvider.notifier)
+            .refreshExpiry();
+        if (expired && mounted) await _showExpiredDialog();
+      } catch (_) {
+        // Retry on the next tick; local expiry still prevents submitting.
+      }
     });
-  }
-
-  void _updateRemaining() {
-    final remaining = ref.read(bookingEntryProvider.notifier).remainingHold();
-    if (mounted) setState(() => _remaining = remaining);
   }
 
   Future<void> _showExpiredDialog() async {
@@ -180,7 +184,9 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     );
     if (shouldLeave != true || !mounted) return;
     final movieId = session.movieId;
-    await ref.read(bookingEntryProvider.notifier).abandon();
+    final left = await ref.read(bookingEntryProvider.notifier).abandon();
+    if (!left) return;
+    ref.invalidate(bookingCompletionProvider);
     if (mounted) {
       context.go(
         movieId == null
@@ -194,15 +200,35 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     if (seat.seatType.normalized != CatalogSeatType.couple) {
       return {seat.seatId};
     }
-    return allSeats
-        .where(
-          (item) =>
-              item.rowLabel == seat.rowLabel &&
-              item.seatType.normalized == CatalogSeatType.couple,
-        )
-        .map((item) => item.seatId)
-        .toSet();
+    final row =
+        allSeats
+            .where(
+              (item) =>
+                  item.rowLabel == seat.rowLabel &&
+                  item.seatType.normalized == CatalogSeatType.couple,
+            )
+            .toList()
+          ..sort((a, b) => a.seatNumber.compareTo(b.seatNumber));
+    final index = row.indexWhere((item) => item.seatId == seat.seatId);
+    final start = (index ~/ 2) * 2;
+    final pair = row.skip(start).take(2).toList();
+    return pair.length == 2 ? pair.map((item) => item.seatId).toSet() : {};
   }
+
+  Widget _pendingShell(Widget body) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) _handleBack();
+    },
+    child: AppShell(
+      currentIndex: 2,
+      showBottomNavigation: false,
+      bookingTitle: 'Vé & Ghế',
+      bookingSubtitle: 'Bước 2/4',
+      onBookingBack: _handleBack,
+      body: body,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -215,17 +241,16 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     final seatMapState = ref.watch(seatMapProvider(widget.showtimeId));
     final session = ref.watch(bookingEntryProvider);
     if (seatMapState.isLoading) {
-      return const AppShell(
-        currentIndex: 2,
-        showBottomNavigation: false,
-        body: RepositoryStatePane.loading(),
+      return _pendingShell(
+        const RepositoryStatePane.loading(
+          layout: RepositorySkeleton.poster,
+          title: 'Đang tải sơ đồ ghế…',
+        ),
       );
     }
     if (seatMapState.hasError) {
-      return AppShell(
-        currentIndex: 2,
-        showBottomNavigation: false,
-        body: RepositoryStatePane.error(
+      return _pendingShell(
+        RepositoryStatePane.error(
           onRetry: () => ref.invalidate(seatMapProvider(widget.showtimeId)),
         ),
       );
@@ -239,7 +264,14 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
             .read(bookingEntryProvider.notifier)
             .begin(
               movieId: seatMap.showtime.movieId,
+              movieAgeRating: seatMap.showtime.movieAgeRating,
               showtimeId: widget.showtimeId,
+              couplePairs: {
+                for (final seat in seatMap.seats)
+                  if (seat.seatType.normalized == CatalogSeatType.couple)
+                    for (final partner in _seatGroup(seat, seatMap.seats))
+                      if (partner != seat.seatId) seat.seatId: partner,
+              },
             );
       });
     }
@@ -247,11 +279,23 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     final selectedSeats = seatMap.seats
         .where((seat) => session.selectedSeatIds.contains(seat.seatId))
         .toList(growable: false);
-    final total = selectedSeats.fold(VndMoney.zero, (value, seat) {
-      final type =
-          session.assignments[seat.seatId]?.ticketType ?? TicketType.adult;
-      return value + _ticketPrice(seatMap.showtime, seat, type);
-    });
+    final quoteState = ref.watch(seatQuoteProvider);
+    final quote = quoteState.isLoading || quoteState.hasError
+        ? null
+        : quoteState.asData?.value;
+    final total = session.hasActiveHold
+        ? session.booking!.tickets.fold(
+            VndMoney.zero,
+            (value, ticket) => value + ticket.lineTotal,
+          )
+        : selectedSeats.isEmpty
+        ? VndMoney.zero
+        : quote?.ticketSubtotal;
+    if (session.hasActiveHold && _timer == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _timer == null) _startTimer();
+      });
+    }
     final holding = session.phase == BookingEntryPhase.holding;
     final submitting = session.phase == BookingEntryPhase.submittingHold;
 
@@ -263,19 +307,32 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
       child: AppShell(
         currentIndex: 2,
         showBottomNavigation: false,
+        bookingTitle: 'Vé & Ghế',
+        bookingSubtitle: 'Bước 2/4',
+        onBookingBack: submitting ? null : _handleBack,
         body: Column(
           children: [
             const BookingProgress(currentStep: 1),
+            if (holding)
+              BookingHoldCountdown(
+                key: const ValueKey('seat-hold-timer'),
+                booking: session.booking,
+              ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ShowtimeSummary(
-                      seatMap: seatMap,
-                      remaining: holding ? _remaining : null,
-                    ),
+                    _ShowtimeSummary(seatMap: seatMap),
+                    if ((seatMap.showtime.surchargeAmount?.amount ?? 0) >
+                        0) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Phụ thu suất chiếu: ${seatMap.showtime.surchargeAmount!.format()}/vé. Báo giá đã bao gồm phụ thu.',
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.md),
                     _TicketSelector(
                       session: session,
@@ -293,36 +350,38 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                         label: const Text('Sửa số lượng vé hoặc ghế'),
                       ),
                     ],
-                    const SizedBox(height: AppSpacing.lg),
-                    const _SeatLegend(key: ValueKey('seat-map-legend')),
                     const SizedBox(height: AppSpacing.md),
-                    LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        key: const ValueKey('seat-map-horizontal-scroll'),
+                    const _ScreenIndicator(),
+                    const SizedBox(height: AppSpacing.md),
+                    InteractiveViewer(
+                      minScale: 1,
+                      maxScale: 2.2,
+                      boundaryMargin: const EdgeInsets.all(24),
+                      child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minWidth: constraints.maxWidth,
-                          ),
-                          child: Column(
-                            children: [
-                              const _ScreenIndicator(),
-                              const SizedBox(height: AppSpacing.md),
-                              _SeatGrid(
-                                seatMap: seatMap,
-                                assignments: session.assignments,
-                                unavailableSeatIds: session.unavailableSeatIds,
-                                enabled: !holding && !submitting,
-                                onSeat: (seat) => ref
-                                    .read(bookingEntryProvider.notifier)
-                                    .toggleSeatIds(
-                                      _seatGroup(seat, seatMap.seats),
-                                    ),
+                        child: _SeatGrid(
+                          seatMap: seatMap,
+                          assignments: session.assignments,
+                          unavailableSeatIds: session.unavailableSeatIds,
+                          enabled: !holding && !submitting,
+                          onSeat: (seat) => ref
+                              .read(bookingEntryProvider.notifier)
+                              .toggleSeatIds(
+                                _seatGroup(seat, seatMap.seats),
+                                unavailableSeatIds: seatMap.seats
+                                    .where((item) => !item.selectable)
+                                    .map((item) => item.seatId)
+                                    .toSet(),
                               ),
-                            ],
-                          ),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    const _SeatLegend(),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Ghế đôi cần 2 vé cùng loại. Vuốt ngang hoặc phóng to để xem sơ đồ.',
+                      style: AppTextStyles.caption,
                     ),
                     if (session.assignments.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.md),
@@ -332,8 +391,8 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.md),
-                    const Text(
-                      'Loại vé: Người lớn • Vui lòng kiểm tra phân loại độ tuổi của phim.',
+                    Text(
+                      'Phân loại phim: ${seatMap.showtime.movieAgeRating ?? "P"}${seatMap.showtime.movieAgeRating == "K" ? " • Trẻ dưới 13 tuổi cần người lớn đi cùng." : ""}',
                       style: AppTextStyles.caption,
                     ),
                     if (session.message != null) ...[
@@ -344,6 +403,13 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                         style: const TextStyle(color: AppColors.adultBadge),
                       ),
                     ],
+                    if (!holding && quoteState.hasError)
+                      TextButton.icon(
+                        key: const ValueKey('seat-quote-retry'),
+                        onPressed: () => ref.invalidate(seatQuoteProvider),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Chưa lấy được giá vé. Thử lại'),
+                      ),
                   ],
                 ),
               ),
@@ -353,7 +419,10 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
               total: total,
               holding: holding,
               submitting: submitting,
-              onContinue: submitting || !session.assignmentComplete
+              onContinue:
+                  submitting ||
+                      !session.assignmentComplete ||
+                      (!holding && quote == null)
                   ? null
                   : () async {
                       if (holding && session.booking != null) {
@@ -417,7 +486,10 @@ class _TicketSelector extends StatelessWidget {
                   : null,
               borderRadius: AppRadii.control,
               child: Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: session.activeTicketType == type
                       ? _ticketColor(type).withValues(alpha: 0.14)
@@ -447,40 +519,65 @@ class _TicketSelector extends StatelessWidget {
                         children: [
                           Text(
                             _ticketLabel(type),
-                            style: AppTextStyles.cardTitle,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           Text(
-                            'Đã gán ${session.assignedFor(type)}/${session.quantityFor(type)} ghế',
+                            BookingTicketPolicy.restriction(
+                                  type,
+                                  session.movieAgeRating,
+                                ) ??
+                                'Đã gán ${session.assignedFor(type)}/${session.quantityFor(type)} ghế',
                             style: AppTextStyles.caption,
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      key: ValueKey(
-                        'ticket-minus-${type.wireValue.toLowerCase()}',
+                    if (BookingTicketPolicy.restriction(
+                          type,
+                          session.movieAgeRating,
+                        ) ==
+                        null) ...[
+                      IconButton(
+                        tooltip: 'Giảm vé ${_ticketLabel(type)}',
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        key: ValueKey(
+                          'ticket-minus-${type.wireValue.toLowerCase()}',
+                        ),
+                        onPressed: !editable || session.quantityFor(type) == 0
+                            ? null
+                            : () =>
+                                  onChange(type, session.quantityFor(type) - 1),
+                        icon: const Icon(Icons.remove_rounded),
                       ),
-                      onPressed: !editable || session.quantityFor(type) == 0
-                          ? null
-                          : () => onChange(type, session.quantityFor(type) - 1),
-                      icon: const Icon(Icons.remove_rounded),
-                    ),
-                    Text(
-                      '${session.quantityFor(type)}',
-                      style: AppTextStyles.sectionTitle,
-                    ),
-                    IconButton(
-                      key: ValueKey(
-                        'ticket-plus-${type.wireValue.toLowerCase()}',
+                      Text(
+                        '${session.quantityFor(type)}',
+                        style: AppTextStyles.sectionTitle,
                       ),
-                      onPressed:
-                          !editable ||
-                              session.ticketCount >=
-                                  BookingTicketPolicy.maxTickets
-                          ? null
-                          : () => onChange(type, session.quantityFor(type) + 1),
-                      icon: const Icon(Icons.add_rounded),
-                    ),
+                      IconButton(
+                        tooltip: 'Thêm vé ${_ticketLabel(type)}',
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        key: ValueKey(
+                          'ticket-plus-${type.wireValue.toLowerCase()}',
+                        ),
+                        onPressed:
+                            !editable ||
+                                session.ticketCount >=
+                                    BookingTicketPolicy.maxTickets
+                            ? null
+                            : () =>
+                                  onChange(type, session.quantityFor(type) + 1),
+                        icon: const Icon(Icons.add_rounded),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -543,50 +640,31 @@ class _AssignmentSummary extends StatelessWidget {
 }
 
 class _ShowtimeSummary extends StatelessWidget {
-  const _ShowtimeSummary({required this.seatMap, required this.remaining});
-
+  const _ShowtimeSummary({required this.seatMap});
   final ShowtimeSeatMapDto seatMap;
-  final Duration? remaining;
-
   @override
   Widget build(BuildContext context) {
     final showtime = seatMap.showtime;
-    return AppSurface(
-      child: Row(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: AppRadii.control,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  showtime.movieTitle ?? 'Chọn ghế',
-                  style: AppTextStyles.cardTitle,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${showtime.cinemaName} • ${showtime.roomName}\n${_dateTime(showtime.startTime)}',
-                  style: AppTextStyles.caption,
-                ),
-              ],
-            ),
+          Text(
+            showtime.movieTitle ?? 'Chọn ghế',
+            style: AppTextStyles.cardTitle,
           ),
-          if (remaining != null)
-            Container(
-              key: const ValueKey('seat-hold-timer'),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: AppColors.goldSurface,
-                borderRadius: AppRadii.control,
-                border: Border.all(color: AppColors.goldBorder),
-              ),
-              child: Text(
-                '${remaining!.inMinutes.toString().padLeft(2, '0')}:${(remaining!.inSeconds % 60).toString().padLeft(2, '0')}',
-                style: AppTextStyles.label.copyWith(
-                  color: AppColors.gold,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
+          const SizedBox(height: 4),
+          Text(
+            '${showtime.cinemaName} · ${showtime.roomName}',
+            style: AppTextStyles.caption,
+          ),
+          Text(_dateTime(showtime.startTime), style: AppTextStyles.caption),
         ],
       ),
     );
@@ -607,7 +685,7 @@ class _ScreenIndicator extends StatelessWidget {
             colors: [AppColors.gold, AppColors.textMuted],
           ),
           borderRadius: AppRadii.control,
-          boxShadow: const [BoxShadow(color: AppColors.gold, blurRadius: 5)],
+          boxShadow: const [BoxShadow(color: AppColors.gold, blurRadius: 12)],
         ),
       ),
       const SizedBox(height: 6),
@@ -646,6 +724,7 @@ class _SeatGrid extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(
@@ -721,31 +800,19 @@ class _SeatButton extends StatelessWidget {
             _ => AppColors.surfaceRaised,
           };
     final label = '${seat.rowLabel}${seat.seatNumber}';
-    final availabilityLabel = switch ((seat.seatStatus, seat.runtimeStatus)) {
-      (SeatStatus.maintenance, _) => 'bảo trì',
-      (_, SeatRuntimeStatus.holding) => 'đang được giữ',
-      (_, SeatRuntimeStatus.booked) => 'đã đặt',
-      (_, SeatRuntimeStatus.checkedIn) => 'đã làm thủ tục',
-      (SeatStatus.available, SeatRuntimeStatus.available)
-          when !forcedUnavailable =>
-        'có thể chọn',
-      _ => 'không khả dụng',
-    };
     return Semantics(
       button: true,
       enabled: available && enabled,
       selected: selected,
       label:
-          'Ghế $label, ${seat.seatType.normalized.wireValue}, $availabilityLabel${selected ? ', đang chọn' : ''}',
+          'Ghế $label, ${seat.seatType.normalized.wireValue}, ${available ? 'có thể chọn' : 'không khả dụng'}',
       child: InkWell(
         key: ValueKey('seat-${seat.seatId}'),
         onTap: available && enabled ? onTap : null,
         borderRadius: AppRadii.small,
         child: Container(
-          width: seat.seatType.normalized == CatalogSeatType.couple
-              ? AppSizes.seatTouchTarget + 8
-              : AppSizes.seatTouchTarget,
-          height: AppSizes.seatTouchTarget,
+          width: seat.seatType.normalized == CatalogSeatType.couple ? 56 : 48,
+          height: 48,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color,
@@ -755,11 +822,17 @@ class _SeatButton extends StatelessWidget {
               width: selected ? 2 : 1,
             ),
           ),
-          child: Text(
-            label,
-            style: AppTextStyles.meta.copyWith(
-              color: AppColors.text,
-              fontWeight: FontWeight.w800,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: AppTextStyles.meta.copyWith(
+                  color: AppColors.text,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
         ),
@@ -769,7 +842,7 @@ class _SeatButton extends StatelessWidget {
 }
 
 class _SeatLegend extends StatelessWidget {
-  const _SeatLegend({super.key});
+  const _SeatLegend();
 
   @override
   Widget build(BuildContext context) => const Wrap(
@@ -780,7 +853,7 @@ class _SeatLegend extends StatelessWidget {
       _LegendItem(label: 'VIP', color: AppColors.purple),
       _LegendItem(label: 'Ghế đôi', color: AppColors.adultBadge),
       _LegendItem(label: 'Đang chọn', color: AppColors.gold),
-      _LegendItem(label: 'Không khả dụng', color: AppColors.border),
+      _LegendItem(label: 'Đã giữ/đặt/bảo trì', color: AppColors.border),
     ],
   );
 }
@@ -804,7 +877,7 @@ class _LegendItem extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 4),
-      Text(label, style: AppTextStyles.caption),
+      Flexible(child: Text(label, style: AppTextStyles.caption)),
     ],
   );
 }
@@ -817,64 +890,76 @@ class _SeatActionBar extends StatelessWidget {
     required this.submitting,
     required this.onContinue,
   });
-
   final List<ShowtimeSeatDto> selectedSeats;
-  final VndMoney total;
-  final bool holding;
-  final bool submitting;
+  final VndMoney? total;
+  final bool holding, submitting;
   final VoidCallback? onContinue;
-
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    child: Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceRaised,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  selectedSeats.isEmpty
-                      ? 'Chưa chọn ghế'
-                      : selectedSeats
-                            .map((seat) => '${seat.rowLabel}${seat.seatNumber}')
-                            .join(', '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption,
-                ),
-              ),
-              Text(total.format(), style: AppTextStyles.price),
-            ],
+  Widget build(BuildContext context) {
+    final summary = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          selectedSeats.isEmpty
+              ? 'Chưa chọn ghế'
+              : selectedSeats
+                    .map((seat) => '${seat.rowLabel}${seat.seatNumber}')
+                    .join(', '),
+          style: AppTextStyles.caption,
+        ),
+        Text(
+          total?.format() ?? 'Đang cập nhật giá',
+          style: AppTextStyles.sectionTitle.copyWith(
+            color: AppColors.gold,
+            fontWeight: FontWeight.w900,
           ),
-          const SizedBox(height: AppSpacing.sm),
-          AppButton(
-            key: const ValueKey('seat-continue'),
-            fullWidth: true,
-            loading: submitting,
-            label: holding
-                ? 'Tiếp tục • Bắp nước'
-                : submitting
-                ? 'Đang giữ ghế...'
-                : 'Tiếp tục',
-            onPressed: onContinue,
-          ),
-        ],
+        ),
+      ],
+    );
+    final button = AppButton(
+      key: const ValueKey('seat-continue'),
+      label: holding
+          ? 'Tiếp tục • Bắp nước'
+          : submitting
+          ? 'Đang giữ ghế...'
+          : 'Tiếp tục',
+      onPressed: onContinue,
+    );
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceRaised,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final stacked =
+                constraints.maxWidth < 330 &&
+                MediaQuery.textScalerOf(context).scale(14) > 18;
+            return stacked
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [summary, const SizedBox(height: 8), button],
+                  )
+                : Row(
+                    children: [
+                      Expanded(child: summary),
+                      const SizedBox(width: 12),
+                      Flexible(child: SizedBox(width: 170, child: button)),
+                    ],
+                  );
+          },
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-String _dateTime(DateTime value) =>
-    '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')} • '
-    '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+String _dateTime(DateTime value) => formatVietnamDateTime(value);
 
 String _ticketLabel(TicketType type) => switch (type) {
   TicketType.student => 'Sinh viên',
@@ -887,24 +972,3 @@ Color _ticketColor(TicketType type) => switch (type) {
   TicketType.child => const Color(0xFF22C99A),
   _ => AppColors.gold,
 };
-
-VndMoney _ticketPrice(
-  ShowtimeDto showtime,
-  ShowtimeSeatDto seat,
-  TicketType ticketType,
-) {
-  final value = switch ((ticketType, seat.seatType.normalized)) {
-    (TicketType.adult, CatalogSeatType.standard) => showtime.adultStandardPrice,
-    (TicketType.student, CatalogSeatType.standard) =>
-      showtime.studentStandardPrice,
-    (TicketType.child, CatalogSeatType.standard) => showtime.childStandardPrice,
-    (TicketType.adult, CatalogSeatType.vip) => showtime.adultVipPrice,
-    (TicketType.student, CatalogSeatType.vip) => showtime.studentVipPrice,
-    (TicketType.child, CatalogSeatType.vip) => showtime.childVipPrice,
-    (TicketType.adult, CatalogSeatType.couple) => showtime.adultCouplePrice,
-    (TicketType.student, CatalogSeatType.couple) => showtime.studentCouplePrice,
-    (TicketType.child, CatalogSeatType.couple) => showtime.childCouplePrice,
-    _ => null,
-  };
-  return value ?? seat.unitPrice ?? VndMoney.zero;
-}

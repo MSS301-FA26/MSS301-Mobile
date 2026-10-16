@@ -1,5 +1,9 @@
 abstract final class AppRoutes {
   static const home = '/home';
+  static const foodShop = '/food-order';
+  static const foodOrderDetailPattern = '/food-order/:orderId';
+  static const chat = '/chat';
+  static String foodOrderDetail(int id) => '/food-order/$id';
   static const discover = '/discover';
   static const showtimes = '/showtimes';
   static const orders = '/orders';
@@ -27,6 +31,11 @@ abstract final class AppRoutes {
   static const checkoutPattern = '/booking/:bookingId/checkout';
   static const paymentPattern = '/payment/:paymentId';
   static const ticketPattern = '/ticket/:bookingId';
+
+  static String movieReviews(int movieId) => Uri(
+    path: movieDetail(movieId),
+    queryParameters: {'section': 'reviews'},
+  ).toString();
 
   static String movieDetail(int movieId) => '/movie/$movieId';
 
