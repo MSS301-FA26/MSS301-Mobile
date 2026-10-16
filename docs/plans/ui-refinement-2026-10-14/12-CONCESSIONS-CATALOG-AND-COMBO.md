@@ -12,7 +12,7 @@ Phát triển từ UI-05 đã được người dùng duyệt: sản phẩm có 
 ## Thiết kế dự kiến
 
 - Nhóm Combo / Sản phẩm bằng dữ liệu `isCombo`; chỉ thêm tab danh mục chi tiết khi DTO/API có category thật. Không suy đoán danh mục từ tên món.
-- Thẻ ảnh bên trái, tên/giá/mô tả bên phải, bộ chọn số lượng gọn ở dưới. Trên màn hẹp/chữ lớn tự xuống dòng; ảnh chứa trọn sản phẩm, không crop mất hộp/nước.
+- Thẻ ảnh bên trái, tên/giá/mô tả bên phải, bộ chọn số lượng gọn ở dưới. Trên màn hẹp/chữ lớn tự xuống dòng. Theo phản hồi ngày 16/10 sau khi xem UI-12, ảnh sản phẩm/combo dùng crop giữa ảnh phủ kín khung (`BoxFit.cover`), áp dụng cả sheet chi tiết.
 - Mô tả dài có Xem chi tiết hoặc bottom sheet. Phần gồm những món gì lấy từ description hoặc dữ liệu thành phần đã xác minh; không tự bịa số bắp/nước hay lựa chọn vị/size.
 - Thẻ đang chọn dễ nhận ra, giới hạn 8 được giải thích tại chỗ, hàng hết vẫn giảm/xóa được khỏi giỏ. Trạng thái khả dụng giữ theo BE tại thời điểm triển khai.
 - Booking có tóm tắt phim/rạp/suất ngắn và countdown ngoài vùng cuộn. Thanh cuối hiển thị tiền vé và tiền bắp nước riêng khi đã có số authoritative; phần tạm tính món phải ghi rõ.

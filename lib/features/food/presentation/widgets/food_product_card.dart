@@ -263,7 +263,7 @@ class _FoodImage extends StatelessWidget {
           child: valid
               ? Image.network(
                   url,
-                  fit: BoxFit.contain,
+                  fit: BoxFit.cover,
                   semanticLabel: product.name,
                   loadingBuilder: (_, child, progress) =>
                       progress == null ? child : fallback,

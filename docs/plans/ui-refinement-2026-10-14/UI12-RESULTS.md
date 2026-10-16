@@ -8,7 +8,7 @@ Baseline trước sửa: Mobile `1b06756`. Phạm vi thay đổi: Mobile và tà
 
 - Bộ lọc Tất cả / Combo / Sản phẩm kèm số lượng, dùng chung cho đơn độc lập và bắp nước kèm vé. Phân nhóm từ `isCombo`, không suy đoán theo tên hoặc tự tạo danh mục chi tiết.
 - Chuyển nhóm chỉ lọc phần hiển thị. Số lượng và tạm tính vẫn tính toàn giỏ, giữ riêng khóa `item:id` và `combo:id`, kể cả khi hai loại trùng ID.
-- Ảnh thẻ tăng lên 104 × 104, contain để giữ trọn hình; tên và giá đặt bên phải. Giữ fallback khi ảnh tải chậm/hỏng/thiếu, viền vàng khi đã chọn, giải thích giới hạn 8 và trạng thái khả dụng tại thẻ.
+- Ảnh thẻ tăng lên 104 × 104; tên và giá đặt bên phải. Sau phản hồi ngày 16/10, chuyển từ contain sang **crop giữa ảnh phủ kín khung (`BoxFit.cover`)**, áp dụng cả ảnh lớn trong sheet chi tiết. Giữ fallback khi ảnh tải chậm/hỏng/thiếu, viền vàng khi đã chọn, giải thích giới hạn 8 và trạng thái khả dụng tại thẻ.
 - Nút Xem chi tiết mở bottom sheet: ảnh lớn, tên đầy đủ, giá, trạng thái và mô tả đầy đủ từ API. Nội dung cuộn, nút đóng nằm ngoài vùng cuộn và có SafeArea. Không thêm tùy chọn vị/size hoặc tự diễn giải thành phần combo. Thiếu mô tả thì ghi đang cập nhật.
 - Đơn độc lập giữ chọn rạp ở CTA khi chưa chọn; không tự lấy rạp từ header. Đổi nhóm/đổi rạp không xóa giỏ. Trong lúc tạo đơn khóa thay đổi và gửi lặp; từ chối tạo đơn giữ draft để sửa.
 - Booking có tóm tắt phim/rạp/phòng/giờ Việt Nam trong nội dung. Countdown giữ ngoài vùng cuộn, không sửa hoặc gia hạn deadline.
