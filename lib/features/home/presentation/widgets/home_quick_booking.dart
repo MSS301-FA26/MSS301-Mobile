@@ -326,41 +326,120 @@ Future<T?> homeChoose<T>(
   context: context,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (context) => SafeArea(
-    child: SizedBox(
-      height: MediaQuery.sizeOf(context).height * .65,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(title, style: AppTextStyles.sectionTitle),
-          ),
-          Expanded(
-            child: ListView.separated(
-              itemCount: options.length,
-              separatorBuilder: (_, _) => const Divider(),
-              itemBuilder: (context, index) => ListTile(
-                key: ValueKey('home-choice-${options[index].value}'),
-                minTileHeight: 56,
-                title: Text(
-                  options[index].label,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  semanticsLabel: options[index].label,
-                ),
-                trailing: const Icon(
-                  Icons.arrow_forward,
-                  color: AppColors.gold,
-                ),
-                onTap: () => Navigator.of(context).pop(options[index].value),
+  builder: (context) {
+    final isMovieChooser = title == 'Chọn phim';
+    final icon = isMovieChooser
+        ? Icons.movie_outlined
+        : Icons.checklist_rounded;
+    final availability = isMovieChooser ? 'phim khả dụng' : 'lựa chọn khả dụng';
+    final maxHeight = MediaQuery.sizeOf(context).height * .72;
+
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              key: const ValueKey('home-choice-header'),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: AppColors.goldSurface,
+                      borderRadius: AppRadii.small,
+                    ),
+                    child: Icon(icon, color: AppColors.gold),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: AppTextStyles.sectionTitle),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${options.length} $availability',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Đóng',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const Divider(height: 1),
+            Flexible(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+                itemCount: options.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final option = options[index];
+                  return Material(
+                    color: AppColors.surface,
+                    shape: const RoundedRectangleBorder(
+                      side: BorderSide(color: AppColors.border),
+                      borderRadius: AppRadii.small,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      key: ValueKey('home-choice-${option.value}'),
+                      onTap: () => Navigator.of(context).pop(option.value),
+                      child: Semantics(
+                        button: true,
+                        label: option.label,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(icon, color: AppColors.textSecondary),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  option.label,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.body.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Icon(
+                                Icons.arrow_forward_rounded,
+                                color: AppColors.gold,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  ),
+    );
+  },
 );
 
 String _dateLabel(DateTime date) =>

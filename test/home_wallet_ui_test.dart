@@ -11,4 +11,27 @@ void main() {
     expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
     expect(find.text('RẠP CINEPREMIER'), findsOneWidget);
   });
+
+  testWidgets('movie chooser presents a clear selection header', (tester) async {
+    await pumpTestApp(tester, size: const Size(390, 844));
+
+    await tester.tap(find.byKey(const ValueKey('home-quick-step-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-choice-header')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-choice-header')),
+        matching: find.text('Chọn phim'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-choice-header')),
+        matching: find.textContaining('phim khả dụng'),
+      ),
+      findsOneWidget,
+    );
+  });
 }
