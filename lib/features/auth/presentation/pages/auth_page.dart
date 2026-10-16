@@ -10,6 +10,7 @@ import '../../application/auth_session.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../widgets/auth_form_layout.dart';
 import '../widgets/email_verification_form.dart';
+import '../widgets/google_login_button.dart';
 import '../widgets/register_form_fields.dart';
 
 enum AuthPageMode { login, register, forgotPassword }
@@ -263,6 +264,14 @@ class _AuthPageState extends ConsumerState<AuthPage>
           }
         },
         form: _buildForm(),
+        googleButton: widget.mode == AuthPageMode.login
+            ? GoogleLoginButton(
+                busy:
+                    session.isSubmitting ||
+                    _isSubmitting ||
+                    session.status == AuthStatus.initializing,
+              )
+            : null,
         message: session.message,
         activeTab: switch (widget.mode) {
           AuthPageMode.login => AuthLayoutTab.login,
