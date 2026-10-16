@@ -31,13 +31,9 @@ void main() {
       ],
     );
 
-    await tester.drag(
-      find.byKey(const ValueKey('movie-coverflow')),
-      const Offset(-120, 0),
-    );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('hero-book-2')));
-    await tester.tap(find.byKey(const ValueKey('hero-book-2')));
+    final bookAvengers = find.byKey(const ValueKey('now-showing-book-2'));
+    await tester.ensureVisible(bookAvengers);
+    await tester.tap(bookAvengers);
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('showtime-slot-1002')).hitTestable(),
@@ -124,7 +120,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 20));
     expect(container.read(bookingEntryProvider).hasActiveDraft, isFalse);
-    expect(find.text('Đang chiếu'), findsOneWidget);
+    expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
   });
 
   testWidgets('R4 guest auth resumes the exact selected showtime', (

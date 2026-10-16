@@ -60,13 +60,20 @@ class _HomeCinemasSectionState extends ConsumerState<HomeCinemasSection> {
           onAction: () => context.go(AppRoutes.showtimes),
         ),
         if (state.isLoading)
-          const RepositoryStatePane.loading()
+          const SizedBox(
+            height: 160,
+            child: Center(child: CircularProgressIndicator()),
+          )
         else if (state.hasError)
           RepositoryStatePane.error(
             onRetry: () => ref.invalidate(homeCinemasProvider),
+            compact: true,
           )
         else if (cinemas.isEmpty)
-          const RepositoryStatePane.empty(title: 'Chưa có rạp khả dụng')
+          const RepositoryStatePane.empty(
+            title: 'Chưa có rạp khả dụng',
+            compact: true,
+          )
         else ...[
           if (cities.isNotEmpty)
             SingleChildScrollView(

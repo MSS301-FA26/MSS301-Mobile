@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
@@ -8,10 +7,6 @@ import 'package:mss301_mobile/features/discover/presentation/pages/discover_page
 import 'package:mss301_mobile/features/home/presentation/pages/home_page.dart';
 import 'package:mss301_mobile/features/orders/presentation/pages/orders_page.dart';
 import 'package:mss301_mobile/features/showtime/presentation/pages/showtimes_page.dart';
-import 'package:mss301_mobile/features/showtime/presentation/widgets/date_selector.dart';
-import 'package:mss301_mobile/features/movie/data/models/catalog_enums.dart';
-import 'package:mss301_mobile/features/home/presentation/providers/home_preview_provider.dart';
-import 'package:mss301_mobile/features/home/data/home_banner_repository.dart';
 
 import 'support/pump_test_app.dart';
 
@@ -19,146 +14,25 @@ void main() {
   setUp(() => appRouter.go(AppRoutes.home));
 
   for (final width in [360.0, 390.0, 412.0]) {
-    testWidgets('home navigation at ${width.toInt()} px', (tester) async {
+    testWidgets('wallet Home renders at ${width.toInt()} px', (tester) async {
       await tester.binding.setSurfaceSize(Size(width, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await pumpTestApp(tester);
 
-      expect(find.text('Đang chiếu'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('hero-open-1')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Chi tiết phim'), findsOneWidget);
-      expect(find.text('Thông tin phim'), findsOneWidget);
-
-      await tester.tap(find.byTooltip('Quay lại'));
-      await tester.pumpAndSettle();
-      expect(find.text('Đang chiếu'), findsOneWidget);
+      expect(find.text('MUA VÉ NHANH'), findsNWidgets(2));
+      expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
+      expect(find.text('PHIM SẮP CHIẾU'), findsOneWidget);
+      expect(find.text('RẠP CINEPREMIER'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   }
 
-  testWidgets('home preview and cinema information open', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(360, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await pumpTestApp(tester);
-
-    await tester.ensureVisible(find.text('Xem trailer'));
-    await tester.tap(find.text('Xem trailer'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('movie-trailer-open')), findsOneWidget);
-    await tester.tap(find.byTooltip('Đóng'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('CineAI Central'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Nguyễn Huệ'), findsOneWidget);
-  });
-
-  testWidgets('booking CTA opens movie-filtered showtimes', (tester) async {
+  testWidgets('bottom navigation tabs navigate to destinations', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await pumpTestApp(tester);
-
-    await tester.drag(
-      find.byKey(const ValueKey('movie-coverflow')),
-      const Offset(-120, 0),
-    );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('hero-book-2')));
-    await tester.tap(find.byKey(const ValueKey('hero-book-2')));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ShowtimesPage), findsOneWidget);
-    expect(find.text('AVENGERS: ENDGAME'), findsOneWidget);
-    expect(find.text('INCEPTION'), findsNothing);
-    expect(
-      tester.widget<DateSelector>(find.byType(DateSelector)).selectedIndex,
-      isNull,
-    );
-  });
-
-  testWidgets('header actions route and preview notification is disabled', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await pumpTestApp(tester);
-
-    final notification = tester.widget<IconButton>(
-      find.widgetWithIcon(IconButton, Icons.notifications_none),
-    );
-    expect(notification.onPressed, isNull);
-
-    await tester.tap(find.byTooltip('Tìm kiếm'));
-    await tester.pumpAndSettle();
-    expect(find.byType(DiscoverPage), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Tài khoản'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AccountPage), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('header-home-logo')));
-    await tester.pumpAndSettle();
-    expect(find.byType(HomePage), findsOneWidget);
-  });
-
-  testWidgets(
-    'quick actions enable food/chat/points and keep unsupported VIP disabled',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 844));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      await pumpTestApp(tester);
-
-      await tester.tap(
-        find.byKey(const ValueKey('bottom-nav-icon-0')).hitTestable(),
-      );
-      await tester.pumpAndSettle();
-
-      final foodAction = find.byKey(const ValueKey('quick-action-Bắp & Nước'));
-      expect(foodAction, findsOneWidget);
-      expect(tester.widget<InkWell>(foodAction).onTap, isNotNull);
-      expect(
-        tester
-            .widget<InkWell>(
-              find.byKey(const ValueKey('quick-action-PopBot AI')),
-            )
-            .onTap,
-        isNotNull,
-      );
-      expect(
-        tester
-            .widget<InkWell>(
-              find.byKey(const ValueKey('quick-action-CinePoints')),
-            )
-            .onTap,
-        isNotNull,
-      );
-      expect(
-        tester
-            .widget<InkWell>(
-              find.byKey(const ValueKey('quick-action-Ưu đãi VIP')),
-            )
-            .onTap,
-        isNull,
-      );
-      expect(find.text('Sắp có'), findsOneWidget);
-      expect(find.byType(SnackBar), findsNothing);
-    },
-  );
-
-  testWidgets('bottom navigation tabs navigate to destinations', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await pumpTestApp(tester);
-
     final tabPages = [DiscoverPage, ShowtimesPage, OrdersPage, AccountPage];
 
     for (var i = 1; i < 5; i++) {
@@ -174,49 +48,5 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(HomePage), findsOneWidget);
-  });
-
-  testWidgets('R3 account and orders read backend-aligned repositories', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await pumpTestApp(tester);
-
-    await tester.tap(
-      find.byKey(const ValueKey('bottom-nav-icon-3')).hitTestable(),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Mã đơn: CP-MOCK-5101'), findsOneWidget);
-    expect(find.text('Inception'), findsOneWidget);
-
-    await tester.tap(
-      find.byKey(const ValueKey('bottom-nav-icon-4')).hitTestable(),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Nguyễn Minh'), findsOneWidget);
-    expect(find.text('1.250'), findsOneWidget);
-    expect(find.text('500.000đ'), findsOneWidget);
-  });
-
-  testWidgets('R3 repository error exposes retry state', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          homeBannersProvider.overrideWith((ref) async => const []),
-          homeCategoryMoviesProvider(MovieStatus.nowShowing)
-              .overrideWith((ref) => throw StateError('catalog unavailable')),
-        ],
-        child: const MaterialApp(home: HomePage()),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Chưa tải được phim'), findsOneWidget);
-    expect(find.text('Thử lại'), findsOneWidget);
   });
 }

@@ -228,13 +228,18 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
                 ref.invalidate(homeCinemasProvider);
                 if (movie != null) ref.invalidate(showtimesProvider(query));
               },
+              compact: true,
             )
           else if (loading)
-            const RepositoryStatePane.loading()
+            const SizedBox(
+              height: 160,
+              child: Center(child: CircularProgressIndicator()),
+            )
           else if (movie != null && cinemas.isEmpty)
             const RepositoryStatePane.empty(
               title: 'Chưa có suất chiếu phù hợp',
               message: 'Hãy chọn một phim khác hoặc xem lịch chiếu.',
+              compact: true,
             ),
         ],
       ),

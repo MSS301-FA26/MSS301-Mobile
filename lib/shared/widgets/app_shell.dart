@@ -16,6 +16,7 @@ class AppShell extends ConsumerWidget {
     required this.body,
     required this.currentIndex,
     this.showBottomNavigation = true,
+    this.compactHeader = false,
     this.bookingTitle,
     this.bookingSubtitle,
     this.onBookingBack,
@@ -24,6 +25,7 @@ class AppShell extends ConsumerWidget {
   final Widget body;
   final int currentIndex;
   final bool showBottomNavigation;
+  final bool compactHeader;
   final String? bookingTitle;
   final String? bookingSubtitle;
   final VoidCallback? onBookingBack;
@@ -81,6 +83,7 @@ class AppShell extends ConsumerWidget {
               ],
             )
           : CinemaHeader(
+              compact: compactHeader,
               onHome: () => _navigate(context, ref, AppRoutes.home),
               onSearch: () => _navigate(context, ref, AppRoutes.discover),
               onAccount: () => _navigate(context, ref, AppRoutes.account),
