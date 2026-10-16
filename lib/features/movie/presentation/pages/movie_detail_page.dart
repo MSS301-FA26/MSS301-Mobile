@@ -5,15 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/app_chip.dart';
-import '../../../../shared/widgets/app_image.dart';
-import '../../../../shared/widgets/age_badge.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
-import '../models/movie.dart';
-import '../../data/models/recommendation_dto.dart';
-import '../../data/models/review_dto.dart';
 import '../providers/movies_provider.dart';
 import '../providers/movie_engagement_provider.dart';
+import '../widgets/movie_detail_sections.dart';
 import '../widgets/trailer_preview_dialog.dart';
 
 class MovieDetailPage extends ConsumerStatefulWidget {
@@ -22,65 +17,63 @@ class MovieDetailPage extends ConsumerStatefulWidget {
     required this.movieId,
     this.showReviews = false,
   });
-
   final int movieId;
   final bool showReviews;
-
   @override
   ConsumerState<MovieDetailPage> createState() => _MovieDetailPageState();
 }
 
 class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
   final _reviewsAnchor = GlobalKey();
+  final _scroll = ScrollController();
   bool _scrolledToReviews = false;
   int get movieId => widget.movieId;
 
   @override
+  void didUpdateWidget(covariant MovieDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.movieId != movieId) {
+      _scrolledToReviews = false;
+      if (_scroll.hasClients) _scroll.jumpTo(0);
+    } else if (!oldWidget.showReviews && widget.showReviews) {
+      _scrolledToReviews = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _back() => context.canPop() ? context.pop() : context.go(AppRoutes.home);
+
+  @override
   Widget build(BuildContext context) {
-    final movieState = ref.watch(movieProvider(movieId));
-    final reviewSummary = ref.watch(movieReviewSummaryProvider(movieId));
+    final state = ref.watch(movieProvider(movieId));
+    final movie = state.asData?.value;
+    final summary = ref.watch(movieReviewSummaryProvider(movieId));
     final reviews = ref.watch(movieReviewsProvider(movieId));
-    final recommendations = ref.watch(movieRecommendationsProvider(movieId));
-    if (movieState.isLoading) {
-      return const Scaffold(body: RepositoryStatePane.loading());
-    }
-    if (movieState.hasError) {
-      return Scaffold(
-        body: RepositoryStatePane.error(
-          onRetry: () => ref.invalidate(movieProvider(movieId)),
-        ),
-      );
-    }
-    final Movie? movie = movieState.requireValue;
-    if (widget.showReviews && !_scrolledToReviews && !reviewSummary.isLoading) {
+    final related = ref.watch(movieRecommendationsProvider(movieId));
+    if (movie != null && widget.showReviews && !_scrolledToReviews) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final anchor = _reviewsAnchor.currentContext;
-        if (mounted && anchor != null) {
-          _scrolledToReviews = true;
-          Scrollable.ensureVisible(
-            anchor,
-            duration: const Duration(milliseconds: 250),
-          );
-        }
+        if (!mounted || anchor == null || _scrolledToReviews) return;
+        _scrolledToReviews = true;
+        Scrollable.ensureVisible(
+          anchor,
+          duration: const Duration(milliseconds: 250),
+        );
       });
     }
-
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          movie?.title ?? 'Chi tiết phim',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: const Text('Chi tiết phim', style: AppTextStyles.cardTitle),
         leading: IconButton(
           tooltip: 'Quay lại',
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/home'),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppColors.border),
+          onPressed: _back,
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
       ),
       bottomNavigationBar: movie == null
@@ -88,221 +81,178 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
           : SafeArea(
               top: false,
               child: Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
                   color: AppColors.surface,
                   border: Border(top: BorderSide(color: AppColors.border)),
                 ),
                 child: AppButton(
                   key: ValueKey('movie-detail-book-${movie.id}'),
-                  label: movie.isNowShowing ? 'Đặt vé' : 'Chưa mở bán',
+                  label: movie.isNowShowing
+                      ? 'Xem lịch chiếu & đặt vé'
+                      : 'Chưa mở bán',
                   icon: Icons.confirmation_number_outlined,
                   onPressed: movie.isNowShowing
-                      ? () => context.go(AppRoutes.showtimesForMovie(movie.id))
+                      ? () =>
+                            context.push(AppRoutes.showtimesForMovie(movie.id))
                       : null,
                 ),
               ),
             ),
-      body: movie == null
+      body: state.isLoading
+          ? const RepositoryStatePane.loading(
+              layout: RepositorySkeleton.poster,
+              title: 'Đang tải thông tin phim…',
+            )
+          : state.hasError
+          ? RepositoryStatePane.error(
+              onRetry: () => ref.invalidate(movieProvider(movieId)),
+            )
+          : movie == null
           ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Không tìm thấy phim.'),
-                  TextButton(
-                    onPressed: () => context.go('/home'),
-                    child: const Text('Về trang chủ'),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.movie_outlined,
+                      color: AppColors.gold,
+                      size: 44,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Không tìm thấy phim.',
+                      style: AppTextStyles.sectionTitle,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Phim có thể đã ngừng công khai.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.body,
+                    ),
+                    TextButton(onPressed: _back, child: const Text('Quay lại')),
+                  ],
+                ),
               ),
             )
           : SingleChildScrollView(
+              key: PageStorageKey('movie-detail-scroll-$movieId'),
+              controller: _scroll,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: 270,
-                    width: double.infinity,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        AppImage(asset: movie.bannerAsset ?? movie.posterAsset),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                AppColors.background.withValues(alpha: 0.4),
-                                AppColors.background,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  MovieDetailHero(
+                    movie: movie,
+                    onTrailer: movie.trailerUrl?.trim().isNotEmpty == true
+                        ? () => showDialog<void>(
+                            context: context,
+                            builder: (_) => TrailerPreviewDialog(movie: movie),
+                          )
+                        : null,
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            SizedBox(
-                              width: 105,
-                              height: 158,
-                              child: ClipRRect(
-                                borderRadius: AppRadii.control,
-                                child: AppImage(asset: movie.posterAsset),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  AgeBadge(rating: movie.ageRating),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    movie.title,
-                                    style: AppTextStyles.screenTitle,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.star_rounded,
-                                        color: AppColors.gold,
-                                        size: 18,
-                                      ),
-                                      Text(
-                                        ' ${movie.rating}/10',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Wrap(
-                          spacing: AppSpacing.xs,
-                          runSpacing: AppSpacing.xs,
-                          children: [
-                            AppChip(label: movie.genre),
-                            AppChip(label: movie.duration),
-                            if (movie.format.isNotEmpty)
-                              AppChip(label: movie.format),
-                          ],
+                        MovieDetailIntroduction(movie: movie),
+                        const SizedBox(height: 24),
+                        MovieSynopsis(
+                          key: ValueKey('synopsis-$movieId'),
+                          text: (movie.description?.trim().isNotEmpty == true
+                              ? movie.description!
+                              : movie.tagline),
                         ),
                         const SizedBox(height: 24),
-                        Text(
-                          'Nội dung phim',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          movie.description ?? movie.tagline,
-                          style: AppTextStyles.body,
-                        ),
+                        MovieCredits(movie: movie),
                         const SizedBox(height: 24),
-                        AppButton(
-                          label: 'Xem trailer',
-                          icon: Icons.play_circle_outline,
-                          variant: AppButtonVariant.secondary,
-                          onPressed: movie.trailerUrl == null
-                              ? null
-                              : () => showDialog<void>(
-                                  context: context,
-                                  builder: (context) =>
-                                      TrailerPreviewDialog(movie: movie),
-                                ),
-                        ),
-                        const SizedBox(height: 24),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceRaised,
-                            border: Border.all(color: AppColors.border),
-                            borderRadius: AppRadii.card,
-                          ),
+                        KeyedSubtree(
+                          key: _reviewsAnchor,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                'Chi tiết phim',
-                                style: AppTextStyles.sectionTitle.copyWith(
-                                  color: AppColors.gold,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              _DetailRow(
-                                label: 'Đạo diễn',
-                                value: movie.director ?? 'Đang cập nhật',
-                              ),
-                              _DetailRow(
-                                label: 'Diễn viên',
-                                value: movie.cast ?? 'Đang cập nhật',
-                              ),
-                              _DetailRow(
-                                label: 'Ngôn ngữ',
-                                value: movie.language ?? 'Đang cập nhật',
-                              ),
-                              _DetailRow(
-                                label: 'Phụ đề',
-                                value:
-                                    movie.subtitleLanguage ?? 'Đang cập nhật',
-                                isLast: true,
-                              ),
-                              const SizedBox(height: 8),
                               const Text(
-                                'Dữ liệu phim được tải từ CatalogRepository.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
+                                'Đánh giá từ khán giả',
+                                style: AppTextStyles.sectionTitle,
+                              ),
+                              const SizedBox(height: 12),
+                              summary.when(
+                                loading: () => const MovieSectionNotice(
+                                  label: 'Đang tải điểm đánh giá…',
+                                ),
+                                error: (_, _) => MovieSectionNotice(
+                                  label: 'Chưa tải được điểm đánh giá.',
+                                  onRetry: () => ref.invalidate(
+                                    movieReviewSummaryProvider(movieId),
+                                  ),
+                                  retryKey: const ValueKey(
+                                    'movie-summary-retry',
+                                  ),
+                                ),
+                                data: (value) => value.totalReviews <= 0
+                                    ? const MovieSectionNotice(
+                                        label: 'Chưa có đánh giá. Điểm sẽ hiển thị khi có đánh giá từ khán giả.',
+                                      )
+                                    : Wrap(
+                                        spacing: 12,
+                                        runSpacing: 8,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        children: [
+                                          Text(
+                                            '★ ${value.averageRating.toStringAsFixed(1)}/10',
+                                            style: AppTextStyles.sectionTitle
+                                                .copyWith(
+                                                  color: AppColors.gold,
+                                                ),
+                                          ),
+                                          Text(
+                                            '${value.totalReviews} lượt đánh giá',
+                                            style: AppTextStyles.body,
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                              reviews.when(
+                                loading: () => const MovieSectionNotice(
+                                  label: 'Đang tải nhận xét…',
+                                ),
+                                error: (_, _) => MovieSectionNotice(
+                                  label: 'Chưa tải được nhận xét.',
+                                  onRetry: () => ref.invalidate(
+                                    movieReviewsProvider(movieId),
+                                  ),
+                                  retryKey: const ValueKey(
+                                    'movie-reviews-retry',
+                                  ),
+                                ),
+                                data: (items) => Column(
+                                  children: [
+                                    for (final review in items.take(5))
+                                      MovieReviewCard(review: review),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 24),
-                        KeyedSubtree(
-                          key: _reviewsAnchor,
-                          child: reviewSummary.when(
-                            loading: () => const _SectionLoading(
-                              label: 'Đang tải đánh giá...',
-                            ),
-                            error: (_, _) => TextButton(
-                              onPressed: () => ref.invalidate(
-                                movieReviewSummaryProvider(movieId),
-                              ),
-                              child: const Text(
-                                'Không thể tải đánh giá. Thử lại',
-                              ),
-                            ),
-                            data: (summary) => _ReviewSection(
-                              summary: summary,
-                              reviews: reviews.maybeWhen(
-                                data: (items) => items,
-                                orElse: () => const [],
-                              ),
-                            ),
+                        related.when(
+                          loading: () => const MovieSectionNotice(
+                            label: 'Đang tìm phim liên quan…',
+                            skeleton: true,
                           ),
-                        ),
-                        recommendations.when(
-                          loading: () => const SizedBox.shrink(),
-                          error: (_, _) => const SizedBox.shrink(),
+                          error: (_, _) => MovieSectionNotice(
+                            label: 'Chưa tải được phim liên quan. Bạn vẫn có thể xem lịch chiếu của phim này.',
+                            onRetry: () => ref.invalidate(
+                              movieRecommendationsProvider(movieId),
+                            ),
+                            retryKey: const ValueKey('movie-related-retry'),
+                          ),
                           data: (items) => items.isEmpty
                               ? const SizedBox.shrink()
-                              : _RecommendationSection(items: items),
+                              : RelatedMovies(items: items),
                         ),
                       ],
                     ),
@@ -312,169 +262,4 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
             ),
     );
   }
-}
-
-class _SectionLoading extends StatelessWidget {
-  const _SectionLoading({required this.label});
-  final String label;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Text(label, style: AppTextStyles.caption),
-  );
-}
-
-class _ReviewSection extends StatelessWidget {
-  const _ReviewSection({required this.summary, required this.reviews});
-  final ReviewSummaryDto summary;
-  final List<ReviewDto> reviews;
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceRaised,
-      border: Border.all(color: AppColors.border),
-      borderRadius: AppRadii.card,
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Đánh giá từ khán giả',
-          style: AppTextStyles.sectionTitle.copyWith(color: AppColors.gold),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            const Icon(Icons.star_rounded, color: AppColors.gold),
-            const SizedBox(width: 6),
-            Text(
-              '${summary.averageRating.toStringAsFixed(1)}/10',
-              style: AppTextStyles.sectionTitle,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${summary.totalReviews} lượt đánh giá',
-              style: AppTextStyles.caption,
-            ),
-          ],
-        ),
-        if (reviews.isNotEmpty) ...[
-          const Divider(height: 24),
-          ...reviews
-              .take(3)
-              .map(
-                (review) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${review.userName} · ${review.rating}/10',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(review.content, style: AppTextStyles.body),
-                    ],
-                  ),
-                ),
-              ),
-        ],
-      ],
-    ),
-  );
-}
-
-class _RecommendationSection extends StatelessWidget {
-  const _RecommendationSection({required this.items});
-  final List<RecommendationDto> items;
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SizedBox(height: 24),
-      Text(
-        'Có thể bạn cũng thích',
-        style: AppTextStyles.sectionTitle.copyWith(color: AppColors.gold),
-      ),
-      const SizedBox(height: 10),
-      SizedBox(
-        height: 190,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: items.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 12),
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return SizedBox(
-              width: 132,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: AppRadii.control,
-                      child: AppImage(
-                        asset: item.posterUrl ?? '',
-                        width: 132,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  if (item.averageRating != null)
-                    Text(
-                      '★ ${item.averageRating!.toStringAsFixed(1)}',
-                      style: const TextStyle(
-                        color: AppColors.gold,
-                        fontSize: 12,
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    ],
-  );
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.isLast = false,
-  });
-
-  final String label;
-  final String value;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.only(bottom: isLast ? 0 : 8),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: 82, child: Text(label, style: AppTextStyles.caption)),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 }

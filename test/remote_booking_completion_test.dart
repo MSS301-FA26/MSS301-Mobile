@@ -76,12 +76,12 @@ void main() {
   tearDown(() => container.dispose());
 
   test(
-    'UTC deadline without offset remains valid on a device seven hours ahead',
+    'Vietnam booking deadline without offset gives three minutes remaining',
     () async {
       clock.advance(
         DateTime.parse('2026-10-11T13:00:00+07:00').difference(clock.now()),
       );
-      gateway.expiry = '2026-10-11T06:03:00';
+      gateway.expiry = '2026-10-11T13:03:00';
       await controller.load(42);
       final state = container.read(bookingCompletionProvider);
       expect(state.phase, BookingCompletionPhase.choosingFood);

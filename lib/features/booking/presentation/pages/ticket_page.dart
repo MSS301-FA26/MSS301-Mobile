@@ -10,6 +10,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
+import '../../../../shared/widgets/checkout_summary.dart';
+import '../../../orders/presentation/widgets/booking_status_badge.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../orders/data/models/booking_enums.dart';
 import '../../application/booking_completion_controller.dart';
@@ -89,7 +91,10 @@ class _TicketPageState extends ConsumerState<TicketPage> {
       currentIndex: 3,
       showBottomNavigation: false,
       body: bookingState.when(
-        loading: () => const RepositoryStatePane.loading(),
+        loading: () => const RepositoryStatePane.loading(
+          layout: RepositorySkeleton.poster,
+          title: 'Đang tải vé…',
+        ),
         error: (_, _) => RepositoryStatePane.error(
           onRetry: () => ref.invalidate(ticketBookingProvider(bookingId)),
         ),
@@ -151,6 +156,8 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                   ),
                   child: Column(
                     children: [
+                      BookingStatusBadge(status: booking.status),
+                      const SizedBox(height: AppSpacing.sm),
                       Text(
                         booking.movieTitleSnapshot ??
                             booking.movieTitle ??
@@ -165,13 +172,26 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                       const SizedBox(height: AppSpacing.sm),
                       if (booking.status == BookingStatus.paid &&
                           booking.qrCode?.trim().isNotEmpty == true)
-                        QrImageView(
-                          key: const ValueKey('ticket-qr'),
-                          data: booking.qrCode!,
-                          size: 220,
-                          padding: const EdgeInsets.all(16),
-                          backgroundColor: Colors.white,
-                          semanticsLabel: 'Mã QR vé ${booking.bookingCode}',
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final size = constraints.maxWidth.clamp(0.0, 240.0);
+                            final code = QrValidator.validate(
+                              data: booking.qrCode!,
+                              version: QrVersions.auto,
+                              errorCorrectionLevel: QrErrorCorrectLevel.L,
+                            ).qrCode;
+                            // Reserve four modules of white quiet zone on each side.
+                            final quietZone =
+                                size * 4 / ((code?.moduleCount ?? 25) + 8);
+                            return QrImageView(
+                              key: const ValueKey('ticket-qr'),
+                              data: booking.qrCode!,
+                              size: size,
+                              padding: EdgeInsets.all(quietZone),
+                              backgroundColor: Colors.white,
+                              semanticsLabel: 'Mã QR vé ${booking.bookingCode}',
+                            );
+                          },
                         )
                       else
                         Text(
@@ -182,6 +202,7 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                               : 'Đơn chưa có vé có thể sử dụng.',
                         ),
                       const SizedBox(height: AppSpacing.sm),
+                      const Text('Mã đơn', style: AppTextStyles.caption),
                       Text(
                         booking.bookingCode,
                         style: const TextStyle(
@@ -194,15 +215,15 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                _TicketLine(
+                CheckoutLine(
                   'Rạp',
                   booking.cinemaNameSnapshot ?? booking.cinemaName ?? '—',
                 ),
-                _TicketLine(
+                CheckoutLine(
                   'Phòng',
                   booking.roomNameSnapshot ?? booking.roomName ?? '—',
                 ),
-                _TicketLine(
+                CheckoutLine(
                   'Ghế',
                   booking.seats.map((seat) => seat.seatLabel).join(', '),
                 ),
@@ -214,7 +235,7 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                   if (booking.tickets.any(
                     (ticket) => ticket.ticketType == type,
                   ))
-                    _TicketLine(
+                    CheckoutLine(
                       _ticketLabel(type),
                       booking.tickets
                           .where((ticket) => ticket.ticketType == type)
@@ -230,7 +251,7 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                           )
                           .join(', '),
                     ),
-                _TicketLine(
+                CheckoutLine(
                   'Suất chiếu',
                   booking.showtimeStartSnapshot == null &&
                           booking.showtimeStart == null
@@ -241,12 +262,12 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                         ),
                 ),
                 for (final food in booking.foods)
-                  _TicketLine(
+                  CheckoutLine(
                     '${food.productName} × ${food.quantity}',
                     food.lineTotal.format(),
                   ),
-                _TicketLine('Tổng tiền', booking.totalAmount.format()),
-                _TicketLine('Trạng thái', _statusLabel(booking.status)),
+                CheckoutLine('Tổng tiền', booking.totalAmount.format()),
+                CheckoutLine('Trạng thái', _statusLabel(booking.status)),
                 if (booking.status == BookingStatus.holding ||
                     booking.status == BookingStatus.pendingPayment)
                   AppButton(
@@ -333,32 +354,6 @@ String _ticketLabel(TicketType type) => switch (type) {
   TicketType.student => 'Vé sinh viên',
   _ => 'Vé người lớn',
 };
-
-class _TicketLine extends StatelessWidget {
-  const _TicketLine(this.label, this.value);
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-    child: Row(
-      children: [
-        Expanded(child: Text(label, style: AppTextStyles.caption)),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-        ),
-      ],
-    ),
-  );
-}
 
 String _dateTime(DateTime value) => formatVietnamDateTime(value);
 

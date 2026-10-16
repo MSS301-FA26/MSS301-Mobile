@@ -92,6 +92,8 @@ class _BookingHoldCountdownState extends ConsumerState<BookingHoldCountdown>
             child: Text(
               seconds == 0
                   ? 'Đã hết thời gian giữ ghế'
+                  : seconds <= 60
+                  ? 'Sắp hết thời gian giữ ghế'
                   : 'Thời gian giữ ghế còn lại',
               style: AppTextStyles.caption.copyWith(color: color),
             ),

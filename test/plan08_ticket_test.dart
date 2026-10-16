@@ -319,6 +319,9 @@ void main() {
         150,
         scrollable: find.byType(Scrollable).last,
       );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('ticket-save')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('ticket-save')));
       await tester.pumpAndSettle();
       expect(exporter.calls, 0);
@@ -334,6 +337,9 @@ void main() {
         150,
         scrollable: find.byType(Scrollable).last,
       );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('ticket-save')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('ticket-save')));
       await tester.pumpAndSettle();
       expect(exporter.calls, 1);

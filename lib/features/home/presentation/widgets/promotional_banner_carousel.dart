@@ -34,6 +34,12 @@ class _PromotionalBannerCarouselState
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _schedule();
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     _pages.dispose();
@@ -128,14 +134,13 @@ class _PromotionalBannerCarouselState
             aspectRatio: 2.1,
             child: ClipRRect(
               borderRadius: AppRadii.small,
-              child: state.isLoading
-                  ? const ColoredBox(
-                      color: AppColors.surface,
-                      child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+              child: state.isLoading && banners.isEmpty
+                  ? Semantics(
+                      liveRegion: true,
+                      label: 'Đang tải banner',
+                      child: const ColoredBox(color: AppColors.surfaceRaised),
                     )
-                  : state.hasError
+                  : state.hasError && banners.isEmpty
                   ? ColoredBox(
                       color: AppColors.surface,
                       child: Center(
@@ -228,33 +233,54 @@ class _PromotionalBannerCarouselState
                     ),
             ),
           ),
+          if (state.hasError && banners.isNotEmpty)
+            TextButton.icon(
+              onPressed: () => ref.invalidate(homeBannersProvider),
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Chưa cập nhật được banner. Thử lại'),
+            ),
           if (banners.length > 1)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Wrap(
+                alignment: WrapAlignment.center,
                 children: List.generate(
                   banners.length,
-                  (index) => GestureDetector(
-                    onTap: () {
-                      _schedule();
-                      _pages.animateToPage(
-                        index,
-                        duration: const Duration(milliseconds: 350),
-                        curve: Curves.easeInOut,
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(3),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: index == _index ? 18 : 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: index == _index
-                              ? AppColors.gold
-                              : AppColors.border,
-                          borderRadius: BorderRadius.circular(4),
+                  (index) => Semantics(
+                    label: 'Banner ${index + 1} / ${banners.length}',
+                    selected: index == _index,
+                    button: true,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        _schedule();
+                        if (MediaQuery.disableAnimationsOf(context)) {
+                          _pages.jumpToPage(index);
+                        } else {
+                          _pages.animateToPage(
+                            index,
+                            duration: const Duration(milliseconds: 350),
+                            curve: Curves.easeInOut,
+                          );
+                        }
+                      },
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Center(
+                          child: AnimatedContainer(
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 200),
+                            width: index == _index ? 18 : 5,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: index == _index
+                                  ? AppColors.gold
+                                  : AppColors.border,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
                         ),
                       ),
                     ),

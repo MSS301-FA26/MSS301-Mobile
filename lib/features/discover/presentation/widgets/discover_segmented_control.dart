@@ -12,8 +12,8 @@ class DiscoverSegmentedControl extends StatelessWidget {
   });
 
   final DiscoverMovieTab selected;
-  final int nowCount;
-  final int soonCount;
+  final int? nowCount;
+  final int? soonCount;
   final ValueChanged<DiscoverMovieTab> onSelected;
 
   @override
@@ -28,12 +28,16 @@ class DiscoverSegmentedControl extends StatelessWidget {
       child: Row(
         children: [
           _SegmentButton(
-            label: 'Phim đang chiếu ($nowCount)',
+            label: nowCount == null
+                ? 'Phim đang chiếu'
+                : 'Phim đang chiếu ($nowCount)',
             selected: selected == DiscoverMovieTab.now,
             onTap: () => onSelected(DiscoverMovieTab.now),
           ),
           _SegmentButton(
-            label: 'Phim sắp chiếu ($soonCount)',
+            label: soonCount == null
+                ? 'Phim sắp chiếu'
+                : 'Phim sắp chiếu ($soonCount)',
             selected: selected == DiscoverMovieTab.soon,
             onTap: () => onSelected(DiscoverMovieTab.soon),
           ),
@@ -64,7 +68,8 @@ class _SegmentButton extends StatelessWidget {
         borderRadius: AppRadii.control,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          height: 36,
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? AppColors.gold : Colors.transparent,
@@ -72,8 +77,7 @@ class _SegmentButton extends StatelessWidget {
           ),
           child: Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,

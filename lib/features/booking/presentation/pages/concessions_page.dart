@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/money/vnd_money.dart';
+import '../../../../core/time/vietnam_time.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../../../../shared/widgets/app_image.dart';
-import '../../../movie/data/models/catalog_enums.dart';
+import '../../../../shared/widgets/repository_state_pane.dart';
+import '../../../food/presentation/widgets/food_product_card.dart';
+import '../../../food/presentation/widgets/food_cart_bar.dart';
+import '../../../food/presentation/widgets/food_catalog_groups.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_hold_countdown.dart';
 import '../../../seat/application/booking_entry_session.dart';
@@ -26,6 +28,7 @@ class ConcessionsPage extends ConsumerStatefulWidget {
 class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
   var _requested = false;
   var _redirectingPayment = false;
+  FoodCatalogGroup _group = FoodCatalogGroup.all;
 
   void _backToSeats(BookingCompletionState state) {
     if (state.isBusy) return;
@@ -60,6 +63,16 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
           sum +
           product.price.multiply(state.quantities[product.selectionKey] ?? 0),
     );
+    final visibleProducts = foodProductsInGroup(state.products, _group);
+    final booking = state.booking;
+    final ticketSubtotal =
+        state.quote?.ticketSubtotal ??
+        (booking != null && booking.tickets.isNotEmpty
+            ? booking.tickets.fold<VndMoney>(
+                VndMoney.zero,
+                (sum, ticket) => sum + ticket.lineTotal,
+              )
+            : null);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -68,15 +81,20 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
       child: AppShell(
         currentIndex: 2,
         showBottomNavigation: false,
+        bookingTitle: 'Bắp nước',
+        bookingSubtitle: 'Bước 3/4',
+        onBookingBack: state.isBusy ? null : () => _backToSeats(state),
         body: Column(
           children: [
-            _BookingHeader(
-              title: 'Bắp nước',
-              subtitle: 'Không bắt buộc • Có thể bỏ qua',
-              onBack: () => _backToSeats(state),
-            ),
             const BookingProgress(currentStep: 2),
             BookingHoldCountdown(booking: state.booking),
+            if (state.products.isNotEmpty &&
+                state.phase == BookingCompletionPhase.choosingFood)
+              FoodCatalogGroups(
+                products: state.products,
+                selected: _group,
+                onSelected: (group) => setState(() => _group = group),
+              ),
             if (state.message != null &&
                 state.phase == BookingCompletionPhase.choosingFood)
               Padding(
@@ -89,7 +107,10 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
               ),
             Expanded(
               child: state.phase == BookingCompletionPhase.loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const RepositoryStatePane.loading(
+                      layout: RepositorySkeleton.foods,
+                      title: 'Đang tải bắp nước…',
+                    )
                   : state.phase == BookingCompletionPhase.expired ||
                         state.phase == BookingCompletionPhase.error
                   ? _BookingProblem(
@@ -112,215 +133,137 @@ class _ConcessionsPageState extends ConsumerState<ConcessionsPage> {
                       },
                     )
                   : state.products.isEmpty
-                  ? const Center(child: Text('Hiện chưa có sản phẩm bắp nước.'))
+                  ? const RepositoryStatePane.empty(
+                      title: 'Chưa có bắp nước',
+                      message: 'Bạn có thể bỏ qua để tiếp tục đặt vé.',
+                      icon: Icons.fastfood_outlined,
+                    )
                   : ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.md),
-                      itemCount: state.products.length,
+                      itemCount: visibleProducts.length + 1,
                       separatorBuilder: (_, _) =>
                           const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, index) {
-                        final product = state.products[index];
-                        final quantity =
-                            state.quantities[product.selectionKey] ?? 0;
-                        final available = product.isAvailable;
-                        return Semantics(
-                          label:
-                              '${product.name}, ${product.price.format()}, số lượng $quantity',
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: AppRadii.card,
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
+                        if (index == 0) {
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Container(
-                                  width: 54,
-                                  height: 54,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.goldSurface,
-                                    borderRadius: AppRadii.control,
-                                  ),
-                                  child: product.imageUrl?.isNotEmpty == true
-                                      ? AppImage(asset: product.imageUrl!)
-                                      : Icon(
-                                          product.isCombo
-                                              ? Icons.fastfood_rounded
-                                              : Icons.local_drink_rounded,
-                                          color: AppColors.gold,
-                                        ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product.name,
-                                        style: AppTextStyles.cardTitle,
-                                      ),
-                                      if (product.description != null)
+                                if (booking != null)
+                                  Container(
+                                    key: const ValueKey(
+                                      'concessions-booking-summary',
+                                    ),
+                                    padding: const EdgeInsets.all(14),
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.surfaceRaised,
+                                      borderRadius: AppRadii.card,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
                                         Text(
-                                          product.description!,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: AppTextStyles.caption,
+                                          booking.movieTitleSnapshot ??
+                                              booking.movieTitle ??
+                                              'Thông tin suất chiếu',
+                                          style: AppTextStyles.cardTitle,
                                         ),
-                                      Text(
-                                        available
-                                            ? product.price.format()
-                                            : switch (product.status) {
-                                                FoodItemStatus.lowStock =>
-                                                  'Sắp hết • Tạm ngừng đặt',
-                                                FoodItemStatus.outOfStock =>
-                                                  'Tạm hết hàng',
-                                                FoodItemStatus.inactive =>
-                                                  'Tạm ngừng bán',
-                                                _ => 'Chưa thể đặt',
-                                              },
-                                        style: TextStyle(
-                                          color: available
-                                              ? AppColors.gold
-                                              : AppColors.textDisabled,
-                                          fontWeight: FontWeight.w800,
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          [
+                                                booking.cinemaNameSnapshot ??
+                                                    booking.cinemaName,
+                                                booking.roomNameSnapshot ??
+                                                    booking.roomName,
+                                              ]
+                                              .whereType<String>()
+                                              .where(
+                                                (text) =>
+                                                    text.trim().isNotEmpty,
+                                              )
+                                              .join(' • '),
+                                          style: AppTextStyles.body,
                                         ),
-                                      ),
-                                    ],
+                                        if ((booking.showtimeStartSnapshot ??
+                                                booking.showtimeStart) !=
+                                            null)
+                                          Text(
+                                            formatVietnamDateTime(
+                                              (booking.showtimeStartSnapshot ??
+                                                  booking.showtimeStart)!,
+                                            ),
+                                            style: AppTextStyles.body,
+                                          ),
+                                      ],
+                                    ),
                                   ),
+                                const Text(
+                                  'Bắp nước không bắt buộc • Tối đa 8 mỗi loại',
+                                  style: AppTextStyles.caption,
                                 ),
-                                IconButton(
-                                  key: ValueKey(
-                                    'food-minus-${product.selectionKey}',
+                                if (visibleProducts.isEmpty)
+                                  const RepositoryStatePane.empty(
+                                    compact: true,
+                                    title: 'Chưa có sản phẩm trong nhóm này',
+                                    message: 'Bạn có thể chọn nhóm khác hoặc bỏ qua bắp nước.',
+                                    icon: Icons.fastfood_outlined,
                                   ),
-                                  tooltip: 'Giảm ${product.name}',
-                                  onPressed: quantity > 0
-                                      ? () => ref
-                                            .read(
-                                              bookingCompletionProvider
-                                                  .notifier,
-                                            )
-                                            .changeQuantity(
-                                              product.id,
-                                              -1,
-                                              isCombo: product.isCombo,
-                                            )
-                                      : null,
-                                  icon: const Icon(Icons.remove_circle_outline),
-                                ),
-                                Text(
-                                  '$quantity',
-                                  style: AppTextStyles.cardTitle,
-                                ),
-                                IconButton(
-                                  key: ValueKey(
-                                    'food-plus-${product.selectionKey}',
-                                  ),
-                                  tooltip: 'Tăng ${product.name}',
-                                  onPressed: available && quantity < 8
-                                      ? () => ref
-                                            .read(
-                                              bookingCompletionProvider
-                                                  .notifier,
-                                            )
-                                            .changeQuantity(
-                                              product.id,
-                                              1,
-                                              isCombo: product.isCombo,
-                                            )
-                                      : null,
-                                  icon: const Icon(Icons.add_circle_outline),
-                                ),
                               ],
                             ),
-                          ),
+                          );
+                        }
+                        final product = visibleProducts[index - 1];
+                        final quantity =
+                            state.quantities[product.selectionKey] ?? 0;
+                        return FoodProductCard(
+                          product: product,
+                          quantity: quantity,
+                          enabled:
+                              state.phase ==
+                              BookingCompletionPhase.choosingFood,
+                          onChange: (delta) => ref
+                              .read(bookingCompletionProvider.notifier)
+                              .changeQuantity(
+                                product.id,
+                                delta,
+                                isCombo: product.isCombo,
+                              ),
                         );
                       },
                     ),
             ),
-            SafeArea(
-              top: false,
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border(top: BorderSide(color: AppColors.border)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            state.quantities.isEmpty
-                                ? 'Bỏ qua bắp nước'
-                                : 'Tạm tính',
-                            style: AppTextStyles.caption,
-                          ),
-                          Text(total.format(), style: AppTextStyles.cardTitle),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 170,
-                      child: AppButton(
-                        key: const ValueKey('concessions-continue'),
-                        label: state.isBusy ? 'Đang cập nhật…' : 'Tiếp tục',
-                        onPressed:
-                            state.isBusy ||
-                                state.booking == null ||
-                                state.phase == BookingCompletionPhase.expired
-                            ? null
-                            : () async {
-                                final ready = await ref
-                                    .read(bookingCompletionProvider.notifier)
-                                    .prepareCheckout();
-                                if (ready && context.mounted) {
-                                  context.go(
-                                    AppRoutes.checkout(widget.bookingId),
-                                  );
-                                }
-                              },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            FoodCartBar(
+              total: total,
+              ticketSubtotal: ticketSubtotal,
+              quantity: state.quantities.values.fold(0, (a, b) => a + b),
+              label: state.isBusy
+                  ? 'Đang cập nhật…'
+                  : state.quantities.isEmpty
+                  ? 'Bỏ qua · Tiếp tục'
+                  : 'Tiếp tục',
+              buttonKey: const ValueKey('concessions-continue'),
+              onContinue:
+                  state.isBusy ||
+                      state.booking == null ||
+                      state.phase != BookingCompletionPhase.choosingFood
+                  ? null
+                  : () async {
+                      final ready = await ref
+                          .read(bookingCompletionProvider.notifier)
+                          .prepareCheckout();
+                      if (ready && context.mounted) {
+                        context.go(AppRoutes.checkout(widget.bookingId));
+                      }
+                    },
             ),
           ],
         ),
       ),
     );
   }
-}
-
-class _BookingHeader extends StatelessWidget {
-  const _BookingHeader({
-    required this.title,
-    required this.subtitle,
-    required this.onBack,
-  });
-
-  final String title;
-  final String subtitle;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) => SafeArea(
-    bottom: false,
-    child: ListTile(
-      leading: IconButton(
-        tooltip: 'Quay lại',
-        onPressed: onBack,
-        icon: const Icon(Icons.arrow_back_rounded),
-      ),
-      title: Text(title, style: AppTextStyles.sectionTitle),
-      subtitle: Text(subtitle, style: AppTextStyles.caption),
-    ),
-  );
 }
 
 class _BookingProblem extends StatelessWidget {
@@ -335,19 +278,11 @@ class _BookingProblem extends StatelessWidget {
   final VoidCallback onAction;
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.timer_off_outlined, size: 48),
-          const SizedBox(height: AppSpacing.sm),
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: AppSpacing.md),
-          AppButton(label: actionLabel, onPressed: onAction),
-        ],
-      ),
-    ),
+  Widget build(BuildContext context) => RepositoryStatePane.empty(
+    title: 'Chưa thể tiếp tục',
+    message: message,
+    icon: Icons.info_outline,
+    actionLabel: actionLabel,
+    onAction: onAction,
   );
 }

@@ -63,12 +63,12 @@ List<String> stringListFromJson(Object? value) {
   return value.map((item) => item.toString()).toList(growable: false);
 }
 
-/// Container services serialize UTC LocalDateTime values without an offset.
-/// Only server deadlines use this parser; cinema schedule wall times stay local.
-DateTime serverDeadlineFromJson(Object? value) {
+/// Offset-less deadlines follow the producing service's JVM timezone.
+/// Booking/Payment use Vietnam time; Catalog quote validity still uses UTC.
+DateTime serverDeadlineFromJson(Object? value, {bool vietnamTime = true}) {
   if (value is String &&
       !RegExp(r'(Z|[+-]\d{2}:?\d{2})$', caseSensitive: false).hasMatch(value)) {
-    return dateTimeFromJson('${value}Z');
+    return dateTimeFromJson('$value${vietnamTime ? '+07:00' : 'Z'}').toUtc();
   }
   return dateTimeFromJson(value).toUtc();
 }

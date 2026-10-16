@@ -5,7 +5,7 @@ void main() {
   test('server deadlines preserve instants for UTC and explicit offsets', () {
     final expiry = DateTime.utc(2026, 10, 11, 6, 3);
     for (final raw in [
-      '2026-10-11T06:03:00',
+      '2026-10-11T13:03:00',
       '2026-10-11T06:03:00Z',
       '2026-10-11T13:03:00+07:00',
       '2026-10-11T13:03:00+0700',
@@ -13,6 +13,15 @@ void main() {
       expect(serverDeadlineFromJson(raw), expiry);
     }
     expect(nullableServerDeadlineFromJson(null), isNull);
+    expect(
+      serverDeadlineFromJson('2026-10-11T06:03:00', vietnamTime: false),
+      expiry,
+    );
+    expect(
+      serverDeadlineFromJson('2026-10-15T19:15:00')
+          .difference(DateTime.utc(2026, 10, 15, 12, 12)),
+      const Duration(minutes: 3),
+    );
     expect(
       serverDeadlineFromJson('2026-10-11T06:03:00.123456').microsecond,
       456,

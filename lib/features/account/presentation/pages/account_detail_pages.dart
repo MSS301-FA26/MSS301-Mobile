@@ -48,7 +48,8 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     if (retry) ref.invalidate(currentProfileProvider);
     try {
       final profile = await ref.read(currentProfileProvider.future);
-      if (!mounted || userId != ref.read(authSessionProvider).session?.user.id) {
+      if (!mounted ||
+          userId != ref.read(authSessionProvider).session?.user.id) {
         return;
       }
       setState(() {
@@ -85,6 +86,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     final url = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text('Đổi ảnh đại diện'),
         content: Form(
           key: form,
@@ -93,6 +95,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
             key: const ValueKey('avatar-url'),
             keyboardType: TextInputType.url,
             decoration: const InputDecoration(
+              errorMaxLines: 3,
               labelText: 'URL ảnh',
               hintText: 'https://...',
             ),
@@ -153,20 +156,16 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
       title: 'Hồ sơ cá nhân',
       child: _profile == null
           ? _loadError != null
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(_loadError!, textAlign: TextAlign.center),
-                      TextButton(
-                        onPressed: () {
-                          setState(() => _loadError = null);
-                          _load(retry: true);
-                        },
-                        child: const Text('Thử lại'),
-                      ),
-                    ],
+                ? RepositoryStatePane.error(
+                    message: _loadError,
+                    onRetry: () {
+                      setState(() => _loadError = null);
+                      _load(retry: true);
+                    },
                   )
-                : const Center(child: CircularProgressIndicator())
+                : const RepositoryStatePane.loading(
+                    layout: RepositorySkeleton.account,
+                  )
           : Form(
               key: _formKey,
               child: ListView(
@@ -190,7 +189,10 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                     key: const ValueKey('profile-name'),
                     controller: _name,
                     readOnly: mutation.busy,
-                    decoration: const InputDecoration(labelText: 'Họ và tên'),
+                    decoration: const InputDecoration(
+                      errorMaxLines: 3,
+                      labelText: 'Họ và tên',
+                    ),
                     validator: (v) => profileNameError(v ?? ''),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -200,6 +202,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                     readOnly: mutation.busy,
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
+                      errorMaxLines: 3,
                       labelText: 'Số điện thoại',
                     ),
                     validator: (v) => profilePhoneError(v ?? ''),
@@ -210,7 +213,10 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                     controller: _birthYear,
                     readOnly: mutation.busy,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Năm sinh'),
+                    decoration: const InputDecoration(
+                      errorMaxLines: 3,
+                      labelText: 'Năm sinh',
+                    ),
                     validator: (v) => profileBirthYearError(
                       v ?? '',
                       vietnamCalendar(ref.read(appClockProvider).now()).year,
@@ -281,12 +287,18 @@ class _WalletPageState extends ConsumerState<WalletPage> {
             TextField(
               controller: amount,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Số tiền'),
+              decoration: const InputDecoration(
+                errorMaxLines: 3,
+                labelText: 'Số tiền',
+              ),
             ),
             TextField(
               controller: account,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Số tài khoản'),
+              decoration: const InputDecoration(
+                errorMaxLines: 3,
+                labelText: 'Số tài khoản',
+              ),
             ),
           ],
         ),
@@ -331,8 +343,18 @@ class _WalletPageState extends ConsumerState<WalletPage> {
     child: FutureBuilder(
       future: _data,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return RepositoryStatePane.error(
+            title: 'Chưa tải được ví',
+            message: 'Chưa lấy được số dư và giao dịch. Vui lòng thử lại.',
+            onRetry: () => setState(_reload),
+          );
+        }
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const RepositoryStatePane.loading(
+            layout: RepositorySkeleton.account,
+            title: 'Đang tải ví…',
+          );
         }
         final (wallet, transactions, withdrawals) = snapshot.requireData;
         return ListView(
@@ -511,6 +533,7 @@ class _PointsPageState extends ConsumerState<PointsPage> {
                   keyboardType: TextInputType.number,
                   enabled: !redeemState.isSubmitting,
                   decoration: const InputDecoration(
+                    errorMaxLines: 3,
                     labelText: 'Số điểm muốn đổi',
                   ),
                   validator: (value) {
@@ -614,7 +637,10 @@ class _SecurityPageState extends ConsumerState<SecurityPage> {
               controller: _current,
               obscureText: true,
               readOnly: mutation.busy,
-              decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại'),
+              decoration: const InputDecoration(
+                errorMaxLines: 3,
+                labelText: 'Mật khẩu hiện tại',
+              ),
               validator: (v) => v == null || v.isEmpty
                   ? 'Vui lòng nhập mật khẩu hiện tại.'
                   : null,
@@ -625,7 +651,10 @@ class _SecurityPageState extends ConsumerState<SecurityPage> {
               controller: _next,
               obscureText: true,
               readOnly: mutation.busy,
-              decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
+              decoration: const InputDecoration(
+                errorMaxLines: 3,
+                labelText: 'Mật khẩu mới',
+              ),
               validator: (v) => v == _current.text
                   ? 'Mật khẩu mới phải khác mật khẩu hiện tại.'
                   : newPasswordError(v ?? ''),
@@ -637,6 +666,7 @@ class _SecurityPageState extends ConsumerState<SecurityPage> {
               obscureText: true,
               readOnly: mutation.busy,
               decoration: const InputDecoration(
+                errorMaxLines: 3,
                 labelText: 'Xác nhận mật khẩu mới',
               ),
               validator: (v) => v != _next.text || v == null || v.isEmpty
@@ -687,7 +717,7 @@ class _AccountScaffold extends StatelessWidget {
             title: Text(title, style: AppTextStyles.sectionTitle),
           ),
         ),
-        Expanded(child: child),
+        Expanded(child: SafeArea(top: false, child: child)),
       ],
     ),
   );

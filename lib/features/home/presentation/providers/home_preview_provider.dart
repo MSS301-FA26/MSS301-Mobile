@@ -16,7 +16,7 @@ Movie mapHomeMovie(MovieDto movie) => Movie(
   title: movie.title,
   ageRating: movie.ageRating ?? '',
   duration: movie.durationMinutes > 0 ? '${movie.durationMinutes} phút' : '',
-  rating: 0,
+  rating: null,
   genre: movie.genres.map((genre) => genre.name).join(' · '),
   genreTags: movie.genres.map((genre) => genre.name).toList(growable: false),
   tagline: movie.description ?? '',

@@ -66,7 +66,7 @@ void main() {
       await addAdultTickets(tester);
       await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
       await tester.tap(find.byKey(const ValueKey('seat-3001')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(container.read(bookingEntryProvider).assignmentComplete, isTrue);
       expect(find.byType(TextFormField), findsNothing);
     },
@@ -82,7 +82,7 @@ void main() {
     await addAdultTickets(tester);
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
     await tester.tap(find.byKey(const ValueKey('seat-3001')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       container.read(bookingEntryProvider).selectedSeatIds,
       contains(3001),
@@ -150,7 +150,7 @@ void main() {
     await addAdultTickets(tester, 2);
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3010')));
     await tester.tap(find.byKey(const ValueKey('seat-3010')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       container.read(bookingEntryProvider).selectedSeatIds,
       containsAll(<int>[3010, 3011]),
@@ -184,7 +184,7 @@ void main() {
 
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3004')));
     await tester.tap(find.byKey(const ValueKey('seat-3004')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('seat-continue')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 20));
@@ -205,7 +205,7 @@ void main() {
     await addAdultTickets(tester);
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
     await tester.tap(find.byKey(const ValueKey('seat-3001')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('seat-continue')));
     await tester.pump();
     await tester.pumpAndSettle();
@@ -254,7 +254,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('ticket-type-student')));
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3002')));
     await tester.tap(find.byKey(const ValueKey('seat-3002')));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     final session = container.read(bookingEntryProvider);
     expect(session.assignments[3001]?.ticketType, TicketType.adult);

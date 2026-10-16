@@ -7,6 +7,7 @@ import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/concessions_page.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/ticket_page.dart';
+import 'package:mss301_mobile/features/orders/presentation/widgets/booking_status_badge.dart';
 
 import 'support/pump_test_app.dart';
 
@@ -37,7 +38,8 @@ void main() {
     await tester.pump();
     await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
     await tester.tap(find.byKey(const ValueKey('seat-3001')));
-    await tester.pump();
+    // The continue action waits for the authoritative asynchronous quote.
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('seat-continue')));
     await tester.pump();
     await tester.pumpAndSettle();
@@ -62,7 +64,13 @@ void main() {
 
       expect(find.byType(TicketPage), findsOneWidget);
       expect(find.byType(QrImageView), findsOneWidget);
-      expect(find.text('Đã thanh toán'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BookingStatusBadge),
+          matching: find.text('Đã thanh toán'),
+        ),
+        findsOneWidget,
+      );
       expect(find.textContaining('CP-MOCK-'), findsOneWidget);
     },
   );
@@ -90,7 +98,13 @@ void main() {
     appRouter.go(AppRoutes.ticket(bookingId));
     await tester.pumpAndSettle();
     expect(find.text('Chi tiết đơn'), findsOneWidget);
-    expect(find.text('Chờ thanh toán'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(BookingStatusBadge),
+        matching: find.text('Chờ thanh toán'),
+      ),
+      findsOneWidget,
+    );
     expect(find.byType(QrImageView), findsNothing);
   });
 

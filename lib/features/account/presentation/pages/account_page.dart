@@ -82,13 +82,20 @@ class AccountPage extends ConsumerWidget {
     final profileState = accountState.hasValue
         ? null
         : ref.watch(currentProfileProvider);
-    if (accountState.isLoading && profileState?.hasValue != true) {
+    if (accountState.isLoading &&
+        !accountState.hasValue &&
+        profileState?.hasValue != true) {
       return const AppShell(
         currentIndex: 4,
-        body: RepositoryStatePane.loading(),
+        body: RepositoryStatePane.loading(
+          layout: RepositorySkeleton.account,
+          title: 'Đang tải tài khoản…',
+        ),
       );
     }
-    if (accountState.hasError && profileState?.hasValue != true) {
+    if (accountState.hasError &&
+        !accountState.hasValue &&
+        profileState?.hasValue != true) {
       return AppShell(
         currentIndex: 4,
         body: RepositoryStatePane.error(
@@ -105,15 +112,30 @@ class AccountPage extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
           AccountProfileCard(user: user),
-          const SizedBox(height: AppSpacing.md),
-          MembershipCard(user: user, onQr: null),
-          if (user.points == null || user.walletBalance == null)
-            TextButton(
-              onPressed: () => ref.invalidate(accountSummaryProvider),
-              child: const Text('Tải lại điểm và số dư ví'),
+          if (accountState.hasError)
+            RepositoryStatePane.error(
+              compact: true,
+              message: 'Chưa cập nhật được tài khoản. Thông tin đã tải vẫn được giữ lại.',
+              onRetry: () => ref.invalidate(accountSummaryProvider),
             ),
           const SizedBox(height: AppSpacing.md),
-          WalletTile(user: user, onManage: () => context.go(AppRoutes.wallet)),
+          MembershipCard(
+            user: user,
+            onQr: null,
+            refreshing: accountState.isLoading,
+            onRetry: accountState.isLoading
+                ? null
+                : () => ref.invalidate(accountSummaryProvider),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          WalletTile(
+            user: user,
+            onManage: () => context.go(AppRoutes.wallet),
+            refreshing: accountState.isLoading,
+            onRetry: accountState.isLoading
+                ? null
+                : () => ref.invalidate(accountSummaryProvider),
+          ),
           const SizedBox(height: AppSpacing.md),
           AccountMenu(
             items: [
@@ -130,7 +152,6 @@ class AccountPage extends ConsumerWidget {
               AccountMenuItemData(
                 icon: Icons.stars_rounded,
                 label: 'CinePoints',
-                trailing: user.points?.toString() ?? 'Chưa tải được',
                 onTap: () => context.go(AppRoutes.points),
               ),
               AccountMenuItemData(

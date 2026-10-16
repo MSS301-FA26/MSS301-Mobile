@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -13,277 +15,218 @@ class ShowtimeMovieCard extends StatelessWidget {
     required this.rooms,
     required this.selectedSlotId,
     required this.onSlotSelected,
+    required this.now,
   });
-
   final Movie movie;
   final List<ShowtimeRoom> rooms;
   final int? selectedSlotId;
   final ValueChanged<ShowtimeSlot>? onSlotSelected;
+  final DateTime now;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.card,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: AppRadii.small,
-                child: SizedBox(
-                  width: 56,
-                  height: 80,
-                  child: AppImage(asset: movie.posterAsset),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        AgeBadge(
-                          rating: movie.ageRating,
-                          variant: AgeBadgeVariant.hero,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 15,
-                          color: AppColors.gold,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          movie.rating.toStringAsFixed(1),
-                          style: const TextStyle(
-                            color: AppColors.gold,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      movie.title.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.cardTitle.copyWith(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${movie.genre} • ${movie.duration}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          for (final room in rooms) ...[
-            const SizedBox(height: AppSpacing.md),
-            const Divider(height: 1, color: AppColors.border),
-            const SizedBox(height: AppSpacing.sm),
-            _RoomSection(
-              room: room,
-              selectedSlotId: selectedSlotId,
-              onSlotSelected: onSlotSelected,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _RoomSection extends StatelessWidget {
-  const _RoomSection({
-    required this.room,
-    required this.selectedSlotId,
-    required this.onSlotSelected,
-  });
-
-  final ShowtimeRoom room;
-  final int? selectedSlotId;
-  final ValueChanged<ShowtimeSlot>? onSlotSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final isImax = room.formatBadge.contains('IMAX');
-    return Column(
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(AppSpacing.md),
+    decoration: const BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: AppRadii.card,
+    ),
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: AppSpacing.xs,
-          runSpacing: 6,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              room.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.label.copyWith(color: AppColors.text),
+            ClipRRect(
+              borderRadius: AppRadii.small,
+              child: SizedBox(
+                width: 56,
+                height: 84,
+                child: AppImage(asset: movie.posterAsset),
+              ),
             ),
-            if (room.formatBadge.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isImax
-                      ? AppColors.purple.withValues(alpha: 0.3)
-                      : AppColors.goldSurface,
-                  borderRadius: AppRadii.small,
-                  border: Border.all(
-                    color: isImax
-                        ? AppColors.purple.withValues(alpha: 0.35)
-                        : AppColors.goldBorder,
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (movie.ageRating.isNotEmpty)
+                        AgeBadge(rating: movie.ageRating),
+                      if (movie.rating != null)
+                        Text(
+                          '★ ${movie.rating!.toStringAsFixed(1)}',
+                          style: const TextStyle(
+                            color: AppColors.gold,
+                            fontSize: 14,
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-                child: Text(
-                  room.formatBadge,
-                  style: AppTextStyles.meta.copyWith(
-                    color: isImax ? AppColors.lavender : AppColors.gold,
-                    fontWeight: FontWeight.w800,
+                  const SizedBox(height: 6),
+                  Text(
+                  movie.title.toUpperCase(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.cardTitle,
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${movie.duration} · ${movie.genre}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption,
+                  ),
+                ],
               ),
-            if (room.screenDetail.isNotEmpty)
-              Text(
-                room.screenDetail,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                ),
-              ),
+            ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: room.slots.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: AppSpacing.xs,
-            mainAxisSpacing: AppSpacing.xs,
-            childAspectRatio: 0.82,
+        for (final room in rooms) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              Text(
+                room.name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (room.formatBadge.isNotEmpty)
+                Text(
+                  room.formatBadge,
+                  style: const TextStyle(color: AppColors.gold, fontSize: 12),
+                ),
+              if (room.screenDetail.isNotEmpty)
+                Text(room.screenDetail, style: AppTextStyles.caption),
+            ],
           ),
-          itemBuilder: (context, index) {
-            final slot = room.slots[index];
-            return _SlotPill(
-              slot: slot,
-              selected: selectedSlotId == slot.id,
-              onTap: !slot.isBookable || onSlotSelected == null
-                  ? null
-                  : () => onSlotSelected!(slot),
-            );
-          },
-        ),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final minimumWidth =
+                  104 *
+                  math.max(
+                    1.0,
+                    MediaQuery.textScalerOf(context).scale(14) / 14,
+                  );
+              final columns = math.max(
+                1,
+                ((constraints.maxWidth + 8) / (minimumWidth + 8)).floor(),
+              );
+              final width =
+                  (constraints.maxWidth - (columns - 1) * 8) / columns;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final slot in room.slots)
+                    SizedBox(
+                      width: width,
+                      child: _SlotPill(
+                        slot: slot,
+                        now: now,
+                        selected:
+                            selectedSlotId == slot.id && slot.isBookableAt(now),
+                        onTap: !slot.isBookableAt(now) || onSlotSelected == null
+                            ? null
+                            : () => onSlotSelected!(slot),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ],
-    );
-  }
+    ),
+  );
 }
 
 class _SlotPill extends StatelessWidget {
   const _SlotPill({
     required this.slot,
+    required this.now,
     required this.selected,
     required this.onTap,
   });
-
   final ShowtimeSlot slot;
+  final DateTime now;
   final bool selected;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final unavailable = !slot.isBookable;
-    return InkWell(
-      key: ValueKey('showtime-slot-${slot.id}'),
-      onTap: onTap,
-      borderRadius: AppRadii.control,
-      child: Opacity(
-        opacity: unavailable ? 0.45 : 1,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.xs),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.surfaceRaised : AppColors.background,
-            borderRadius: AppRadii.control,
-            border: Border.all(
-              color: selected ? AppColors.gold : AppColors.border,
-              width: selected ? 2 : 1,
+    final reason = slot.unavailableReason(now);
+    return Semantics(
+      button: true,
+      selected: selected,
+      enabled: onTap != null,
+      child: Material(
+        color: selected ? AppColors.goldSurface : AppColors.surfaceRaised,
+        borderRadius: AppRadii.control,
+        child: InkWell(
+          key: ValueKey('showtime-slot-${slot.id}'),
+          onTap: onTap,
+          borderRadius: AppRadii.control,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: AppRadii.control,
+              border: Border.all(
+                color: selected ? AppColors.gold : Colors.transparent,
+                width: 2,
+              ),
             ),
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              if (selected)
-                const Positioned(
-                  top: -13,
-                  right: -13,
-                  child: CircleAvatar(
-                    radius: 8,
-                    backgroundColor: AppColors.gold,
-                    child: Icon(Icons.check, size: 11, color: Colors.black),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  slot.time,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: reason == null
+                        ? AppColors.text
+                        : AppColors.textMuted,
                   ),
                 ),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      slot.time,
-                      style: TextStyle(
-                        color: unavailable
-                            ? AppColors.textDisabled
-                            : AppColors.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        decoration: unavailable
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      slot.endTime,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 10,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      unavailable ? 'Không khả dụng' : slot.priceDisplay,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: unavailable
-                            ? AppColors.adultBadge
-                            : AppColors.gold,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 2),
+                Text(slot.endTime, style: AppTextStyles.caption),
+                const SizedBox(height: 4),
+                Text(
+                  reason ?? slot.priceDisplay,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: reason == null
+                        ? AppColors.gold
+                        : AppColors.textSecondary,
+                  ),
                 ),
-              ),
-            ],
+                if (selected)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text(
+                      '✓ Đã chọn',
+                      style: TextStyle(fontSize: 12, color: AppColors.gold),
+                    ),
+                  ),
+                if (reason == null && onTap == null)
+                  const Text(
+                    'Cần tải lại',
+                    style: AppTextStyles.caption,
+                    textAlign: TextAlign.center,
+                  ),
+              ],
+            ),
           ),
         ),
       ),

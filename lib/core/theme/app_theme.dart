@@ -59,6 +59,22 @@ abstract final class AppTheme {
           foregroundColor: AppColors.background,
           shape: const RoundedRectangleBorder(borderRadius: AppRadii.control),
           textStyle: AppTextStyles.button,
+          minimumSize: const Size(48, 48),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textSecondary,
+          minimumSize: const Size(48, 48),
+          side: const BorderSide(color: AppColors.borderStrong),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadii.control),
+          textStyle: AppTextStyles.button,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          textStyle: AppTextStyles.button,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

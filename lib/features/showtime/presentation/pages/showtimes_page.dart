@@ -32,6 +32,12 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   int? _selectedDate;
   int? _selectedMovieId;
   ShowtimeSlot? _selectedSlot;
+  void _selectDate(int index) => setState(() {
+    if (_selectedDate == index) return;
+    _selectedDate = index;
+    _selectedSlot = null;
+    _selectedMovieId = null;
+  });
   List<DateOption> _dates(DateTime now) => List.generate(7, (index) {
     final date = DateTime(now.year, now.month, now.day + index);
     const weekdays = [
@@ -76,6 +82,20 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   }
 
   Future<void> _openSeatSelection(int movieId, ShowtimeSlot slot) async {
+    if (!slot.isBookableAt(ref.read(appClockProvider).now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Suất chiếu không còn mở bán. Vui lòng chọn suất khác.',
+          ),
+        ),
+      );
+      setState(() {
+        _selectedSlot = null;
+        _selectedMovieId = null;
+      });
+      return;
+    }
     final auth = ref.read(authSessionProvider);
     if (auth.isAuthenticated) {
       context.push(AppRoutes.seatSelection(slot.id));
@@ -87,7 +107,8 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   @override
   Widget build(BuildContext context) {
     final moviesState = ref.watch(moviesProvider);
-    final dates = _dates(vietnamCalendar(ref.watch(appClockProvider).now()));
+    final now = ref.watch(appClockProvider).now();
+    final dates = _dates(vietnamCalendar(now));
     final selectedDate = _selectedDate == null
         ? null
         : dates[_selectedDate!].date;
@@ -96,20 +117,38 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
       date: selectedDate,
     );
     final showtimesState = ref.watch(showtimesProvider(showtimesQuery));
-    if (moviesState.isLoading || showtimesState.isLoading) {
-      return const AppShell(
-        currentIndex: 2,
-        body: RepositoryStatePane.loading(),
+    Widget pending(Widget content) => AppShell(
+      currentIndex: 2,
+      body: Column(
+        children: [
+          const BookingProgress(currentStep: 0),
+          DateSelector(
+            dates: dates,
+            selectedIndex: _selectedDate,
+            onSelected: _selectDate,
+          ),
+          Expanded(child: content),
+        ],
+      ),
+    );
+    if ((moviesState.isLoading || showtimesState.isLoading) &&
+        !(moviesState.hasValue && showtimesState.hasValue)) {
+      return pending(
+        const RepositoryStatePane.loading(
+          layout: RepositorySkeleton.showtimes,
+          title: 'Đang tải lịch chiếu…',
+        ),
       );
     }
-    if (moviesState.hasError || showtimesState.hasError) {
-      return AppShell(
-        currentIndex: 2,
-        body: RepositoryStatePane.error(
+    if ((moviesState.hasError || showtimesState.hasError) &&
+        !(moviesState.hasValue && showtimesState.hasValue)) {
+      return pending(
+        RepositoryStatePane.error(
           onRetry: () {
             ref.invalidate(moviesProvider);
             ref.invalidate(showtimesProvider(showtimesQuery));
           },
+          title: 'Chưa tải được lịch chiếu',
         ),
       );
     }
@@ -117,6 +156,18 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
     final movies = moviesState.requireValue;
     final allShowtimes = showtimesState.requireValue;
     final showtimes = allShowtimes;
+    ShowtimeSlot? validSelection;
+    for (final item in showtimes.where(
+      (item) => item.movieId == _selectedMovieId,
+    )) {
+      for (final room in _visibleRooms(item, dates)) {
+        for (final slot in room.slots) {
+          if (slot.id == _selectedSlot?.id && slot.isBookableAt(now)) {
+            validSelection = slot;
+          }
+        }
+      }
+    }
 
     return AppShell(
       currentIndex: 2,
@@ -125,6 +176,15 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
           Expanded(
             child: ListView(
               children: [
+                if (moviesState.hasError || showtimesState.hasError)
+                  RepositoryStatePane.error(
+                    compact: true,
+                    message: 'Chưa cập nhật được lịch chiếu. Kiểm tra lại trước khi chọn suất.',
+                    onRetry: () {
+                      ref.invalidate(moviesProvider);
+                      ref.invalidate(showtimesProvider(showtimesQuery));
+                    },
+                  ),
                 const BookingProgress(currentStep: 0),
                 CinemaStatusCard(
                   onInfo: () => showModalBottomSheet<void>(
@@ -148,7 +208,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                       Icon(
                         Icons.lock_clock_outlined,
                         size: 16,
-                        color: AppColors.textDisabled,
+                        color: AppColors.textMuted,
                       ),
                       SizedBox(width: AppSpacing.xs),
                       Expanded(
@@ -163,7 +223,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                 DateSelector(
                   dates: dates,
                   selectedIndex: _selectedDate,
-                  onSelected: (index) => setState(() => _selectedDate = index),
+                  onSelected: _selectDate,
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -187,24 +247,32 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                                 bottom: AppSpacing.md,
                               ),
                               child: ShowtimeMovieCard(
+                                now: now,
                                 movie: movie,
                                 rooms: rooms,
                                 selectedSlotId:
                                     _selectedMovieId == movieShowtime.movieId
                                     ? _selectedSlot?.id
                                     : null,
-                                onSlotSelected: (slot) => setState(() {
-                                  _selectedMovieId = movieShowtime.movieId;
-                                  _selectedSlot = slot;
-                                }),
+                                onSlotSelected:
+                                    moviesState.hasError ||
+                                        showtimesState.hasError
+                                    ? null
+                                    : (slot) => setState(() {
+                                        _selectedMovieId =
+                                            movieShowtime.movieId;
+                                        _selectedSlot = slot;
+                                      }),
                               ),
                             );
                           },
                         ),
                       if (showtimes.isEmpty)
-                        const RepositoryStatePane.empty(
+                        RepositoryStatePane.empty(
                           title: 'Chưa có lịch chiếu',
-                          message: 'Phim này chưa có suất chiếu đang mở bán.',
+                          message: widget.movieId == null
+                              ? 'Chưa có suất chiếu phù hợp. Hãy thử ngày khác.'
+                              : 'Phim này chưa có suất chiếu phù hợp. Hãy thử ngày khác.',
                         ),
                       if (showtimes.isNotEmpty &&
                           showtimes.every(
@@ -212,7 +280,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                           ))
                         const RepositoryStatePane.empty(
                           title: 'Không có suất phù hợp',
-                          message: 'Hãy chọn ngày hoặc định dạng khác.',
+                          message: 'Hãy chọn ngày khác để xem lịch chiếu.',
                         ),
                     ],
                   ),
@@ -220,7 +288,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
               ],
             ),
           ),
-          if (_selectedSlot != null && _selectedMovieId != null)
+          if (validSelection != null && _selectedMovieId != null)
             SafeArea(
               top: false,
               child: Container(
@@ -233,14 +301,18 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Đã chọn ${_selectedSlot!.time} • ${_selectedSlot!.priceDisplay}',
+                        'Đã chọn ${validSelection.time} • ${validSelection.priceDisplay}',
                         style: AppTextStyles.cardTitle,
                       ),
                     ),
                     FilledButton.icon(
                       key: const ValueKey('showtime-continue'),
-                      onPressed: () =>
-                          _openSeatSelection(_selectedMovieId!, _selectedSlot!),
+                      onPressed: moviesState.hasError || showtimesState.hasError
+                          ? null
+                          : () => _openSeatSelection(
+                              _selectedMovieId!,
+                              validSelection!,
+                            ),
                       icon: const Icon(Icons.arrow_forward_rounded),
                       label: const Text('Vé & Ghế'),
                     ),

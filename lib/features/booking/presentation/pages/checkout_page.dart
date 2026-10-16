@@ -8,6 +8,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/checkout_summary.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_hold_countdown.dart';
@@ -27,6 +28,9 @@ class CheckoutPage extends ConsumerWidget {
       return AppShell(
         currentIndex: 2,
         showBottomNavigation: false,
+        bookingTitle: 'Xác nhận đơn',
+        bookingSubtitle: 'Bước 4/4',
+        onBookingBack: () => context.go(AppRoutes.concessions(bookingId)),
         body: Center(
           child: AppButton(
             label: 'Quay lại bắp nước',
@@ -45,88 +49,77 @@ class CheckoutPage extends ConsumerWidget {
       child: AppShell(
         currentIndex: 2,
         showBottomNavigation: false,
+        bookingTitle: 'Xác nhận đơn',
+        bookingSubtitle: 'Bước 4/4',
+        onBookingBack: state.isBusy
+            ? null
+            : () => context.go(AppRoutes.concessions(bookingId)),
         body: Column(
           children: [
-            SafeArea(
-              bottom: false,
-              child: ListTile(
-                leading: IconButton(
-                  tooltip: 'Sửa bắp nước',
-                  onPressed: state.isBusy
-                      ? null
-                      : () => context.go(AppRoutes.concessions(bookingId)),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-                title: const Text(
-                  'Xác nhận đơn',
-                  style: AppTextStyles.sectionTitle,
-                ),
-                subtitle: Text(
-                  booking.bookingCode,
-                  style: AppTextStyles.caption,
-                ),
-              ),
-            ),
             const BookingProgress(currentStep: 3),
             BookingHoldCountdown(booking: booking),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 children: [
-                  _Section(
+                  CheckoutSection(
                     title: quote.showtime.movieTitle ?? 'Phim',
                     children: [
-                      _Line('Rạp', quote.showtime.cinemaName ?? '—'),
-                      _Line('Phòng', quote.showtime.roomName ?? '—'),
-                      _Line('Suất chiếu', _dateTime(quote.showtime.startTime)),
-                      _Line(
+                      CheckoutLine('Rạp', quote.showtime.cinemaName ?? '—'),
+                      CheckoutLine('Phòng', quote.showtime.roomName ?? '—'),
+                      CheckoutLine(
+                        'Suất chiếu',
+                        _dateTime(quote.showtime.startTime),
+                      ),
+                      CheckoutLine(
                         'Ghế',
                         quote.seats.map((seat) => seat.seatLabel).join(', '),
                       ),
                       for (final ticket in quote.tickets)
-                        _Line(
+                        CheckoutLine(
                           _ticketLabel(ticket.ticketType),
                           '${quote.seats.firstWhere((seat) => seat.seatId == ticket.seatId).seatLabel} • ${ticket.lineTotal.format()}',
                         ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  _Section(
+                  CheckoutSection(
                     title: 'Bắp nước',
                     children: quote.foods.isEmpty
-                        ? const [_Line('Sản phẩm', 'Không chọn')]
+                        ? const [CheckoutLine('Sản phẩm', 'Không chọn')]
                         : [
                             for (final food in quote.foods)
-                              _Line(
+                              CheckoutLine(
                                 '${food.productName} × ${food.quantity}',
                                 food.lineTotal.format(),
                               ),
                           ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  _Section(
+                  CheckoutSection(
                     title: 'Thanh toán',
                     children: [
-                      _Line('Vé', quote.ticketSubtotal.format()),
-                      _Line('Bắp nước', quote.foodSubtotal.format()),
+                      CheckoutLine('Vé', quote.ticketSubtotal.format()),
+                      CheckoutLine('Bắp nước', quote.foodSubtotal.format()),
+                      if (quote.fees.amount > 0)
+                        CheckoutLine('Phí', quote.fees.format()),
+                      if (quote.tax.amount > 0)
+                        CheckoutLine('Thuế', quote.tax.format()),
+                      if (quote.cinePointsDiscount.amount > 0)
+                        CheckoutLine(
+                          'Giảm từ điểm',
+                          '-${quote.cinePointsDiscount.format()}',
+                        ),
                       if (quote.discount.amount > 0)
-                        _Line('Giảm giá', '-${quote.discount.format()}'),
-                      const _Line('Phương thức', 'VNPay'),
-                      _Line(
+                        CheckoutLine('Giảm giá', '-${quote.discount.format()}'),
+                      const CheckoutLine('Phương thức', 'VNPay'),
+                      CheckoutLine(
                         'Tổng cộng',
                         quote.total.format(),
                         emphasized: true,
                       ),
                     ],
                   ),
-                  if (state.message != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      state.message!,
-                      key: const ValueKey('checkout-message'),
-                      style: const TextStyle(color: AppColors.adultBadge),
-                    ),
-                  ],
                   const SizedBox(height: AppSpacing.md),
                   const Text(
                     'Vui lòng kiểm tra thông tin vé và tổng tiền trước khi thanh toán.',
@@ -135,91 +128,33 @@ class CheckoutPage extends ConsumerWidget {
                 ],
               ),
             ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: AppButton(
-                  key: const ValueKey('checkout-pay'),
-                  label: state.isBusy
-                      ? 'Đang tạo giao dịch…'
-                      : 'Thanh toán ${quote.total.format()}',
-                  onPressed: state.isBusy
-                      ? null
-                      : () async {
-                          final payment = await ref
-                              .read(bookingCompletionProvider.notifier)
-                              .createPayment();
-                          if (payment != null && context.mounted) {
-                            context.go(AppRoutes.payment(payment.id));
-                          } else if (context.mounted &&
-                              ref.read(bookingCompletionProvider).phase ==
-                                  BookingCompletionPhase.choosingFood) {
-                            context.go(AppRoutes.concessions(bookingId));
-                          }
-                        },
-                ),
-              ),
+            PaymentActionBar(
+              total: quote.total,
+              notice: state.message,
+              label: state.isBusy ? 'Đang tạo giao dịch…' : 'Thanh toán VNPay',
+              loading: state.isBusy,
+              buttonKey: const ValueKey('checkout-pay'),
+              onPressed:
+                  state.isBusy || state.phase == BookingCompletionPhase.expired
+                  ? null
+                  : () async {
+                      final payment = await ref
+                          .read(bookingCompletionProvider.notifier)
+                          .createPayment();
+                      if (payment != null && context.mounted) {
+                        context.go(AppRoutes.payment(payment.id));
+                      } else if (context.mounted &&
+                          ref.read(bookingCompletionProvider).phase ==
+                              BookingCompletionPhase.choosingFood) {
+                        context.go(AppRoutes.concessions(bookingId));
+                      }
+                    },
             ),
           ],
         ),
       ),
     );
   }
-}
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(AppSpacing.md),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceRaised,
-      borderRadius: AppRadii.card,
-      border: Border.all(color: AppColors.border),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: AppTextStyles.cardTitle),
-        const SizedBox(height: AppSpacing.sm),
-        ...children,
-      ],
-    ),
-  );
-}
-
-class _Line extends StatelessWidget {
-  const _Line(this.label, this.value, {this.emphasized = false});
-
-  final String label;
-  final String value;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: Text(label, style: AppTextStyles.caption)),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: AppTextStyles.body.copyWith(
-              color: emphasized ? AppColors.gold : AppColors.text,
-              fontWeight: emphasized ? FontWeight.w900 : FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 String _dateTime(DateTime value) => formatVietnamDateTime(value);

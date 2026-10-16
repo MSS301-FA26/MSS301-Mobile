@@ -71,7 +71,9 @@ class NowShowingCard extends StatelessWidget {
                                   color: AppColors.gold,
                                 ),
                                 Text(
-                                  '${movie.rating}',
+                                  movie.rating == null
+                                      ? 'Chưa có đánh giá'
+                                      : '${movie.rating}',
                                   style: const TextStyle(
                                     color: AppColors.gold,
                                     fontSize: 11,

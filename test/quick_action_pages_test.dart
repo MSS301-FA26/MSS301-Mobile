@@ -48,6 +48,7 @@ void main() {
         find.byKey(const ValueKey('popbot-input')),
         'QA prompt',
       );
+      await tester.pump();
       await tester.tap(find.byTooltip('Gửi tin nhắn'));
       await tester.pumpAndSettle();
       expect(find.text('QA prompt'), findsOneWidget);
@@ -73,6 +74,7 @@ void main() {
       find.byKey(const ValueKey('popbot-input')),
       'Old prompt',
     );
+    await tester.pump();
     await tester.tap(find.byTooltip('Gửi tin nhắn'));
     await tester.pump();
     await tester.tap(find.byTooltip('Cuộc trò chuyện mới'));
