@@ -1,7 +1,7 @@
 # Kế hoạch tinh chỉnh UI Mobile
 
 Ngày lập: **14/10/2026**. Người yêu cầu: **Tzee314**.
-Trạng thái: **UI-01 đến UI-09 đã triển khai; UI-10 đã thực hiện QA tổng hợp (218 test đạt, analyzer sạch, build Android thành công), cập nhật 16/10. UI-03 có phản hồi tích cực; UI-05/UI-06 được duyệt. Nghiệm thu toàn bộ còn mở: review, iOS, chat/ví và E2E payment/QR.**
+Trạng thái: **UI-01–10 đã triển khai/QA và được người dùng xác nhận UI ổn ngày 16/10. UI-11 đã triển khai, 40 test/analyzer/build Android đạt, chờ review. Các ca tích hợp còn mở được giữ riêng: iOS, chat/ví/recommendation và E2E payment/QR.**
 Baseline: Mobile `3a67680` và các thay đổi local banner/poster; BE `9921498`.
 
 ## Mục tiêu và phạm vi
@@ -18,6 +18,8 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 - Chỉ tạo tài liệu trong folder này; không sửa, xóa hoặc di chuyển các MD của người khác.
 
 ## Các quyết định đã có
+
+- Ngày 16/10, người dùng xác nhận “các plan khác đã chỉnh đã oke rồi” và yêu cầu chuyển sang UI-11. Ghi nhận duyệt giao diện các batch đã chỉnh trước UI-11; các dòng chờ review trong kết quả lịch sử được cập nhật bởi xác nhận này. Không coi đây là bằng chứng QA API/iOS/E2E thành công.
 
 - Poster Home: đã thử nền blur, ảnh chính giữ tỷ lệ; tiếp tục chờ phản hồi thẩm mỹ. Chỉ chuyển sang crop khi người dùng yêu cầu.
 - Banner Home: crop phủ kín khung, dùng focalPoint; ưu tiên ảnh desktop.
@@ -41,11 +43,11 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 
 ## Đợt tiếp theo sau UI-10 — tham khảo ảnh ngày 15/10
 
-Các plan dưới đây **mới được lập, chưa triển khai**. Đợt QA UI-10 đã thực hiện; có thể tiếp tục theo thứ tự UI-11 → UI-12 → UI-13 → UI-14 và theo dõi các ca nghiệm thu còn mở trong UI10-RESULTS. Đây là số thứ tự **UI**, không thay thế plan chức năng 11–12 hiện có.
+**UI-11 đã triển khai ngày 16/10; UI-12–14 chưa triển khai.** Theo dõi kết quả UI-11 và các ca tích hợp còn mở trong UI10-RESULTS trước khi nghiệm thu toàn bộ. Đây là số thứ tự **UI**, không thay thế plan chức năng 11–12 hiện có.
 
 | Thứ tự sau UI-10 | Plan | Điều chỉnh | Phụ thuộc chính |
 | --- | --- | --- | --- |
-| 1 | [UI-11](11-MOVIE-DETAIL-AND-RELATED.md) | Chi tiết phim: banner/trailer, poster, metadata, nội dung mở rộng, phim liên quan | API phim/reviews/recommendation hiện có; xác minh runtime |
+| 1 | [UI-11](11-MOVIE-DETAIL-AND-RELATED.md) | Đã triển khai: banner/trailer thật, poster, metadata, nội dung mở rộng, phim liên quan | 40 test/analyzer/build Android đạt; recommendation 403, còn review/iOS |
 | 2 | [UI-12](12-CONCESSIONS-CATALOG-AND-COMBO.md) | Bắp nước: ảnh và nội dung combo rõ, nhóm Combo/Sản phẩm, chi tiết món | Giữ hành vi UI-05 đã duyệt; thành phần/tùy chọn combo chỉ khi có contract |
 | 3 | [UI-13](13-CHECKOUT-MOVIE-AND-PRICE-SUMMARY.md) | Tổng thanh toán: poster + thông tin suất, vé theo ghế, món và dòng tiền | Phát triển UI-06; dữ liệu quote/snapshot BE |
 | 4 | [UI-14](14-ADD-COMBO-IN-CHECKOUT.md) | Thêm/giảm combo ngay ở checkout, lấy báo giá và xác nhận lại | UI-12/UI-13; bổ sung state sửa giỏ, không reset hold hoặc sửa sau tạo payment |
@@ -65,6 +67,7 @@ Kết quả UI-07: [UI07-RESULTS.md](UI07-RESULTS.md).
 Kết quả UI-08: [UI08-RESULTS.md](UI08-RESULTS.md).
 Kết quả UI-09: [UI09-RESULTS.md](UI09-RESULTS.md).
 Kết quả UI-10: [UI10-RESULTS.md](UI10-RESULTS.md).
+Kết quả UI-11: [UI11-RESULTS.md](UI11-RESULTS.md).
 
 - Kiểm tra chiều rộng 320, 360, 390, 430 logical px và tăng cỡ chữ: không overflow, không che CTA, không mất thông tin quan trọng.
 - Vùng chạm tối thiểu 48 logical px; thân nút có thể gọn hơn nếu vùng chạm đủ lớn.

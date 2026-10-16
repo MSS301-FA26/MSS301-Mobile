@@ -81,6 +81,8 @@ Gallery nội bộ để xem ảnh: `D:/MSS/.qa-runtime/ui10-review.html`. Ảnh
 | UI-09 | Đã thêm nền rạp phim theo yêu cầu; chưa có phản hồi duyệt nền mới |
 | Các batch khác | Không tự suy ra đã duyệt chỉ vì người dùng chuyển sang plan kế tiếp |
 
+Cập nhật 16/10: người dùng đã xác nhận rõ “các plan khác đã chỉnh đã oke rồi” trước khi yêu cầu UI-11. Ghi nhận review UI các batch trước đó đã được duyệt; những ca kỹ thuật/iOS/E2E còn mở vẫn giữ nguyên, không tự chuyển sang đạt.
+
 ## 6. Việc cần chốt trước nghiệm thu toàn bộ
 
 1. **Chat 403:** xác minh quyền/xác thực gateway → recommendation-service; test chat thành công hai lượt, giữ conversationId. Chưa thay BE/runtime trong đợt UI-10.

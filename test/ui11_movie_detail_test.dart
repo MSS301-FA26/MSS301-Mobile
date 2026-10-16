@@ -14,6 +14,7 @@ import 'package:mss301_mobile/features/movie/presentation/models/movie.dart';
 import 'package:mss301_mobile/features/movie/presentation/providers/movie_engagement_provider.dart';
 import 'package:mss301_mobile/features/movie/presentation/providers/movies_provider.dart';
 import 'package:mss301_mobile/features/movie/presentation/widgets/trailer_preview_dialog.dart';
+import 'package:mss301_mobile/features/showtime/presentation/pages/showtimes_page.dart';
 import 'package:mss301_mobile/shared/widgets/app_button.dart';
 
 import 'support/pump_test_app.dart';
@@ -293,10 +294,7 @@ void main() {
     await open(tester, Engagement());
     await tester.tap(find.byKey(const ValueKey('movie-detail-book-1')));
     await tester.pumpAndSettle();
-    expect(
-      appRouter.routeInformationProvider.value.uri.queryParameters['movieId'],
-      '1',
-    );
+    expect(tester.widget<ShowtimesPage>(find.byType(ShowtimesPage)).movieId, 1);
   });
 
   for (final invalid in [false, true]) {

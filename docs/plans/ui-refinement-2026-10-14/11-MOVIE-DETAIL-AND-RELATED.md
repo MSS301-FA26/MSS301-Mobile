@@ -1,7 +1,9 @@
 # UI-11 — Chi tiết phim và phim liên quan
 
-Ngày lập: **15/10/2026**. Trạng thái: **planned — thực hiện sau UI-10**.
+Ngày lập: **15/10/2026**. Cập nhật: **16/10/2026**. Trạng thái: **đã triển khai; analyzer/40 test/build Android đạt; chờ review và iOS; recommendation thật còn HTTP 403**.
 Thứ tự trong đợt mới: **1**. Tham chiếu: ảnh chi tiết phim Shaun the Sheep người dùng gửi (ảnh 4).
+
+Kết quả: [UI11-RESULTS.md](UI11-RESULTS.md). Chi tiết phim và review summary đã kiểm tra API 200; trailer mở được trình phát video thật trên emulator. Các ca gợi ý thành công, lỗi/retry, trùng ID và điều hướng A → B → A đã kiểm tra tự động; chưa coi gợi ý thành công trên runtime khi endpoint vẫn trả 403.
 
 ## Mục tiêu và bố cục
 

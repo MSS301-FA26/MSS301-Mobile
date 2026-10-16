@@ -188,8 +188,10 @@ class _MovieSynopsisState extends State<MovieSynopsis> {
           final text = widget.text.trim().isEmpty
               ? 'Nội dung phim đang được cập nhật.'
               : widget.text.trim();
+          final bodyStyle = DefaultTextStyle.of(context).style
+              .merge(AppTextStyles.body);
           final painter = TextPainter(
-            text: TextSpan(text: text, style: AppTextStyles.body),
+            text: TextSpan(text: text, style: bodyStyle),
             maxLines: 4,
             textDirection: Directionality.of(context),
             textScaler: MediaQuery.textScalerOf(context),
@@ -205,7 +207,7 @@ class _MovieSynopsisState extends State<MovieSynopsis> {
                 overflow: _expanded
                     ? TextOverflow.visible
                     : TextOverflow.ellipsis,
-                style: AppTextStyles.body,
+                style: bodyStyle,
               ),
               if (canExpand)
                 TextButton(
