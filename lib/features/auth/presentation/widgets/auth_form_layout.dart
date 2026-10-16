@@ -64,7 +64,7 @@ class AuthFormLayout extends StatelessWidget {
       _Message(message: message),
       const SizedBox(height: AppSpacing.xl),
       submitButton,
-      if (activeTab == AuthLayoutTab.login) ...[
+      if (activeTab == AuthLayoutTab.login && googleButton != null) ...[
         const SizedBox(height: AppSpacing.xl),
         const _OrDivider(),
         const SizedBox(height: AppSpacing.lg),
