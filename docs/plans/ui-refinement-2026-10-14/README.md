@@ -43,14 +43,15 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 
 ## Đợt tiếp theo sau UI-10 — tham khảo ảnh ngày 15/10
 
-**UI-11/UI-12/UI-13 đã triển khai ngày 16/10; UI-14 chưa triển khai.** UI-13 có 56 test liên quan, analyzer/build Android đạt, đã cài emulator; chờ review và QA iOS/sandbox thật. Theo dõi kết quả từng batch và các ca tích hợp còn mở trong UI10-RESULTS trước khi nghiệm thu toàn bộ. Đây là số thứ tự **UI**, không thay thế plan chức năng 11–12 hiện có.
+**UI-11/UI-12/UI-13 đã triển khai ngày 16/10; UI-14 đã triển khai ngày 17/10, chờ review và QA iOS/sandbox thật. UI-15 được lập ngày 17/10, thực hiện ngay sau UI-14.** UI-13 có 56 test liên quan, analyzer/build Android đạt, đã cài emulator; chờ review và QA iOS/sandbox thật. Theo dõi kết quả từng batch và các ca tích hợp còn mở trong UI10-RESULTS trước khi nghiệm thu toàn bộ. Đây là số thứ tự **UI**, không thay thế plan chức năng 11–12 hiện có.
 
 | Thứ tự sau UI-10 | Plan | Điều chỉnh | Phụ thuộc chính |
 | --- | --- | --- | --- |
 | 1 | [UI-11](11-MOVIE-DETAIL-AND-RELATED.md) | Đã triển khai: banner/trailer thật, poster, metadata, nội dung mở rộng, phim liên quan | 40 test/analyzer/build Android đạt; recommendation 403, còn review/iOS |
 | 2 | [UI-12](12-CONCESSIONS-CATALOG-AND-COMBO.md) | Đã triển khai: ảnh lớn, nhóm Combo/Sản phẩm, sheet chi tiết, tóm tắt booking | 59 test/analyzer/build Android đạt; catalog thật 200; còn review/iOS/E2E |
 | 3 | [UI-13](13-CHECKOUT-MOVIE-AND-PRICE-SUMMARY.md) | Đã triển khai: poster + thông tin suất, vé theo ghế, ảnh món, sửa giỏ và dòng tiền | 56 test/analyzer/build Android đạt; chờ review/iOS/sandbox E2E |
-| 4 | [UI-14](14-ADD-COMBO-IN-CHECKOUT.md) | Thêm/giảm combo ngay ở checkout, lấy báo giá và xác nhận lại | UI-12/UI-13; bổ sung state sửa giỏ, không reset hold hoặc sửa sau tạo payment |
+| 4 | [UI-14](14-ADD-COMBO-IN-CHECKOUT.md) | Đã triển khai: thêm/giảm combo ở checkout, sheet toàn bộ món, cập nhật quote và khóa tổng cũ | 55 test liên quan; chờ review/iOS/sandbox E2E; xem UI14-RESULTS |
+| 5 | [UI-15](15-HOME-3D-MOVIE-CAROUSEL.md) | Khôi phục hai tab phim và coverflow 3D đã chốt; giữ mua vé nhanh và rạp hiện tại | Sau UI-14; tích hợp riêng khu phim vào Home mới, giữ hero và logic dev |
 
 ### Cách dùng ảnh tham khảo
 
@@ -70,6 +71,7 @@ Kết quả UI-10: [UI10-RESULTS.md](UI10-RESULTS.md).
 Kết quả UI-11: [UI11-RESULTS.md](UI11-RESULTS.md).
 Kết quả UI-12: [UI12-RESULTS.md](UI12-RESULTS.md).
 Kết quả UI-13: [UI13-RESULTS.md](UI13-RESULTS.md).
+Kết quả UI-14: [UI14-RESULTS.md](UI14-RESULTS.md).
 
 - Kiểm tra chiều rộng 320, 360, 390, 430 logical px và tăng cỡ chữ: không overflow, không che CTA, không mất thông tin quan trọng.
 - Vùng chạm tối thiểu 48 logical px; thân nút có thể gọn hơn nếu vùng chạm đủ lớn.

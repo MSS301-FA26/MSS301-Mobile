@@ -363,6 +363,177 @@ void main() {
     controller.changeQuantity(1, 1);
     expect(container.read(bookingCompletionProvider).quantities['item:1'], 1);
   });
+
+  test('UI14 edits checkout cart, preserves deadline and tickets, shares cart with concessions', () async {
+    await controller.load(42);
+    await controller.prepareCheckout();
+    final deadline = container
+        .read(bookingCompletionProvider)
+        .booking!
+        .holdExpiresAt;
+    final originalTickets = gateway.itemsBody!['tickets'];
+    await controller.changeCheckoutQuantity(1, 1, isCombo: true);
+    await controller.changeCheckoutQuantity(1, 1);
+    final state = container.read(bookingCompletionProvider);
+    expect(state.quantities, {'combo:1': 1, 'item:1': 1});
+    expect(state.quote!.total.amount, 130000);
+    expect(state.booking!.holdExpiresAt, deadline);
+    expect(state.quoteNeedsRefresh, isFalse);
+    expect(state.message, contains('kiểm tra tổng mới'));
+    expect(gateway.itemsBody!['tickets'], originalTickets);
+    expect(
+      gateway.calls,
+      isNot(contains('POST /api/v1/payments/vnpay/create')),
+    );
+    controller.returnToFood();
+    expect(
+      container.read(bookingCompletionProvider).quantities,
+      state.quantities,
+    );
+    expect(await controller.prepareCheckout(), isTrue);
+    expect(
+      container.read(bookingCompletionProvider).booking!.holdExpiresAt,
+      deadline,
+    );
+  });
+
+  test('UI14 caps quantity, removes at zero and rejects overlapping requests/payment', () async {
+    await controller.load(42);
+    await controller.prepareCheckout();
+    final gate = Completer<void>();
+    gateway.itemsGate = gate;
+    final edit = controller.changeCheckoutQuantity(1, 20, isCombo: true);
+    await Future<void>.delayed(Duration.zero);
+    expect(container.read(bookingCompletionProvider).isBusy, isTrue);
+    await controller.changeCheckoutQuantity(1, 1);
+    expect(await controller.createPayment(), isNull);
+    expect(container.read(bookingCompletionProvider).quantities, {
+      'combo:1': 8,
+    });
+    gate.complete();
+    await edit;
+    gateway.itemsGate = null;
+    final calls = gateway.calls.length;
+    await controller.changeCheckoutQuantity(1, 1, isCombo: true);
+    expect(gateway.calls.length, calls);
+    await controller.changeCheckoutQuantity(1, -8, isCombo: true);
+    expect(container.read(bookingCompletionProvider).quantities, isEmpty);
+    expect(
+      container.read(bookingCompletionProvider).quote!.total.amount,
+      100000,
+    );
+  });
+
+  test('UI14 accepted items and failed quote keeps server snapshot, blocks stale payment and retries', () async {
+    await controller.load(42);
+    await controller.prepareCheckout();
+    gateway.failQuote = true;
+    await controller.changeCheckoutQuantity(1, 1, isCombo: true);
+    var state = container.read(bookingCompletionProvider);
+    expect(state.phase, BookingCompletionPhase.checkout);
+    expect(state.booking!.totalAmount.amount, 120000);
+    expect(state.quote!.total.amount, 100000);
+    expect(state.quoteNeedsRefresh, isTrue);
+    expect(await controller.createPayment(), isNull);
+    expect(
+      gateway.calls,
+      isNot(contains('POST /api/v1/payments/vnpay/create')),
+    );
+    gateway.failQuote = false;
+    await controller.refreshCheckoutCart();
+    state = container.read(bookingCompletionProvider);
+    expect(state.quoteNeedsRefresh, isFalse);
+    expect(state.quote!.total.amount, 120000);
+  });
+
+  test(
+    'UI14 sold-out selection stays editable for removal and cannot pay',
+    () async {
+      await controller.load(42);
+      await controller.prepareCheckout();
+      gateway.foodUnavailable = true;
+      gateway.productStatus = 'OUT_OF_STOCK';
+      await controller.changeCheckoutQuantity(1, 1, isCombo: true);
+      expect(
+        container.read(bookingCompletionProvider).quantities['combo:1'],
+        1,
+      );
+      expect(
+        container.read(bookingCompletionProvider).quoteNeedsRefresh,
+        isTrue,
+      );
+      expect(await controller.createPayment(), isNull);
+      gateway.foodUnavailable = false;
+      await controller.changeCheckoutQuantity(1, -1, isCombo: true);
+      expect(container.read(bookingCompletionProvider).quantities, isEmpty);
+      expect(
+        container.read(bookingCompletionProvider).quoteNeedsRefresh,
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'UI14 expiry during items update never accepts quote or creates payment',
+    () async {
+      await controller.load(42);
+      await controller.prepareCheckout();
+      final gate = Completer<void>();
+      gateway.itemsGate = gate;
+      final edit = controller.changeCheckoutQuantity(1, 1, isCombo: true);
+      await Future<void>.delayed(Duration.zero);
+      clock.set(DateTime(2100));
+      gate.complete();
+      await edit;
+      expect(
+        container.read(bookingCompletionProvider).phase,
+        BookingCompletionPhase.expired,
+      );
+      expect(await controller.createPayment(), isNull);
+    },
+  );
+
+  test('UI14 late cart response cannot restore logged-out session', () async {
+    await controller.load(42);
+    await controller.prepareCheckout();
+    final gate = Completer<void>();
+    gateway.itemsGate = gate;
+    final edit = controller.changeCheckoutQuantity(1, 1, isCombo: true);
+    await Future<void>.delayed(Duration.zero);
+    await container.read(authSessionProvider.notifier).logout();
+    container.read(bookingCompletionProvider);
+    gate.complete();
+    await edit;
+    expect(container.read(bookingCompletionProvider).booking, isNull);
+  });
+
+  test('UI14 pending payment is read only', () async {
+    await controller.load(42);
+    await controller.prepareCheckout();
+    await controller.createPayment();
+    final calls = gateway.calls.length;
+    await controller.changeCheckoutQuantity(1, 1, isCombo: true);
+    await controller.refreshCheckoutCart();
+    expect(gateway.calls.length, calls);
+  });
+
+  test('UI14 switching booking discards an older cart response', () async {
+    await controller.load(42);
+    await controller.prepareCheckout();
+    final gate = Completer<void>();
+    gateway.itemsGate = gate;
+    final edit = controller.changeCheckoutQuantity(1, 1, isCombo: true);
+    await Future<void>.delayed(Duration.zero);
+    gateway.currentBookingId = 43;
+    await controller.load(43);
+    gate.complete();
+    await edit;
+    final state = container.read(bookingCompletionProvider);
+    expect(state.booking!.id, 43);
+    expect(state.phase, BookingCompletionPhase.choosingFood);
+    expect(state.quantities, isEmpty);
+    expect(state.quote, isNull);
+  });
 }
 
 class _Checkpoints implements BookingCheckpointStore {
@@ -381,6 +552,7 @@ class _Checkpoints implements BookingCheckpointStore {
 }
 
 class _Gateway implements HttpClientAdapter {
+  int currentBookingId = 42;
   final calls = <String>[];
   Map<String, dynamic>? itemsBody;
   Map<String, dynamic>? quoteBody;
@@ -393,6 +565,8 @@ class _Gateway implements HttpClientAdapter {
   String expiry = '2099-01-01T00:00:00';
   Completer<void>? paymentGate;
   Completer<void>? bookingGate;
+  Completer<void>? itemsGate;
+  bool failQuote = false;
   int total = 100000;
   int baseTotal = 100000;
   bool foodUnavailable = false;
@@ -400,7 +574,7 @@ class _Gateway implements HttpClientAdapter {
   List<dynamic> foods = [];
 
   Map<String, Object?> get booking => {
-    'id': 42,
+    'id': currentBookingId,
     'bookingCode': 'BK42',
     'userId': 5101,
     'showtimeId': 7,
@@ -476,6 +650,7 @@ class _Gateway implements HttpClientAdapter {
       };
     } else if (options.path.endsWith('/items') ||
         options.path.endsWith('/checkout')) {
+      await itemsGate?.future;
       if (foodUnavailable) {
         return ResponseBody.fromString(
           jsonEncode({
@@ -514,6 +689,15 @@ class _Gateway implements HttpClientAdapter {
       }
       data = booking;
     } else if (options.path == '/api/v1/catalog/checkout-quote') {
+      if (failQuote) {
+        return ResponseBody.fromString(
+          jsonEncode({'success': false, 'message': 'Quote unavailable'}),
+          500,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      }
       quoteBody = Map<String, dynamic>.from(options.data as Map);
       data = {
         'quoteId': 'quote42',

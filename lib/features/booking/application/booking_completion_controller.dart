@@ -43,6 +43,7 @@ class BookingCompletionState {
     this.products = const [],
     this.quantities = const {},
     this.message,
+    this.quoteNeedsRefresh = false,
   });
 
   final BookingCompletionPhase phase;
@@ -52,6 +53,7 @@ class BookingCompletionState {
   final List<FoodProductDto> products;
   final Map<String, int> quantities;
   final String? message;
+  final bool quoteNeedsRefresh;
 
   bool get isBusy => switch (phase) {
     BookingCompletionPhase.loading ||
@@ -70,6 +72,7 @@ class BookingCompletionState {
     Map<String, int>? quantities,
     String? message,
     bool clearMessage = false,
+    bool? quoteNeedsRefresh,
   }) => BookingCompletionState(
     phase: phase ?? this.phase,
     booking: booking ?? this.booking,
@@ -78,6 +81,7 @@ class BookingCompletionState {
     products: products ?? this.products,
     quantities: quantities ?? this.quantities,
     message: clearMessage ? null : message ?? this.message,
+    quoteNeedsRefresh: quoteNeedsRefresh ?? this.quoteNeedsRefresh,
   );
 }
 
@@ -107,12 +111,12 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
   }
 
   Future<void> load(int bookingId) async {
-    final generation = _generation;
     if (state.booking?.id == bookingId &&
         state.phase != BookingCompletionPhase.idle &&
         state.phase != BookingCompletionPhase.error) {
       return;
     }
+    final generation = ++_generation;
     state = const BookingCompletionState(phase: BookingCompletionPhase.loading);
     try {
       final seatHold = ref.read(seatHoldRepositoryProvider);
@@ -203,7 +207,76 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     } else {
       next[key] = quantity;
     }
-    state = state.copyWith(quantities: next, clearMessage: true);
+    state = state.copyWith(
+      quantities: next,
+      clearMessage: true,
+      quoteNeedsRefresh: true,
+    );
+  }
+
+  // Serialize checkout edits: controls stay locked until update + quote finish.
+  // A second tap is ignored rather than sending overlapping cart mutations.
+  Future<void> changeCheckoutQuantity(
+    int productId,
+    int delta, {
+    bool isCombo = false,
+  }) async {
+    if (state.phase != BookingCompletionPhase.checkout ||
+        state.isBusy ||
+        state.payment != null ||
+        state.booking?.holdExpiresAt == null ||
+        state.booking?.status != BookingStatus.holding) {
+      return;
+    }
+    if (_expired) {
+      state = state.copyWith(
+        phase: BookingCompletionPhase.expired,
+        message: 'Thời gian giữ ghế đã hết.',
+      );
+      return;
+    }
+    final product = state.products
+        .where((p) => p.id == productId && p.isCombo == isCombo)
+        .firstOrNull;
+    if (product == null || (delta > 0 && !product.isAvailable)) return;
+    final quantity = state.quantities[product.selectionKey] ?? 0;
+    final nextQuantity = (quantity + delta).clamp(0, 8);
+    if (nextQuantity == quantity) return;
+    final next = Map<String, int>.from(state.quantities);
+    if (nextQuantity == 0) {
+      next.remove(product.selectionKey);
+    } else {
+      next[product.selectionKey] = nextQuantity;
+    }
+    state = state.copyWith(quantities: next, quoteNeedsRefresh: true);
+    await refreshCheckoutCart();
+  }
+
+  Future<void> refreshCheckoutCart() async {
+    if (state.isBusy ||
+        state.payment != null ||
+        state.booking?.holdExpiresAt == null ||
+        state.booking?.status != BookingStatus.holding) {
+      return;
+    }
+    final generation = _generation;
+    final bookingId = state.booking?.id;
+    final ready = await prepareCheckout();
+    if (!ref.mounted ||
+        generation != _generation ||
+        state.booking?.id != bookingId) {
+      return;
+    }
+    if (ready) {
+      state = state.copyWith(
+        message: 'Báo giá đã cập nhật. Vui lòng kiểm tra tổng mới trước khi thanh toán.',
+      );
+    } else if (state.phase == BookingCompletionPhase.choosingFood) {
+      state = state.copyWith(
+        phase: BookingCompletionPhase.checkout,
+        quoteNeedsRefresh: true,
+      );
+    }
   }
 
   List<FoodSelectionDto> get _foodSelections => state.products
@@ -252,12 +325,14 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
       state = state.copyWith(
         phase: BookingCompletionPhase.choosingFood,
         message: 'Có sản phẩm đã hết hàng hoặc ngừng bán. Vui lòng sửa giỏ bắp nước để tiếp tục.',
+        quoteNeedsRefresh: true,
       );
       return false;
     }
     state = state.copyWith(
       phase: BookingCompletionPhase.preparingCheckout,
       clearMessage: true,
+      quoteNeedsRefresh: true,
     );
     try {
       final updated = await ref
@@ -270,6 +345,9 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             ),
           );
       if (!ref.mounted || generation != _generation) return false;
+      // Keep the accepted server snapshot even when the following quote fails.
+      state = state.copyWith(booking: updated);
+      if (_expired) throw StateError('Thời gian giữ ghế đã hết.');
       final quote = await ref
           .read(catalogRepositoryProvider)
           .createCheckoutQuote(
@@ -309,6 +387,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             ),
           );
       if (!ref.mounted || generation != _generation) return false;
+      if (_expired) throw StateError('Thời gian giữ ghế đã hết.');
       if (updated.totalAmount != quote.total) {
         throw StateError(
           'Tổng tiền đơn và báo giá chưa khớp. Vui lòng thử lại.',
@@ -318,6 +397,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         phase: BookingCompletionPhase.checkout,
         booking: updated,
         quote: quote,
+        quoteNeedsRefresh: false,
       );
       return true;
     } catch (error) {
@@ -332,6 +412,13 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     final generation = _generation;
     final booking = state.booking;
     if (booking == null || state.isBusy || state.quote == null) return null;
+    if (state.quoteNeedsRefresh) {
+      state = state.copyWith(
+        message:
+            'Giỏ đã thay đổi. Vui lòng cập nhật báo giá trước khi thanh toán.',
+      );
+      return null;
+    }
     if (_expired) {
       state = state.copyWith(
         phase: BookingCompletionPhase.expired,

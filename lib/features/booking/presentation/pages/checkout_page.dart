@@ -13,6 +13,7 @@ import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_hold_countdown.dart';
 import '../widgets/booking_progress.dart';
 import '../widgets/checkout_order_summary.dart';
+import '../widgets/checkout_combo_picker.dart';
 
 final checkoutMovieMetadataProvider = FutureProvider.autoDispose
     .family<MovieDto?, int>(
@@ -98,6 +99,7 @@ class CheckoutPage extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.sm),
                   CheckoutTicketSummary(quote: quote),
                   const SizedBox(height: AppSpacing.sm),
+                  CheckoutComboPicker(bookingId: bookingId),
                   CheckoutSection(
                     title: 'Bắp nước',
                     children: [
@@ -167,11 +169,17 @@ class CheckoutPage extends ConsumerWidget {
             PaymentActionBar(
               total: quote.total,
               notice: state.message,
-              label: state.isBusy ? 'Đang tạo giao dịch…' : 'Thanh toán VNPay',
+              label: state.phase == BookingCompletionPhase.preparingCheckout
+                  ? 'Đang cập nhật báo giá…'
+                  : state.isBusy
+                  ? 'Đang tạo giao dịch…'
+                  : 'Thanh toán VNPay',
               loading: state.isBusy,
               buttonKey: const ValueKey('checkout-pay'),
               onPressed:
-                  state.isBusy || state.phase == BookingCompletionPhase.expired
+                  state.isBusy ||
+                      state.quoteNeedsRefresh ||
+                      state.phase == BookingCompletionPhase.expired
                   ? null
                   : () async {
                       final payment = await ref
