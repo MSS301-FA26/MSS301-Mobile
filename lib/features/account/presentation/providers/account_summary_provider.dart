@@ -54,6 +54,32 @@ final loyaltyOverviewProvider =
       return (points, configuration);
     });
 
+final accountWalletProvider = FutureProvider<WalletDto>((ref) async {
+  final userId = ref.watch(
+    authSessionProvider.select((auth) => auth.session?.user.id),
+  );
+  if (userId == null) {
+    throw const ApiException(
+      type: ApiErrorType.unauthorized,
+      message: 'Vui lÃ²ng Ä‘Äƒng nháº­p.',
+    );
+  }
+  return ref.watch(walletRepositoryProvider).getWallet(userId);
+});
+
+final accountLoyaltyProvider = FutureProvider<LoyaltyDto>((ref) async {
+  final userId = ref.watch(
+    authSessionProvider.select((auth) => auth.session?.user.id),
+  );
+  if (userId == null) {
+    throw const ApiException(
+      type: ApiErrorType.unauthorized,
+      message: 'Vui lÃ²ng Ä‘Äƒng nháº­p.',
+    );
+  }
+  return ref.watch(loyaltyRepositoryProvider).getLoyalty(userId);
+});
+
 enum LoyaltyRedeemStatus { idle, submitting, success, error }
 
 class LoyaltyRedeemState {

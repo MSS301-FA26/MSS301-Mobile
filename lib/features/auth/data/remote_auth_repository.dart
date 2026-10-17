@@ -1,4 +1,5 @@
 import '../../../core/auth/token_storage.dart';
+import '../../../core/network/api_exception.dart';
 import 'auth_models.dart';
 import 'auth_remote_data_source.dart';
 import 'auth_repository.dart';
@@ -7,6 +8,43 @@ class RemoteAuthRepository implements AuthRepository {
   RemoteAuthRepository(this._remote, this._storage);
   final AuthRemoteDataSource _remote;
   final TokenStorage _storage;
+  int _googleGeneration = 0;
+  Future<void>? _googleTokenWrite;
+
+  @override
+  Future<AuthSession> loginWithGoogle(String credential) async {
+    final generation = _googleGeneration;
+    final session = await _remote.loginWithGoogle(credential);
+    if (generation != _googleGeneration) {
+      throw const ApiException(
+        type: ApiErrorType.cancelled,
+        message: 'Login cancelled',
+      );
+    }
+    final write = _saveGoogleSession(session);
+    _googleTokenWrite = write;
+    try {
+      await write;
+    } finally {
+      _googleTokenWrite = null;
+    }
+    if (generation != _googleGeneration) {
+      throw const ApiException(
+        type: ApiErrorType.cancelled,
+        message: 'Login cancelled',
+      );
+    }
+    return session;
+  }
+
+  Future<void> _saveGoogleSession(AuthSession session) async {
+    try {
+      await _save(session);
+    } catch (_) {
+      await _storage.clear();
+      rethrow;
+    }
+  }
 
   @override
   Future<AuthSession> login({
@@ -30,12 +68,16 @@ class RemoteAuthRepository implements AuthRepository {
     required String fullName,
     String? phone,
     int? birthYear,
+    String? username,
+    String? identityNumber,
   }) => _remote.register(
     email: email,
     password: password,
     fullName: fullName,
     phone: phone,
     birthYear: birthYear,
+    username: username,
+    identityNumber: identityNumber,
   );
 
   @override
@@ -87,6 +129,14 @@ class RemoteAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    _googleGeneration++;
+    // Do not wait for the Google picker or Backend request. Only finish an
+    // already-started token write before the existing logout clears storage.
+    try {
+      await _googleTokenWrite;
+    } catch (_) {
+      // Google login reports write failures; logout must still clear storage.
+    }
     final refreshToken = await _storage.getRefreshToken();
     try {
       if (refreshToken != null) await _remote.logout(refreshToken);

@@ -20,8 +20,8 @@ class AppSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pageGutter),
-      child: SizedBox(
-        height: 28,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 28),
         child: Row(
           children: [
             Container(

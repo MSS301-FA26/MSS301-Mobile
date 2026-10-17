@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 
 /// Customer color tokens aligned to the web's black/white/amber visual system.
 abstract final class AppColors {
+  // Semantic aliases keep later screen remaps independent from palette names.
   static const background = Color(0xFF000000);
+  static const pageBackground = background;
   static const surface = Color(0xFF0A0A0A);
+  static const primarySurface = surface;
   static const surfaceHigh = Color(0xFF0D0F14);
+  static const secondarySurface = surfaceHigh;
   static const surfaceRaised = Color(0xFF141414);
   static const surfaceOverlay = Color(0xCC000000);
   static const border = Color(0x1AFFFFFF);
   static const borderStrong = Color(0x33FFFFFF);
   static const gold = Color(0xFFFBBF24);
+  static const brandPrimary = gold;
   static const goldDim = Color(0xFFDDAA00);
   static const goldSurface = Color(0xFF242014);
   static const goldBorder = Color(0xFF4D3D0A);
@@ -23,6 +28,8 @@ abstract final class AppColors {
   static const textDisabled = Color(0xFF52525B);
   static const accentPrimary = Colors.white;
   static const accentSecondary = gold;
+  static const accent = accentSecondary;
+  static const textPrimary = text;
   static const success = Color(0xFF10B981);
   static const warning = Color(0xFFF59E0B);
   static const error = Color(0xFFF43F5E);

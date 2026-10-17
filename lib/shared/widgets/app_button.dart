@@ -13,6 +13,7 @@ class AppButton extends StatelessWidget {
     this.variant = AppButtonVariant.primary,
     this.height = 48,
     this.loading = false,
+    this.fullWidth = false,
   });
 
   final String label;
@@ -21,6 +22,7 @@ class AppButton extends StatelessWidget {
   final AppButtonVariant variant;
   final double height;
   final bool loading;
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +64,7 @@ class AppButton extends StatelessWidget {
 
     final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     return SizedBox(
+      width: fullWidth ? double.infinity : null,
       height: (height < 48 ? 48 : height) * (textScale < 1 ? 1 : textScale),
       child: switch (variant) {
         AppButtonVariant.primary => FilledButton(

@@ -41,6 +41,8 @@ class ShowtimeRoom {
     required this.formatBadge,
     required this.screenDetail,
     required this.slots,
+    this.cinemaId,
+    this.cinemaName,
   });
 
   final int id;
@@ -48,6 +50,8 @@ class ShowtimeRoom {
   final String formatBadge;
   final String screenDetail;
   final List<ShowtimeSlot> slots;
+  final int? cinemaId;
+  final String? cinemaName;
 }
 
 class MovieShowtime {
@@ -75,6 +79,8 @@ MovieShowtime mapShowtimesToPresentation(
             name: first.roomName ?? 'Phòng ${entry.key}',
             formatBadge: '',
             screenDetail: '',
+            cinemaId: first.cinemaId,
+            cinemaName: first.cinemaName,
             slots: entry.value
                 .map(
                   (item) => ShowtimeSlot(

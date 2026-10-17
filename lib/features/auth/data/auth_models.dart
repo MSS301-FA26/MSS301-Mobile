@@ -1,3 +1,5 @@
+import '../../../core/network/api_exception.dart';
+
 class AuthUser {
   const AuthUser({
     required this.id,
@@ -68,6 +70,62 @@ class AuthSession {
   );
 }
 
+class RegistrationProfile {
+  const RegistrationProfile({
+    required this.id,
+    required this.email,
+    required this.fullName,
+    required this.roles,
+    this.username,
+    this.phone,
+    this.avatarUrl,
+    this.birthYear,
+    this.preferredCinemaId,
+    this.status,
+    this.emailVerified = false,
+    this.phoneVerified = false,
+  });
+
+  final int? id;
+  final String email;
+  final String fullName;
+  final List<String> roles;
+  final String? username;
+  final String? phone;
+  final String? avatarUrl;
+  final int? birthYear;
+  final int? preferredCinemaId;
+  final String? status;
+  final bool emailVerified;
+  final bool phoneVerified;
+
+  factory RegistrationProfile.fromJson(Map<String, dynamic> json) {
+    try {
+      return RegistrationProfile(
+        id: json['id'] as int?,
+        email: json['email'] as String,
+        fullName: json['fullName'] as String,
+        roles: (json['roles'] as List? ?? const []).cast<String>().toList(
+          growable: false,
+        ),
+        username: json['username'] as String?,
+        phone: json['phone'] as String?,
+        avatarUrl: json['avatarUrl'] as String?,
+        birthYear: json['birthYear'] as int?,
+        preferredCinemaId: json['preferredCinemaId'] as int?,
+        status: json['status'] as String?,
+        emailVerified: (json['emailVerified'] as bool?) ?? false,
+        phoneVerified: (json['phoneVerified'] as bool?) ?? false,
+      );
+    } on TypeError {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Invalid registration profile',
+      );
+    }
+  }
+}
+
 class RegistrationResult {
   const RegistrationResult({
     required this.user,
@@ -75,15 +133,26 @@ class RegistrationResult {
     required this.emailVerificationExpiresInSeconds,
   });
 
-  final AuthUser user;
+  final RegistrationProfile user;
   final bool emailVerificationRequired;
   final int emailVerificationExpiresInSeconds;
 
-  factory RegistrationResult.fromJson(Map<String, dynamic> json) =>
-      RegistrationResult(
-        user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
-        emailVerificationRequired: json['emailVerificationRequired'] == true,
-        emailVerificationExpiresInSeconds:
-            (json['emailVerificationExpiresInSeconds'] as num).toInt(),
+  factory RegistrationResult.fromJson(Map<String, dynamic> json) {
+    final user = json['user'];
+    final verificationRequired = json['emailVerificationRequired'];
+    final expiry = json['emailVerificationExpiresInSeconds'];
+    if (user is! Map<String, dynamic> ||
+        verificationRequired is! bool ||
+        expiry is! int) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Invalid registration response',
       );
+    }
+    return RegistrationResult(
+      user: RegistrationProfile.fromJson(user),
+      emailVerificationRequired: verificationRequired,
+      emailVerificationExpiresInSeconds: expiry,
+    );
+  }
 }

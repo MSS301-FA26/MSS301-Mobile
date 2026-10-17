@@ -174,7 +174,16 @@ class RemoteCatalogRepository implements CatalogRepository {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
-      return await _dio.get(path, queryParameters: queryParameters);
+      return await _dio.get(
+        path,
+        queryParameters: queryParameters,
+        options: Options(
+          extra: const {
+            'skipAuthorization': true,
+            'skipAuthRefresh': true,
+          },
+        ),
+      );
     } on DioException catch (error) {
       final mapped = error.error;
       if (mapped is ApiException) throw mapped;

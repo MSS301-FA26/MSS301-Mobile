@@ -99,6 +99,24 @@ void main() {
     );
   });
 
+  test('marks public catalog requests to omit stale credentials', () async {
+    final adapter = _CatalogAdapter();
+    final repository = RemoteCatalogRepository(
+      Dio()..httpClientAdapter = adapter,
+    );
+
+    await repository.getMovies();
+    await repository.getCinemas();
+
+    for (final request in adapter.requests) {
+      if (request.path == '/api/v1/movies' ||
+          request.path == '/api/v1/cinemas') {
+        expect(request.extra['skipAuthorization'], isTrue);
+        expect(request.extra['skipAuthRefresh'], isTrue);
+      }
+    }
+  });
+
   test('treats only the backend OPEN showtime status as bookable', () {
     for (final status in ['OPEN', 'SCHEDULED', 'CANCELLED', 'COMPLETED']) {
       final dto = ShowtimeDto.fromJson(
@@ -158,6 +176,7 @@ class _CatalogAdapter implements HttpClientAdapter {
   String? method;
   String? path;
   Map<String, Object?>? body;
+  final requests = <RequestOptions>[];
 
   @override
   void close({bool force = false}) {}
@@ -168,6 +187,7 @@ class _CatalogAdapter implements HttpClientAdapter {
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    requests.add(options);
     method = options.method;
     path = options.path;
     body = options.data is Map

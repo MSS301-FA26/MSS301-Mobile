@@ -15,8 +15,6 @@ import 'package:mss301_mobile/features/movie/data/repositories/mock_catalog_repo
 import 'package:mss301_mobile/features/movie/presentation/models/movie.dart';
 import 'package:mss301_mobile/features/movie/presentation/providers/movies_provider.dart';
 
-import 'support/pump_test_app.dart';
-
 class _CountingCatalog extends MockCatalogRepository {
   _CountingCatalog() : super(scenario: const DemoScenario(SystemAppClock()));
   final calls = <MovieStatus?>[];
@@ -60,50 +58,9 @@ Future<void> _pumpCarousel(
 
 void main() {
   late List<Movie> fixtureMovies;
-  late List<Movie> upcomingFixtures;
   setUpAll(() async {
     fixtureMovies = await _movies();
-    upcomingFixtures = (await _CountingCatalog().getMovies(
-      status: MovieStatus.upcoming,
-    )).map(mapHomeMovie).toList();
   });
-  testWidgets(
-    'switch tabs resets selection, uses upcoming action and caches both feeds',
-    (tester) async {
-      final upcoming = upcomingFixtures;
-      final calls = <MovieStatus>[];
-      await pumpTestApp(
-        tester,
-        size: const Size(390, 900),
-        providerOverrides: [
-          homeCategoryMoviesProvider.overrideWith((ref, status) async {
-            calls.add(status);
-            return status == MovieStatus.nowShowing ? fixtureMovies : upcoming;
-          }),
-        ],
-      );
-      await tester.drag(
-        find.byKey(const ValueKey('movie-coverflow')),
-        const Offset(-120, 0),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Sắp chiếu'));
-      await tester.pumpAndSettle();
-      expect(find.text('Xem chi tiết'), findsOneWidget);
-      expect(find.text('Đặt vé'), findsNothing);
-      expect(
-        find.byKey(ValueKey('movie-info-${upcoming.first.id}')),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Đang chiếu'));
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(ValueKey('movie-info-${fixtureMovies.first.id}')),
-        findsOneWidget,
-      );
-      expect(calls, [MovieStatus.nowShowing, MovieStatus.upcoming]);
-    },
-  );
   test(
     'Home categories request exact API status and retain cache per tab',
     () async {

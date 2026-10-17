@@ -81,6 +81,12 @@ Future<ProviderContainer> pumpTestApp(
             await store.getLoyalty(DemoIds.user),
           );
         }),
+        accountWalletProvider.overrideWith(
+          (ref) => ref.watch(mockAccountStoreProvider).getWallet(DemoIds.user),
+        ),
+        accountLoyaltyProvider.overrideWith(
+          (ref) => ref.watch(mockAccountStoreProvider).getLoyalty(DemoIds.user),
+        ),
         ...providerOverrides,
       ],
       child: const CinePremierApp(),

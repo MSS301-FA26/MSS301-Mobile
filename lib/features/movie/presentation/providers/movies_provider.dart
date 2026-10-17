@@ -33,6 +33,7 @@ Movie mapMovieToPresentation(MovieDto movie) {
     id: movie.id,
     title: movie.title,
     ageRating: movie.ageRating ?? 'P',
+    hasAgeRating: movie.ageRating?.trim().isNotEmpty ?? false,
     duration: '${movie.durationMinutes} phút',
     rating: null,
     ratingCount: '',
