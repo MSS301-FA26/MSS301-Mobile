@@ -14,6 +14,7 @@ import '../widgets/home_hero_carousel.dart';
 import '../widgets/home_movie_carousel.dart';
 import '../widgets/home_quick_booking.dart';
 import '../widgets/home_section_heading.dart';
+import '../providers/home_providers.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -37,6 +38,7 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final movies = ref.watch(moviesProvider);
+    final quickBookingMovies = ref.watch(quickBookingMoviesProvider);
     return AppShell(
       currentIndex: 0,
       compactHeader: true,
@@ -62,9 +64,12 @@ class HomePage extends ConsumerWidget {
                 onOpen: (movie) => _openMovie(context, movie),
               ),
             HomeQuickBooking(
-              movies: movies.hasError || movies.isLoading
+              movies:
+                  quickBookingMovies.hasError || quickBookingMovies.isLoading
                   ? const []
-                  : movies.requireValue,
+                  : quickBookingMovies.requireValue
+                        .map(mapMovieToPresentation)
+                        .toList(growable: false),
               onBook: (id) => _openSeats(context, ref, id),
             ),
             HomeSectionHeading(

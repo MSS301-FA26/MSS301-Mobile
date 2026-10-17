@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
+import '../../../../shared/widgets/app_image.dart';
 import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../showtime/presentation/models/showtime_models.dart';
@@ -44,22 +45,16 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
         slot.isBookable && slot.startAt.isAfter(now);
     final cinemas = [
       for (final cinema in cinemasState.value ?? [])
-        if (cinema.active &&
-            rooms.any(
-              (room) => room.cinemaId == cinema.id && room.slots.any(usable),
-            ))
-          cinema,
+        if (cinema.active) cinema,
     ];
     final cinema = cinemas.where((c) => c.id == _cinemaId).firstOrNull;
     final cinemaRooms = rooms.where(
       (r) => r.cinemaId == cinema?.id && cinema != null,
     );
-    final dates = {
-      for (final room in cinemaRooms)
-        for (final slot in room.slots)
-          if (usable(slot))
-            DateTime(slot.startAt.year, slot.startAt.month, slot.startAt.day),
-    }.toList()..sort();
+    final dates = List<DateTime>.generate(
+      7,
+      (index) => DateTime(now.year, now.month, now.day + index),
+    );
     final date = dates.where((d) => d == _date).firstOrNull;
     final slots = [
       for (final room in cinemaRooms)
@@ -96,10 +91,14 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
                   child: Text(
                     'MUA VÉ NHANH',
-                    style: AppTextStyles.label.copyWith(color: AppColors.gold),
+                    style: AppTextStyles.label.copyWith(
+                      color: AppColors.gold,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .5,
+                    ),
                   ),
                 ),
                 HomeBookingStep(
@@ -116,6 +115,10 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
                               for (final m in widget.movies)
                                 (value: m.id, label: m.title),
                             ],
+                            imageAssets: {
+                              for (final m in widget.movies)
+                                m.id: m.posterAsset,
+                            },
                           );
                           if (!mounted || id == null) return;
                           setState(() {
@@ -234,12 +237,6 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
             const SizedBox(
               height: 160,
               child: Center(child: CircularProgressIndicator()),
-            )
-          else if (movie != null && cinemas.isEmpty)
-            const RepositoryStatePane.empty(
-              title: 'Chưa có suất chiếu phù hợp',
-              message: 'Hãy chọn một phim khác hoặc xem lịch chiếu.',
-              compact: true,
             ),
         ],
       ),
@@ -265,7 +262,7 @@ class HomeBookingStep extends StatelessWidget {
     key: ValueKey('home-quick-step-$step'),
     onTap: onTap,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 48),
+      constraints: const BoxConstraints(minHeight: 44),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
@@ -306,9 +303,13 @@ class HomeBookingStep extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right,
-              color: AppColors.textDisabled,
+            Icon(
+              MediaQuery.sizeOf(context).width >= 650
+                  ? Icons.keyboard_arrow_down
+                  : Icons.chevron_right,
+              color: onTap == null
+                  ? AppColors.textDisabled
+                  : AppColors.textSecondary,
               size: 20,
             ),
           ],
@@ -321,125 +322,172 @@ class HomeBookingStep extends StatelessWidget {
 Future<T?> homeChoose<T>(
   BuildContext context,
   String title,
-  List<({T value, String label})> options,
-) => showModalBottomSheet<T>(
+  List<({T value, String label})> options, {
+  Map<T, String>? imageAssets,
+}) => showModalBottomSheet<T>(
   context: context,
   isScrollControlled: true,
-  showDragHandle: true,
-  builder: (context) {
-    final isMovieChooser = title == 'Chọn phim';
-    final icon = isMovieChooser
-        ? Icons.movie_outlined
-        : Icons.checklist_rounded;
-    final availability = isMovieChooser ? 'phim khả dụng' : 'lựa chọn khả dụng';
-    final maxHeight = MediaQuery.sizeOf(context).height * .72;
+  showDragHandle: false,
+  backgroundColor: AppColors.surface,
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+  ),
+  builder: (context) => StatefulBuilder(
+    builder: (context, setModalState) {
+      var query = '';
+      final isMovieChooser = title == 'Chọn phim';
+      final icon = isMovieChooser
+          ? Icons.movie_outlined
+          : Icons.checklist_rounded;
+      final availability = isMovieChooser
+          ? 'phim khả dụng'
+          : 'lựa chọn khả dụng';
+      final maxHeight = MediaQuery.sizeOf(context).height * .72;
+      final filteredOptions = options
+          .where(
+            (option) =>
+                option.label.toLowerCase().contains(query.toLowerCase().trim()),
+          )
+          .toList(growable: false);
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              key: const ValueKey('home-choice-header'),
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: AppColors.goldSurface,
-                      borderRadius: AppRadii.small,
+      return SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                key: const ValueKey('home-choice-header'),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: AppColors.goldSurface,
+                        borderRadius: AppRadii.small,
+                      ),
+                      child: Icon(icon, color: AppColors.gold),
                     ),
-                    child: Icon(icon, color: AppColors.gold),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title, style: AppTextStyles.sectionTitle),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${options.length} $availability',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textMuted,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: AppTextStyles.sectionTitle),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${options.length} $availability',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textMuted,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Đóng',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+                    IconButton(
+                      tooltip: 'Đóng',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Divider(height: 1),
-            Flexible(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-                itemCount: options.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final option = options[index];
-                  return Material(
-                    color: AppColors.surface,
-                    shape: const RoundedRectangleBorder(
-                      side: BorderSide(color: AppColors.border),
-                      borderRadius: AppRadii.small,
+              if (isMovieChooser)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: TextField(
+                    onChanged: (value) => setModalState(() => query = value),
+                    decoration: InputDecoration(
+                      hintText: 'TÃ¬m kiáº¿m phim...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      isDense: true,
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: AppRadii.small,
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      key: ValueKey('home-choice-${option.value}'),
-                      onTap: () => Navigator.of(context).pop(option.value),
-                      child: Semantics(
-                        button: true,
-                        label: option.label,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(icon, color: AppColors.textSecondary),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  option.label,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.body.copyWith(
-                                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              const Divider(height: 1),
+              Flexible(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+                  itemCount: filteredOptions.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final option = filteredOptions[index];
+                    return Material(
+                      color: AppColors.surface,
+                      shape: const RoundedRectangleBorder(
+                        side: BorderSide(color: AppColors.border),
+                        borderRadius: AppRadii.small,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        key: ValueKey('home-choice-${option.value}'),
+                        onTap: () => Navigator.of(context).pop(option.value),
+                        child: Semantics(
+                          button: true,
+                          label: option.label,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 14,
+                            ),
+                            child: Row(
+                              children: [
+                                if (imageAssets?[option.value]
+                                        ?.trim()
+                                        .isNotEmpty ==
+                                    true)
+                                  SizedBox(
+                                    width: 42,
+                                    height: 58,
+                                    child: AppImage(
+                                      asset: imageAssets![option.value]!,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                else
+                                  Icon(icon, color: AppColors.textSecondary),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    option.label,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.body.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Icon(
-                                Icons.arrow_forward_rounded,
-                                color: AppColors.gold,
-                                size: 20,
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: AppColors.gold,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  },
+      );
+    },
+  ),
 );
 
 String _dateLabel(DateTime date) =>
