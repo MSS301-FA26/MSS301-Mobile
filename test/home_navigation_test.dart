@@ -21,14 +21,22 @@ void main() {
       await pumpTestApp(tester);
 
       expect(find.text('MUA VÉ NHANH'), findsNWidgets(2));
-      expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
-      expect(find.text('PHIM SẮP CHIẾU'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-category-NOW_SHOWING')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('home-category-UPCOMING')),
+        findsOneWidget,
+      );
       expect(find.text('RẠP CINEPREMIER'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
 
-  testWidgets('bottom navigation tabs navigate to destinations', (tester) async {
+  testWidgets('bottom navigation tabs navigate to destinations', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 

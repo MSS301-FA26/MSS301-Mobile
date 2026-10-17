@@ -1,6 +1,7 @@
 # UI-14 — Thêm combo ngay tại tổng thanh toán
 
-Ngày lập: **15/10/2026**. Trạng thái: **planned — sau UI-10, UI-12 và UI-13**.
+Ngày lập: **15/10/2026**. Cập nhật: **17/10/2026**. Trạng thái: **đã triển khai; chờ review UI, QA iOS và sandbox E2E thật**.
+Kết quả: [UI14-RESULTS.md](UI14-RESULTS.md).
 Thứ tự trong đợt mới: **4**. Tham chiếu: hàng “Thêm combo/bắp nước” ảnh 1.
 
 ## Trải nghiệm mong muốn

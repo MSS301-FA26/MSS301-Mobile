@@ -20,7 +20,11 @@ void main() {
   }
 
   Future<void> openPayment(WidgetTester tester) async {
-    final bookAvengers = find.byKey(const ValueKey('now-showing-book-2'));
+    final carousel = find.byKey(const ValueKey('movie-coverflow'));
+    await tester.ensureVisible(carousel);
+    await tester.drag(carousel, const Offset(-110, 0));
+    await tester.pumpAndSettle();
+    final bookAvengers = find.byKey(const ValueKey('home-3d-book-2'));
     await tester.ensureVisible(bookAvengers);
     await tester.tap(bookAvengers);
     await tester.pumpAndSettle();

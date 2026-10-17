@@ -1,6 +1,7 @@
 # UI-13 — Tổng thanh toán có poster và chi tiết vé
 
-Ngày lập: **15/10/2026**. Trạng thái: **planned — sau UI-10, UI-11 và UI-12**.
+Ngày lập: **15/10/2026**. Cập nhật: **16/10/2026**. Trạng thái: **đã triển khai; 56 test liên quan, analyzer và build Android đạt; đã cài emulator, chờ review UI và QA iOS/sandbox thật**.
+Kết quả: [UI13-RESULTS.md](UI13-RESULTS.md).
 Thứ tự trong đợt mới: **3**. Tham chiếu: tổng thanh toán ảnh 1 và ảnh 2.
 
 ## Mục tiêu và bố cục

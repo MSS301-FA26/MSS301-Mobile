@@ -12,6 +12,8 @@ import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/checkout_summary.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../auth/application/auth_session.dart';
+import '../../../booking/presentation/widgets/checkout_order_summary.dart';
+import '../widgets/checkout_food_images_provider.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../payment/application/payment_launcher.dart';
 import '../../data/models/food_order_dto.dart';
@@ -217,6 +219,10 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
       },
     );
     final order = _order;
+    final images = order == null || order.items.isEmpty
+        ? const <String, String>{}
+        : ref.watch(checkoutFoodImagesProvider).asData?.value ??
+              const <String, String>{};
     final remaining = order?.expiresAt?.difference(
       ref.watch(appClockProvider).now().toUtc(),
     );
@@ -301,6 +307,18 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                             order.status.label,
                             emphasized: true,
                           ),
+                          if (checkoutText([order.cinemaName]) != null)
+                            CheckoutLine(
+                              'Rạp nhận hàng',
+                              order.cinemaName!,
+                              stacked: true,
+                            ),
+                          if (checkoutText([order.cinemaAddress]) != null)
+                            CheckoutLine(
+                              'Địa chỉ nhận hàng',
+                              order.cinemaAddress!,
+                              stacked: true,
+                            ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -308,10 +326,34 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                         title: 'Bắp nước',
                         children: [
                           for (final item in order.items)
-                            CheckoutLine(
-                              '${item.productName} x ${item.quantity}',
-                              item.lineTotal.format(),
+                            CheckoutFoodSummaryLine(
+                              key: ValueKey('food-order-line-${item.id}'),
+                              name: item.productName,
+                              quantity: item.quantity,
+                              unitPrice: item.unitPrice,
+                              lineTotal: item.lineTotal,
+                              isCombo: item.isCombo,
+                              imageUrl:
+                                  images['${item.isCombo ? 'combo' : 'item'}:${item.productId}'],
                             ),
+                          if (order.items.isEmpty)
+                            const Text(
+                              'Đơn chưa có thông tin sản phẩm.',
+                              style: AppTextStyles.body,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      CheckoutSection(
+                        title: 'Thanh toán',
+                        children: [
+                          if (order.status == FoodOrderStatus.pendingPayment)
+                            const CheckoutLine('Phương thức', 'VNPay'),
+                          CheckoutLine(
+                            'Tổng cộng',
+                            order.totalAmount.format(),
+                            emphasized: true,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),

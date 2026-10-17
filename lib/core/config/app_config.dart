@@ -11,11 +11,13 @@ class AppConfig {
       'APP_ENV',
       defaultValue: 'development',
     );
-    final rawBaseUrl = const String.fromEnvironment('API_BASE_URL');
-    return AppConfig(
-      environment: _parseEnvironment(rawEnvironment),
-      apiBaseUrl: rawBaseUrl,
-    );
+    final environment = _parseEnvironment(rawEnvironment);
+    const configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
+    final rawBaseUrl =
+        configuredBaseUrl.isEmpty && environment == AppEnvironment.development
+        ? 'http://localhost:8080'
+        : configuredBaseUrl;
+    return AppConfig(environment: environment, apiBaseUrl: rawBaseUrl);
   }
 
   final AppEnvironment environment;

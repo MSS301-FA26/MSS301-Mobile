@@ -72,6 +72,9 @@ class FoodOrderDto {
     this.pickedUpAt,
     this.qrCode,
     this.createdByStaff = false,
+    this.cinemaId,
+    this.cinemaName,
+    this.cinemaAddress,
   });
   final int id;
   final String orderCode;
@@ -85,6 +88,8 @@ class FoodOrderDto {
   final String? qrCode;
   final DateTime createdAt;
   final bool createdByStaff;
+  final int? cinemaId;
+  final String? cinemaName, cinemaAddress;
   final List<FoodOrderItemDto> items;
 
   factory FoodOrderDto.fromJson(Map<String, Object?> json) => FoodOrderDto(
@@ -100,6 +105,9 @@ class FoodOrderDto {
     qrCode: json['qrCode']?.toString(),
     createdAt: dateTimeFromJson(json['createdAt']),
     createdByStaff: boolFromJson(json['createdByStaff']),
+    cinemaId: nullableIntFromJson(json['cinemaId']),
+    cinemaName: json['cinemaName']?.toString(),
+    cinemaAddress: json['cinemaAddress']?.toString(),
     items: listFromJson(json['items'], FoodOrderItemDto.fromJson),
   );
 }
