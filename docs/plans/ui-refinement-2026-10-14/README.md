@@ -53,7 +53,24 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 | 4 | [UI-14](14-ADD-COMBO-IN-CHECKOUT.md) | Đã triển khai: thêm/giảm combo ở checkout, sheet toàn bộ món, cập nhật quote và khóa tổng cũ | 55 test liên quan; chờ review/iOS/sandbox E2E; xem UI14-RESULTS |
 | 5 | [UI-15](15-HOME-3D-MOVIE-CAROUSEL.md) | Đã triển khai hai tab phim và coverflow 3D; giữ mua vé nhanh/rạp/hero | 42 test/analyzer/build đạt; emulator/API thật đã kiểm tra, chờ review/iOS/TalkBack |
 
-### Cách dùng ảnh tham khảo
+## Bổ sung theo phản hồi ngày 17/10 — Plan 16–23
+
+Trạng thái: **đã đối chiếu source và lập kế hoạch, chưa triển khai các batch 16–23**. Nhận xét, bằng chứng FE/BE và dependencies: [REVIEW-2026-10-17.md](REVIEW-2026-10-17.md).
+
+| Plan | Ưu tiên | Nội dung |
+| --- | --- | --- |
+| [UI-16](16-REALTIME-SEAT-AVAILABILITY.md) | P0 | Khả dụng ghế đã bán/đang hold, độ mới seat-map và conflict |
+| [UI-17](17-PAYMENT-RETURN-TO-APP.md) | P0 | VNPay quay lại app cho vé và food; return/landing contract |
+| [UI-18](18-CINEMA-DIRECTORY.md) | P1 | Danh sách và chi tiết rạp, nối lịch chiếu theo rạp |
+| [UI-19](19-UNIFIED-SHOWTIME-FILTERS.md) | P1 | Lịch chiếu chung với bộ lọc phim/rạp/ngày có thể xóa |
+| [UI-20](20-PAYMENT-AND-SUCCESS-REDESIGN.md) | P1 | Bố cục thanh toán/kết quả thống nhất cho vé và food |
+| [UI-21](21-MOVIE-DETAIL-REFINEMENT.md) | P2 | Chi tiết phim và entry lịch chiếu/watchlist |
+| [UI-22](22-WATCHLIST.md) | P2 | Danh sách muốn xem; phân biệt local MVP và remote sync |
+| [UI-23](23-SINGLE-SEAT-GAP-RULE.md) | P1 | Rule ghế trống đơn lẻ: UX Mobile và enforcement BE |
+
+Thứ tự đề xuất: **16 → 17 → 18 → 19 → 23 → 20 → 22 → 21**. Các plan chức năng gốc đã được gom vào [functional-completion-2026-10-11](../functional-completion-2026-10-11/00-MOBILE-COMPLETION-ROADMAP.md), giữ nguyên nội dung lịch sử.
+
+### Cách dùng ảnh tham khảo UI-11–14
 
 - Ảnh 4, chi tiết phim Shaun the Sheep: tham khảo banner/trailer, poster, metadata, mô tả và nút đặt vé cố định cho UI-11. Phim liên quan dùng API gợi ý đã có; ưu đãi chỉ thêm nếu có nguồn và trang đích thật.
 - Ảnh 3, danh sách combo: tham khảo cách đặt ảnh, mô tả thành phần, giá và bộ chọn số lượng cho UI-12.
