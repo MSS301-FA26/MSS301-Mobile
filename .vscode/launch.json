@@ -7,8 +7,9 @@
       "type": "dart",
       "program": "lib/main.dart",
       "flutterMode": "debug",
+      "preLaunchTask": "Mobile: forward local gateway",
       "toolArgs": [
-        "--dart-define=API_BASE_URL=http://10.0.2.2:8080",
+        "--dart-define=API_BASE_URL=http://localhost:8080",
         "--dart-define=UI_PREVIEW=false"
       ]
     },
@@ -18,8 +19,9 @@
       "type": "dart",
       "program": "lib/main.dart",
       "flutterMode": "debug",
+      "preLaunchTask": "Mobile: forward local gateway",
       "toolArgs": [
-        "--dart-define=API_BASE_URL=http://10.0.2.2:8080",
+        "--dart-define=API_BASE_URL=http://localhost:8080",
         "--dart-define=UI_PREVIEW=true"
       ]
     }

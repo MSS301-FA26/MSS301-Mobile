@@ -1,5 +1,3 @@
-import '../../../../core/time/vietnam_time.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +7,18 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/checkout_summary.dart';
-import '../../../movie/data/models/catalog_enums.dart';
+import '../../../movie/data/models/movie_dto.dart';
+import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_hold_countdown.dart';
 import '../widgets/booking_progress.dart';
+import '../widgets/checkout_order_summary.dart';
+
+final checkoutMovieMetadataProvider = FutureProvider.autoDispose
+    .family<MovieDto?, int>(
+      (ref, id) => ref.watch(catalogRepositoryProvider).getMovie(id),
+      retry: (retryCount, error) => null,
+    );
 
 class CheckoutPage extends ConsumerWidget {
   const CheckoutPage({super.key, required this.bookingId});
@@ -39,6 +45,28 @@ class CheckoutPage extends ConsumerWidget {
         ),
       );
     }
+    final needsMetadata =
+        quote.movie == null ||
+        checkoutText([quote.movie?.ageRating]) == null ||
+        checkoutText([
+              quote.movie?.posterUrl,
+              quote.showtime.posterUrl,
+              booking.moviePosterSnapshot,
+              booking.posterUrl,
+            ]) ==
+            null ||
+        quote.movie?.durationMinutes == null;
+    final metadata = needsMetadata
+        ? ref
+              .watch(checkoutMovieMetadataProvider(quote.showtime.movieId))
+              .asData
+              ?.value
+        : null;
+    final foods = quote.foods.isNotEmpty ? quote.foods : quote.foodItems;
+    final productImages = {
+      for (final product in state.products)
+        product.selectionKey: product.imageUrl,
+    };
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -62,38 +90,46 @@ class CheckoutPage extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 children: [
-                  CheckoutSection(
-                    title: quote.showtime.movieTitle ?? 'Phim',
-                    children: [
-                      CheckoutLine('Rạp', quote.showtime.cinemaName ?? '—'),
-                      CheckoutLine('Phòng', quote.showtime.roomName ?? '—'),
-                      CheckoutLine(
-                        'Suất chiếu',
-                        _dateTime(quote.showtime.startTime),
-                      ),
-                      CheckoutLine(
-                        'Ghế',
-                        quote.seats.map((seat) => seat.seatLabel).join(', '),
-                      ),
-                      for (final ticket in quote.tickets)
-                        CheckoutLine(
-                          _ticketLabel(ticket.ticketType),
-                          '${quote.seats.firstWhere((seat) => seat.seatId == ticket.seatId).seatLabel} • ${ticket.lineTotal.format()}',
-                        ),
-                    ],
+                  CheckoutMovieSummary(
+                    quote: quote,
+                    booking: booking,
+                    metadata: metadata,
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+                  CheckoutTicketSummary(quote: quote),
                   const SizedBox(height: AppSpacing.sm),
                   CheckoutSection(
                     title: 'Bắp nước',
-                    children: quote.foods.isEmpty
-                        ? const [CheckoutLine('Sản phẩm', 'Không chọn')]
-                        : [
-                            for (final food in quote.foods)
-                              CheckoutLine(
-                                '${food.productName} × ${food.quantity}',
-                                food.lineTotal.format(),
-                              ),
-                          ],
+                    children: [
+                      if (foods.isEmpty)
+                        const CheckoutLine('Sản phẩm', 'Không chọn'),
+                      for (final food in foods)
+                        CheckoutFoodSummaryLine(
+                          key: ValueKey(
+                            'checkout-food-${food.isCombo ? 'combo' : 'item'}:${food.productId}',
+                          ),
+                          name: food.productName,
+                          quantity: food.quantity,
+                          isCombo: food.isCombo,
+                          unitPrice: food.unitPrice,
+                          lineTotal: food.lineTotal,
+                          imageUrl:
+                              productImages['${food.isCombo ? 'combo' : 'item'}:${food.productId}'],
+                        ),
+                      TextButton.icon(
+                        key: const ValueKey('checkout-edit-food'),
+                        onPressed: state.isBusy || state.payment != null
+                            ? null
+                            : () =>
+                                  context.go(AppRoutes.concessions(bookingId)),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: Text(
+                          foods.isEmpty
+                              ? 'Quay lại chọn bắp nước'
+                              : 'Sửa bắp nước',
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   CheckoutSection(
@@ -156,11 +192,3 @@ class CheckoutPage extends ConsumerWidget {
     );
   }
 }
-
-String _dateTime(DateTime value) => formatVietnamDateTime(value);
-
-String _ticketLabel(TicketType type) => switch (type) {
-  TicketType.child => 'Vé trẻ em',
-  TicketType.student => 'Vé sinh viên',
-  _ => 'Vé người lớn',
-};

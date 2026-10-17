@@ -102,6 +102,19 @@ void main() {
             ),
           ],
         );
+        if (status == 'PAID') {
+          await tester.scrollUntilVisible(
+            find.byType(QrImageView),
+            200,
+            scrollable: find
+                .descendant(
+                  of: find.byType(ListView),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          await tester.pumpAndSettle();
+        }
         expect(
           find.byType(QrImageView),
           status == 'PAID' ? findsOneWidget : findsNothing,
