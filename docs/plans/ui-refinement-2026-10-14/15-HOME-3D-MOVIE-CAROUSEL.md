@@ -1,6 +1,7 @@
 # UI-15 — Khôi phục khu phim Home theo thiết kế 3D đã chốt
 
-Ngày lập: **17/10/2026**. Trạng thái: **planned — thực hiện sau UI-14**.
+Ngày lập và triển khai: **17/10/2026**. Trạng thái: **đã triển khai; 42 test/analyzer/build Android đạt, đã kiểm tra emulator với API thật; chờ review người dùng và QA iOS/TalkBack**.
+Kết quả: [UI15-RESULTS.md](UI15-RESULTS.md).
 Người yêu cầu: **Tzee314**. Baseline khi lập: Mobile `42588fb`.
 
 ## Mục tiêu và thiết kế đã chốt
@@ -59,13 +60,13 @@ Không khôi phục toàn bộ `HomePage` cũ bằng Git vì sẽ ghi đè các 
 
 ## Nghiệm thu
 
-- [ ] Hai tab dùng coverflow 3D như thiết kế chốt; không còn hai dải thẻ phim cũ trong cùng Home.
-- [ ] Vuốt/chọn poster/chuyển tab hoạt động; metadata và CTA đúng phim; trở về Home không mất vị trí vô lý.
-- [ ] Danh sách 0/1/nhiều phim, response chậm/lỗi, refresh đổi dữ liệu, ảnh ngang/dọc/thiếu/lỗi đều xử lý được.
-- [ ] 320/360/390/430 logical px, chữ lớn và tên phim dài không overflow hoặc che CTA; tap target đủ 48 px.
+- [x] Hai tab dùng coverflow 3D như thiết kế chốt; không còn hai dải thẻ phim cũ trong cùng Home.
+- [x] Vuốt/chọn poster/chuyển tab hoạt động; metadata và CTA đúng phim; trở về Home không mất vị trí vô lý.
+- [x] Danh sách 0/1/nhiều phim, response chậm/lỗi, refresh đổi dữ liệu, ảnh ngang/dọc/thiếu/lỗi đều xử lý được qua các test liên quan.
+- [x] Widget test 320/360/390/430 logical px, chữ lớn và tên phim dài không overflow; nút tab/CTA/trailer có vùng chạm tối thiểu 48 px.
 - [ ] Giảm chuyển động, screen reader, gesture ngang/dọc và hiệu năng Android được kiểm tra; iOS chưa chạy ghi rõ.
-- [ ] Mua vé nhanh giữ lựa chọn phim/rạp/ngày/giờ và luồng login → ghế hiện tại; rạp phim giữ UI/hành vi trước batch.
-- [ ] Hero/header/bottom navigation giữ như baseline hiện tại.
+- [x] Source mua vé nhanh/rạp và wiring login → ghế được giữ; test lựa chọn phim qua đổi tab, identity widget và regression booking đạt. QA đủ chuỗi bộ chọn với API thật còn theo dõi trong kết quả.
+- [x] Hero/header/bottom navigation giữ như baseline hiện tại.
 - [ ] Analyzer, test hành vi liên quan, build Android đạt; có ảnh trước/sau và phản hồi người dùng tại `UI15-RESULTS.md`.
 
-Chỉ lập kế hoạch trong batch này; chưa thay code Home, chưa coi UI-14 hoặc UI-15 đã hoàn thành.
+Code đã triển khai trong batch này. Review thẩm mỹ cuối, iOS/TalkBack và các giới hạn QA được ghi riêng trong UI15-RESULTS; chưa tự đánh dấu nghiệm thu toàn bộ.

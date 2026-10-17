@@ -31,7 +31,11 @@ void main() {
       ],
     );
 
-    final bookAvengers = find.byKey(const ValueKey('now-showing-book-2'));
+    final carousel = find.byKey(const ValueKey('movie-coverflow'));
+    await tester.ensureVisible(carousel);
+    await tester.drag(carousel, const Offset(-110, 0));
+    await tester.pumpAndSettle();
+    final bookAvengers = find.byKey(const ValueKey('home-3d-book-2'));
     await tester.ensureVisible(bookAvengers);
     await tester.tap(bookAvengers);
     await tester.pumpAndSettle();
@@ -120,7 +124,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 20));
     expect(container.read(bookingEntryProvider).hasActiveDraft, isFalse);
-    expect(find.text('PHIM ĐANG CHIẾU'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-category-NOW_SHOWING')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('R4 guest auth resumes the exact selected showtime', (

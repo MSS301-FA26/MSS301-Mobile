@@ -15,6 +15,7 @@ Movie mapHomeMovie(MovieDto movie) => Movie(
   id: movie.id,
   title: movie.title,
   ageRating: movie.ageRating ?? '',
+  hasAgeRating: movie.ageRating?.trim().isNotEmpty ?? false,
   duration: movie.durationMinutes > 0 ? '${movie.durationMinutes} phút' : '',
   rating: null,
   genre: movie.genres.map((genre) => genre.name).join(' · '),
@@ -31,6 +32,25 @@ final homeCategoryMoviesProvider =
       final repository = ref.watch(homeUiPreviewProvider)
           ? ref.watch(mockCatalogRepositoryProvider)
           : ref.watch(catalogRepositoryProvider);
-      final movies = await repository.getMovies(status: status);
-      return movies.map(mapHomeMovie).toList(growable: false);
-    });
+      final movies = <int, MovieDto>{};
+      var page = 0;
+      while (true) {
+        final result = await repository.getMoviePage(
+          status: status,
+          page: page,
+          size: 100,
+        );
+        final previousCount = movies.length;
+        for (final movie in result.items) {
+          if (movie.status == status) movies[movie.id] = movie;
+        }
+        if (result.last ||
+            page + 1 >= result.totalPages ||
+            result.items.isEmpty ||
+            movies.length == previousCount) {
+          break;
+        }
+        page++;
+      }
+      return movies.values.map(mapHomeMovie).toList(growable: false);
+    }, retry: (retryCount, error) => null);

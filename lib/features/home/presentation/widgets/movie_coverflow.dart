@@ -18,10 +18,16 @@ class MovieCoverflow extends StatefulWidget {
     required this.onBook,
     required this.onTrailer,
     this.colorLoader = posterAmbientColor,
+    this.initialMovieId,
+    this.onSelected,
+    this.keyPrefix = 'hero',
   });
   final List<Movie> movies;
   final Future<Color> Function(String) colorLoader;
   final ValueChanged<Movie> onOpen, onBook, onTrailer;
+  final int? initialMovieId;
+  final ValueChanged<Movie>? onSelected;
+  final String keyPrefix;
   @override
   State<MovieCoverflow> createState() => _MovieCoverflowState();
 }
@@ -36,8 +42,15 @@ class _MovieCoverflowState extends State<MovieCoverflow>
   @override
   void initState() {
     super.initState();
-    _position = AnimationController.unbounded(vsync: this);
-    _loadPalette(0);
+    final initial = widget.movies.indexWhere(
+      (movie) => movie.id == widget.initialMovieId,
+    );
+    _selected = initial < 0 ? 0 : initial;
+    _position = AnimationController.unbounded(
+      vsync: this,
+      value: _selected.toDouble(),
+    );
+    _loadPalette(_selected);
   }
 
   @override
@@ -45,11 +58,17 @@ class _MovieCoverflowState extends State<MovieCoverflow>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.movies.map((m) => m.id).join(',') !=
         widget.movies.map((m) => m.id).join(',')) {
+      final previousId = oldWidget.movies.isEmpty
+          ? widget.initialMovieId
+          : oldWidget
+                .movies[_selected.clamp(0, oldWidget.movies.length - 1)]
+                .id;
+      final next = widget.movies.indexWhere((movie) => movie.id == previousId);
       _position.stop();
-      _position.value = 0;
-      _selected = 0;
-      _loadPalette(0);
+      _selected = next < 0 ? 0 : next;
+      _position.value = _selected.toDouble();
     }
+    _loadPalette(_selected);
   }
 
   @override
@@ -86,7 +105,10 @@ class _MovieCoverflowState extends State<MovieCoverflow>
             curve: Curves.easeOutCubic,
           )
           .orCancel;
-      if (mounted) setState(() => _selected = target);
+      if (mounted) {
+        setState(() => _selected = target);
+        widget.onSelected?.call(widget.movies[target]);
+      }
     } on TickerCanceled {
       /* A new gesture or tab replaced this transition. */
     }
@@ -138,164 +160,185 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                 );
             return Column(
               children: [
-                GestureDetector(
-                  key: const ValueKey('movie-coverflow'),
-                  behavior: HitTestBehavior.opaque,
-                  onHorizontalDragStart: (_) {
-                    _position.stop();
-                    _dragStart = _position.value;
-                  },
-                  onHorizontalDragUpdate: (details) {
-                    _position.value =
-                        (_position.value - details.delta.dx / _step).clamp(
-                          0.0,
-                          (widget.movies.length - 1).toDouble(),
-                        );
-                    _loadPalette(_position.value.round());
-                  },
-                  onHorizontalDragEnd: (details) {
-                    final delta = _position.value - _dragStart,
-                        velocity = details.primaryVelocity ?? 0;
-                    final target = velocity.abs() > 450
-                        ? (velocity < 0
-                              ? _position.value.floor() + 1
-                              : _position.value.ceil() - 1)
-                        : delta.abs() >= 0.27
-                        ? (delta > 0
-                              ? _position.value.ceil()
-                              : _position.value.floor())
-                        : _dragStart.round();
-                    _settle(target);
-                  },
-                  onHorizontalDragCancel: () => _settle(_selected),
-                  child: SizedBox(
-                    width: width,
-                    height: posterHeight + 28,
-                    child: Stack(
-                      clipBehavior: Clip.hardEdge,
-                      children: [
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: AnimatedContainer(
-                              duration: MediaQuery.disableAnimationsOf(context)
-                                  ? Duration.zero
-                                  : const Duration(milliseconds: 400),
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  radius: 0.83,
-                                  colors: [
-                                    _ambient(position).withValues(alpha: 0.22),
-                                    AppColors.background,
-                                  ],
+                Semantics(
+                  label: 'Danh sách phim',
+                  value:
+                      '${_selected + 1}/${widget.movies.length}: ${movie.title}',
+                  increasedValue: _selected < widget.movies.length - 1
+                      ? '${_selected + 2}/${widget.movies.length}: ${widget.movies[_selected + 1].title}'
+                      : null,
+                  decreasedValue: _selected > 0
+                      ? '$_selected/${widget.movies.length}: ${widget.movies[_selected - 1].title}'
+                      : null,
+                  onIncrease: !moving && _selected < widget.movies.length - 1
+                      ? () => _settle(_selected + 1)
+                      : null,
+                  onDecrease: !moving && _selected > 0
+                      ? () => _settle(_selected - 1)
+                      : null,
+                  child: GestureDetector(
+                    key: const ValueKey('movie-coverflow'),
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (_) {
+                      _position.stop();
+                      _dragStart = _position.value;
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      _position.value =
+                          (_position.value - details.delta.dx / _step).clamp(
+                            0.0,
+                            (widget.movies.length - 1).toDouble(),
+                          );
+                      _loadPalette(_position.value.round());
+                    },
+                    onHorizontalDragEnd: (details) {
+                      final delta = _position.value - _dragStart,
+                          velocity = details.primaryVelocity ?? 0;
+                      final target = velocity.abs() > 450
+                          ? (velocity < 0
+                                ? _position.value.floor() + 1
+                                : _position.value.ceil() - 1)
+                          : delta.abs() >= 0.27
+                          ? (delta > 0
+                                ? _position.value.ceil()
+                                : _position.value.floor())
+                          : _dragStart.round();
+                      _settle(target);
+                    },
+                    onHorizontalDragCancel: () => _settle(_selected),
+                    child: SizedBox(
+                      width: width,
+                      height: posterHeight + 28,
+                      child: Stack(
+                        clipBehavior: Clip.hardEdge,
+                        children: [
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: AnimatedContainer(
+                                duration:
+                                    MediaQuery.disableAnimationsOf(context)
+                                    ? Duration.zero
+                                    : const Duration(milliseconds: 400),
+                                decoration: BoxDecoration(
+                                  gradient: RadialGradient(
+                                    radius: 0.83,
+                                    colors: [
+                                      _ambient(position)
+                                          .withValues(alpha: 0.22),
+                                      AppColors.background,
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        for (final index in visible)
-                          Positioned(
-                            left: (width - posterWidth) / 2,
-                            top: 14,
-                            width: posterWidth,
-                            height: posterHeight,
-                            child: Builder(
-                              builder: (context) {
-                                final distance = index - position,
-                                    depth = (index - position).abs().clamp(
-                                      0.0,
-                                      1.0,
-                                    );
-                                final opacity = distance.abs() > 1
-                                    ? (0.82 * (2 - distance.abs())).clamp(
+                          for (final index in visible)
+                            Positioned(
+                              left: (width - posterWidth) / 2,
+                              top: 14,
+                              width: posterWidth,
+                              height: posterHeight,
+                              child: Builder(
+                                builder: (context) {
+                                  final distance = index - position,
+                                      depth = (index - position).abs().clamp(
                                         0.0,
                                         1.0,
-                                      )
-                                    : 1 - depth * 0.18;
-                                final scale = 1 - depth * 0.18;
-                                final matrix = Matrix4.identity()
-                                  ..setEntry(3, 2, 0.0014)
-                                  ..translateByDouble(
-                                    distance * _step,
-                                    depth * 10,
-                                    -depth * 30,
-                                    1,
-                                  )
-                                  ..rotateY(-distance.clamp(-1.0, 1.0) * 0.55)
-                                  ..scaleByDouble(scale, scale, 1, 1);
-                                return Transform(
-                                  alignment: Alignment.center,
-                                  transform: matrix,
-                                  child: Opacity(
-                                    opacity: opacity,
-                                    child: RepaintBoundary(
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          borderRadius: AppRadii.small,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.65,
+                                      );
+                                  final opacity = distance.abs() > 1
+                                      ? (0.82 * (2 - distance.abs())).clamp(
+                                          0.0,
+                                          1.0,
+                                        )
+                                      : 1 - depth * 0.18;
+                                  final scale = 1 - depth * 0.18;
+                                  final matrix = Matrix4.identity()
+                                    ..setEntry(3, 2, 0.0014)
+                                    ..translateByDouble(
+                                      distance * _step,
+                                      depth * 10,
+                                      -depth * 30,
+                                      1,
+                                    )
+                                    ..rotateY(-distance.clamp(-1.0, 1.0) * 0.55)
+                                    ..scaleByDouble(scale, scale, 1, 1);
+                                  return Transform(
+                                    alignment: Alignment.center,
+                                    transform: matrix,
+                                    child: Opacity(
+                                      opacity: opacity,
+                                      child: RepaintBoundary(
+                                        child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            borderRadius: AppRadii.small,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.65,
+                                                ),
+                                                blurRadius: 22,
+                                                offset: const Offset(0, 12),
                                               ),
-                                              blurRadius: 22,
-                                              offset: const Offset(0, 12),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Semantics(
-                                          label: widget.movies[index].title,
-                                          button: true,
-                                          child: GestureDetector(
-                                            key: ValueKey(
-                                              'hero-open-${widget.movies[index].id}',
-                                            ),
-                                            onTap: () {
-                                              if (index != _selected ||
-                                                  moving) {
-                                                _settle(index);
-                                              } else {
-                                                widget.onOpen(
-                                                  widget.movies[index],
-                                                );
-                                              }
-                                            },
-                                            child: ClipRRect(
-                                              borderRadius: AppRadii.small,
-                                              child: ColoredBox(
-                                                color: AppColors.surface,
-                                                child: Stack(
-                                                  fit: StackFit.expand,
-                                                  children: [
-                                                    ExcludeSemantics(
-                                                      child: ImageFiltered(
-                                                        imageFilter:
-                                                            ui.ImageFilter.blur(
-                                                              sigmaX: 18,
-                                                              sigmaY: 18,
-                                                              tileMode: ui
-                                                                  .TileMode
-                                                                  .clamp,
+                                            ],
+                                          ),
+                                          child: Semantics(
+                                            label: widget.movies[index].title,
+                                            button: true,
+                                            child: GestureDetector(
+                                              key: ValueKey(
+                                                '${widget.keyPrefix}-open-${widget.movies[index].id}',
+                                              ),
+                                              onTap: () {
+                                                if (index != _selected ||
+                                                    moving) {
+                                                  _settle(index);
+                                                } else {
+                                                  widget.onOpen(
+                                                    widget.movies[index],
+                                                  );
+                                                }
+                                              },
+                                              child: ClipRRect(
+                                                borderRadius: AppRadii.small,
+                                                child: ColoredBox(
+                                                  color: AppColors.surface,
+                                                  child: Stack(
+                                                    fit: StackFit.expand,
+                                                    children: [
+                                                      ExcludeSemantics(
+                                                        child: ImageFiltered(
+                                                          imageFilter:
+                                                              ui.ImageFilter.blur(
+                                                                sigmaX: 18,
+                                                                sigmaY: 18,
+                                                                tileMode: ui
+                                                                    .TileMode
+                                                                    .clamp,
+                                                              ),
+                                                          child: Transform.scale(
+                                                            scale: 1.12,
+                                                            child: AppImage(
+                                                              asset: widget
+                                                                  .movies[index]
+                                                                  .posterAsset,
+                                                              fit: BoxFit.cover,
                                                             ),
-                                                        child: Transform.scale(
-                                                          scale: 1.12,
-                                                          child: AppImage(
-                                                            asset: widget
-                                                                .movies[index]
-                                                                .posterAsset,
-                                                            fit: BoxFit.cover,
                                                           ),
                                                         ),
                                                       ),
-                                                    ),
-                                                    const ColoredBox(
-                                                      color: Color(0x59000000),
-                                                    ),
-                                                    AppImage(
-                                                      asset: widget
-                                                          .movies[index]
-                                                          .posterAsset,
-                                                      fit: BoxFit.contain,
-                                                    ),
-                                                  ],
+                                                      const ColoredBox(
+                                                        color: Color(
+                                                          0x59000000,
+                                                        ),
+                                                      ),
+                                                      AppImage(
+                                                        asset: widget
+                                                            .movies[index]
+                                                            .posterAsset,
+                                                        fit: BoxFit.contain,
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -303,12 +346,12 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                                         ),
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -349,8 +392,6 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                               children: [
                                 Text(
                                   movie.title.toUpperCase(),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
                                   style: AppTextStyles.sectionTitle,
                                 ),
@@ -361,7 +402,8 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                                   spacing: 12,
                                   runSpacing: 4,
                                   children: [
-                                    if (movie.ageRating.isNotEmpty)
+                                    if (movie.hasAgeRating &&
+                                        movie.ageRating.isNotEmpty)
                                       AgeBadge(rating: movie.ageRating),
                                     if (movie.duration.isNotEmpty)
                                       Text(
@@ -395,7 +437,7 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                       SizedBox(
                         width: double.infinity,
                         child: AppButton(
-                          key: ValueKey('hero-book-${movie.id}'),
+                          key: ValueKey('${widget.keyPrefix}-book-${movie.id}'),
                           label: movie.isNowShowing ? 'Đặt vé' : 'Xem chi tiết',
                           icon: movie.isNowShowing
                               ? Icons.confirmation_number_outlined
@@ -407,7 +449,7 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                                     : widget.onOpen(movie),
                         ),
                       ),
-                      if (movie.trailerUrl?.isNotEmpty == true)
+                      if (_validTrailer(movie.trailerUrl))
                         TextButton.icon(
                           style: TextButton.styleFrom(
                             minimumSize: const Size(48, 48),
@@ -432,4 +474,11 @@ class _MovieCoverflowState extends State<MovieCoverflow>
       },
     );
   }
+}
+
+bool _validTrailer(String? value) {
+  final uri = Uri.tryParse(value?.trim() ?? '');
+  return uri != null &&
+      (uri.scheme == 'https' || uri.scheme == 'http') &&
+      uri.host.isNotEmpty;
 }
