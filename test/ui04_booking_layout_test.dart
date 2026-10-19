@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mss301_mobile/core/demo/demo_scenario.dart';
@@ -63,7 +65,195 @@ class _WideCatalog extends MockCatalogRepository {
   }
 }
 
+class _OccupiedCatalog extends _WideCatalog {
+  @override
+  Future<ShowtimeSeatMapDto> getSeatMap(int showtimeId) async {
+    final base = await super.getSeatMap(showtimeId);
+    return ShowtimeSeatMapDto(
+      showtime: base.showtime,
+      rowCount: base.rowCount,
+      columnCount: base.columnCount,
+      seats: [
+        for (final seat in base.seats)
+          ShowtimeSeatDto(
+            seatId: seat.seatId,
+            seatRowId: seat.seatRowId,
+            rowLabel: seat.rowLabel,
+            displayOrder: seat.displayOrder,
+            seatNumber: seat.seatNumber,
+            displayColumn: seat.displayColumn,
+            startColumn: seat.startColumn,
+            seatType: seat.seatType,
+            seatStatus: seat.seatStatus,
+            runtimeStatus: switch (seat.seatNumber) {
+              2 => SeatRuntimeStatus.holding,
+              3 => SeatRuntimeStatus.booked,
+              4 => SeatRuntimeStatus.unknown,
+              _ => SeatRuntimeStatus.available,
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _TransientSeatCatalog extends _WideCatalog {
+  int calls = 0;
+
+  @override
+  Future<ShowtimeSeatMapDto> getSeatMap(int showtimeId) async {
+    calls++;
+    if (calls == 2) throw StateError('offline');
+    return super.getSeatMap(showtimeId);
+  }
+}
+
+class _DeferredRefreshCatalog extends _WideCatalog {
+  int calls = 0;
+  final pending = Completer<ShowtimeSeatMapDto>();
+  ShowtimeSeatMapDto? lastMap;
+
+  @override
+  Future<ShowtimeSeatMapDto> getSeatMap(int showtimeId) async {
+    calls++;
+    if (calls == 3) return pending.future;
+    final map = await super.getSeatMap(showtimeId);
+    lastMap = map;
+    return map;
+  }
+}
+
 void main() {
+  testWidgets('background refresh keeps seats and layout visible', (
+    tester,
+  ) async {
+    final catalog = _DeferredRefreshCatalog();
+    await pumpTestApp(
+      tester,
+      initialLocation: AppRoutes.seatSelection(1002),
+      size: const Size(390, 844),
+      providerOverrides: [
+        seatMapProvider.overrideWith((ref, id) => catalog.getSeatMap(id)),
+      ],
+    );
+    expect(catalog.calls, 2);
+    final seat = find.byKey(const ValueKey('seat-9001'));
+    final before = tester.getRect(seat);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(catalog.calls, 3);
+    expect(find.byKey(const ValueKey('seat-map-stale-warning')), findsNothing);
+    expect(find.byKey(const ValueKey('seat-9001')), findsOneWidget);
+    expect(tester.getRect(seat), before);
+    expect(tester.widget<InkWell>(seat).onTap, isNotNull);
+
+    catalog.pending.complete(catalog.lastMap!);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(seat), before);
+  });
+
+  testWidgets('offline refresh keeps a read-only map until retry succeeds', (
+    tester,
+  ) async {
+    final catalog = _TransientSeatCatalog();
+    await pumpTestApp(
+      tester,
+      initialLocation: AppRoutes.seatSelection(1002),
+      size: const Size(390, 844),
+      providerOverrides: [
+        seatMapProvider.overrideWith((ref, id) => catalog.getSeatMap(id)),
+      ],
+    );
+    await tester.pumpAndSettle();
+    expect(catalog.calls, 2);
+    expect(
+      find.byKey(const ValueKey('seat-map-stale-warning')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('seat-9001')), findsOneWidget);
+    expect(
+      tester.widget<InkWell>(find.byKey(const ValueKey('seat-9001'))).onTap,
+      isNull,
+    );
+
+    await tester.tap(find.byTooltip('Tải lại sơ đồ ghế'));
+    await tester.pumpAndSettle();
+    expect(catalog.calls, 3);
+    expect(find.byKey(const ValueKey('seat-map-stale-warning')), findsNothing);
+    expect(
+      tester.widget<InkWell>(find.byKey(const ValueKey('seat-9001'))).onTap,
+      isNotNull,
+    );
+  });
+
+  testWidgets('occupied seats keep slots but cannot be selected', (
+    tester,
+  ) async {
+    await pumpTestApp(
+      tester,
+      initialLocation: AppRoutes.seatSelection(1002),
+      size: const Size(390, 844),
+      providerOverrides: [
+        seatMapProvider.overrideWith(
+          (ref, id) => _OccupiedCatalog().getSeatMap(id),
+        ),
+      ],
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('seat-9002')));
+    for (final number in [2, 3, 4]) {
+      final seat = find.byKey(ValueKey('seat-${9000 + number}'));
+      expect(tester.widget<InkWell>(seat).onTap, isNull);
+      final semantics = tester.widget<Semantics>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label?.startsWith('Ghế A$number,') == true,
+        ),
+      );
+      expect(semantics.properties.enabled, isFalse);
+      expect(
+        tester.getSize(seat),
+        tester.getSize(find.byKey(const ValueKey('seat-9001'))),
+      );
+    }
+    expect(
+      tester.widget<InkWell>(find.byKey(const ValueKey('seat-9001'))).onTap,
+      isNotNull,
+    );
+  });
+
+  testWidgets('seat map zoom controls update scale and reset it', (
+    tester,
+  ) async {
+    await pumpTestApp(
+      tester,
+      initialLocation: AppRoutes.seatSelection(1002),
+      size: const Size(390, 844),
+      providerOverrides: [
+        seatMapProvider.overrideWith(
+          (ref, id) => _WideCatalog().getSeatMap(id),
+        ),
+      ],
+    );
+    final viewer = tester.widget<InteractiveViewer>(
+      find.byKey(const ValueKey('seat-map-interactive')),
+    );
+    final controller = viewer.transformationController!;
+    await tester.ensureVisible(find.byKey(const ValueKey('seat-zoom-in')));
+    await tester.tap(find.byKey(const ValueKey('seat-zoom-in')));
+    await tester.pump();
+    expect(controller.value.getMaxScaleOnAxis(), closeTo(1.25, 0.01));
+    await tester.tap(find.byKey(const ValueKey('seat-zoom-out')));
+    await tester.pump();
+    expect(controller.value.getMaxScaleOnAxis(), closeTo(1, 0.01));
+    await tester.tap(find.byKey(const ValueKey('seat-zoom-in')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('seat-zoom-reset')));
+    await tester.pump();
+    expect(controller.value.getMaxScaleOnAxis(), closeTo(1, 0.01));
+  });
+
   testWidgets('seat footer uses authoritative quote including surcharge', (
     tester,
   ) async {

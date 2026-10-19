@@ -13,6 +13,8 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../movie/data/models/catalog_enums.dart';
+import '../../../movie/data/repositories/catalog_providers.dart';
+import '../../../auth/application/auth_session.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../../../booking/presentation/widgets/booking_progress.dart';
 import '../../../booking/presentation/widgets/booking_hold_countdown.dart';
@@ -30,10 +32,142 @@ class SeatSelectionPage extends ConsumerStatefulWidget {
   ConsumerState<SeatSelectionPage> createState() => _SeatSelectionPageState();
 }
 
-class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
+class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage>
+    with WidgetsBindingObserver {
+  final TransformationController _seatTransformation =
+      TransformationController();
+  double _seatViewportWidth = 0;
   Timer? _timer;
+  Timer? _seatRefreshTimer;
+  Timer? _seatStaleTimer;
+  ShowtimeSeatMapDto? _lastSeatMap;
+  DateTime? _lastSeatMapAt;
+  bool _refreshingSeats = false;
+  bool _refreshAgain = false;
+  bool _seatMapFailed = false;
+  bool _initialRefreshStarted = false;
+  bool _expiryCheckRunning = false;
+  int _refreshGeneration = 0;
+  static const _seatRefreshInterval = Duration(seconds: 8);
+  static const _seatMapMaxAge = Duration(seconds: 20);
   bool _expiryDialogOpen = false;
   bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _seatRefreshTimer = Timer.periodic(_seatRefreshInterval, (_) {
+      if (mounted &&
+          ModalRoute.of(context)?.isCurrent == true &&
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        _refreshSeatMap();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant SeatSelectionPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showtimeId != widget.showtimeId) {
+      _seatStaleTimer?.cancel();
+      _refreshGeneration++;
+      _lastSeatMap = null;
+      _lastSeatMapAt = null;
+      _refreshingSeats = false;
+      _refreshAgain = false;
+      _seatMapFailed = false;
+      _initialRefreshStarted = false;
+      _initialized = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        mounted &&
+        ModalRoute.of(context)?.isCurrent == true) {
+      _refreshSeatMap();
+    } else if (mounted) {
+      setState(() => _lastSeatMapAt = null);
+    }
+  }
+
+  Future<void> _refreshSeatMap() async {
+    if (!mounted) return;
+    if (_refreshingSeats) {
+      _refreshAgain = true;
+      return;
+    }
+    final showtimeId = widget.showtimeId;
+    final generation = ++_refreshGeneration;
+    setState(() => _refreshingSeats = true);
+    try {
+      final map = await ref.refresh(seatMapProvider(showtimeId).future);
+      if (!mounted ||
+          generation != _refreshGeneration ||
+          widget.showtimeId != showtimeId) {
+        return;
+      }
+      if (map.showtime.id != showtimeId) {
+        throw StateError('Seat map does not match showtime');
+      }
+      if (!_initialized) _beginForMap(map);
+      ref.read(bookingEntryProvider.notifier).reconcileSeatMap(map);
+      setState(() {
+        _lastSeatMap = map;
+        _lastSeatMapAt = ref.read(appClockProvider).now();
+        _seatMapFailed = false;
+      });
+      _seatStaleTimer?.cancel();
+      _seatStaleTimer = Timer(_seatMapMaxAge, () {
+        if (mounted) setState(() {});
+      });
+    } catch (_) {
+      if (!mounted || generation != _refreshGeneration) return;
+      final firstFailure = !_seatMapFailed;
+      setState(() => _seatMapFailed = true);
+      if (firstFailure && _lastSeatMap != null) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Không tải được trạng thái ghế mới. Vui lòng thử lại.',
+            ),
+            action: SnackBarAction(
+              label: 'Thử lại',
+              onPressed: _refreshSeatMap,
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted && generation == _refreshGeneration) {
+        setState(() => _refreshingSeats = false);
+        if (_refreshAgain) {
+          _refreshAgain = false;
+          _refreshSeatMap();
+        }
+      }
+    }
+  }
+
+  void _beginForMap(ShowtimeSeatMapDto map) {
+    if (_initialized || map.showtime.id != widget.showtimeId) return;
+    _initialized = true;
+    ref
+        .read(bookingEntryProvider.notifier)
+        .begin(
+          movieId: map.showtime.movieId,
+          movieAgeRating: map.showtime.movieAgeRating,
+          showtimeId: widget.showtimeId,
+          couplePairs: {
+            for (final seat in map.seats)
+              if (seat.seatType.normalized == CatalogSeatType.couple)
+                for (final partner in _seatGroup(seat, map.seats))
+                  if (partner != seat.seatId) seat.seatId: partner,
+          },
+        );
+  }
 
   Future<void> _changeTicket(TicketType type, int next) async {
     final controller = ref.read(bookingEntryProvider.notifier);
@@ -89,23 +223,42 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     final edited = await ref
         .read(bookingEntryProvider.notifier)
         .editHeldSelection();
-    if (edited) {
+    if (edited && mounted) {
       _timer?.cancel();
       ref.invalidate(bookingCompletionProvider);
-      ref.invalidate(seatMapProvider(widget.showtimeId));
+      setState(() => _lastSeatMapAt = null);
+      await _refreshSeatMap();
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _seatRefreshTimer?.cancel();
+    _seatStaleTimer?.cancel();
+    _refreshGeneration++;
     _timer?.cancel();
+    _seatTransformation.dispose();
     super.dispose();
+  }
+
+  void _changeSeatZoom(double nextScale) {
+    final current = _seatTransformation.value.getMaxScaleOnAxis();
+    final target = nextScale.clamp(1.0, 2.5);
+    if ((target - current).abs() < 0.01) return;
+    final center = _seatViewportWidth / 2;
+    final ratio = target / current;
+    _seatTransformation.value = Matrix4.translationValues(center, 0, 0)
+      ..multiply(Matrix4.diagonal3Values(ratio, ratio, 1))
+      ..multiply(Matrix4.translationValues(-center, 0, 0))
+      ..multiply(_seatTransformation.value);
   }
 
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) async {
-      if (!mounted) return;
+      if (!mounted || _expiryCheckRunning) return;
+      _expiryCheckRunning = true;
       try {
         final expired = await ref
             .read(bookingEntryProvider.notifier)
@@ -113,6 +266,8 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
         if (expired && mounted) await _showExpiredDialog();
       } catch (_) {
         // Retry on the next tick; local expiry still prevents submitting.
+      } finally {
+        _expiryCheckRunning = false;
       }
     });
   }
@@ -127,7 +282,7 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
       builder: (context) => AlertDialog(
         title: const Text('Đã hết thời gian giữ ghế'),
         content: const Text(
-          'Ghế đã được giải phóng. Bạn có thể chọn lại hoặc quay về lịch chiếu.',
+          'Phiên giữ ghế đã hết. Hãy tải lại sơ đồ ghế trước khi chọn lại.',
         ),
         actions: [
           OutlinedButton(
@@ -145,6 +300,7 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     if (!mounted) return;
     if (retry == true) {
       ref.read(bookingEntryProvider.notifier).restartSelection();
+      _refreshSeatMap();
     } else {
       await ref.read(bookingEntryProvider.notifier).abandon();
       if (mounted) context.go(AppRoutes.showtimes);
@@ -240,7 +396,25 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     });
     final seatMapState = ref.watch(seatMapProvider(widget.showtimeId));
     final session = ref.watch(bookingEntryProvider);
-    if (seatMapState.isLoading) {
+    final candidateMap = _lastSeatMap ?? seatMapState.asData?.value;
+    final seatMap = candidateMap?.showtime.id == widget.showtimeId
+        ? candidateMap
+        : null;
+    if (!_initialRefreshStarted && candidateMap != null) {
+      _initialRefreshStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (seatMap != null) {
+          _lastSeatMap = seatMap;
+          _beginForMap(seatMap);
+        }
+        _refreshSeatMap();
+      });
+    }
+    if (seatMap == null && (seatMapState.hasError || _seatMapFailed)) {
+      return _pendingShell(RepositoryStatePane.error(onRetry: _refreshSeatMap));
+    }
+    if (seatMap == null) {
       return _pendingShell(
         const RepositoryStatePane.loading(
           layout: RepositorySkeleton.poster,
@@ -248,33 +422,11 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
         ),
       );
     }
-    if (seatMapState.hasError) {
-      return _pendingShell(
-        RepositoryStatePane.error(
-          onRetry: () => ref.invalidate(seatMapProvider(widget.showtimeId)),
-        ),
-      );
-    }
-    final seatMap = seatMapState.requireValue;
-    if (!_initialized) {
-      _initialized = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref
-            .read(bookingEntryProvider.notifier)
-            .begin(
-              movieId: seatMap.showtime.movieId,
-              movieAgeRating: seatMap.showtime.movieAgeRating,
-              showtimeId: widget.showtimeId,
-              couplePairs: {
-                for (final seat in seatMap.seats)
-                  if (seat.seatType.normalized == CatalogSeatType.couple)
-                    for (final partner in _seatGroup(seat, seatMap.seats))
-                      if (partner != seat.seatId) seat.seatId: partner,
-              },
-            );
-      });
-    }
+    final mapFresh =
+        _lastSeatMapAt != null &&
+        ref.read(appClockProvider).now().difference(_lastSeatMapAt!) <
+            _seatMapMaxAge &&
+        !_seatMapFailed;
 
     final selectedSeats = seatMap.seats
         .where((seat) => session.selectedSeatIds.contains(seat.seatId))
@@ -298,6 +450,19 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
     }
     final holding = session.phase == BookingEntryPhase.holding;
     final submitting = session.phase == BookingEntryPhase.submittingHold;
+    final currentUserId = ref.watch(authSessionProvider).session?.user.id;
+    final ownHoldSeatIds =
+        holding &&
+            session.booking?.userId == currentUserId &&
+            currentUserId != null &&
+            session.booking?.showtimeId == widget.showtimeId &&
+            ref.read(bookingEntryProvider.notifier).remainingHold() >
+                Duration.zero
+        ? {
+            ...session.booking!.seats.map((seat) => seat.seatId),
+            ...session.booking!.tickets.map((ticket) => ticket.seatId),
+          }
+        : <int>{};
 
     return PopScope(
       canPop: false,
@@ -324,7 +489,37 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ShowtimeSummary(seatMap: seatMap),
+                    _ShowtimeSummary(
+                      seatMap: seatMap,
+                      statusControl: !holding && !mapFresh
+                          ? _refreshingSeats && !_seatMapFailed
+                                ? const Tooltip(
+                                    message: 'Đang cập nhật trạng thái ghế',
+                                    child: Center(
+                                      child: SizedBox.square(
+                                        dimension: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.gold,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : IconButton(
+                                    key: const ValueKey(
+                                      'seat-map-stale-warning',
+                                    ),
+                                    tooltip: _seatMapFailed
+                                        ? 'Tải lại sơ đồ ghế'
+                                        : 'Sơ đồ ghế quá cũ. Tải lại',
+                                    onPressed: _refreshSeatMap,
+                                    icon: const Icon(
+                                      Icons.sync_problem,
+                                      color: AppColors.gold,
+                                    ),
+                                  )
+                          : null,
+                    ),
                     if ((seatMap.showtime.surchargeAmount?.amount ?? 0) >
                         0) ...[
                       const SizedBox(height: AppSpacing.sm),
@@ -351,38 +546,53 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.md),
+                    _SeatZoomToolbar(
+                      controller: _seatTransformation,
+                      onZoomIn: () => _changeSeatZoom(
+                        _seatTransformation.value.getMaxScaleOnAxis() + 0.25,
+                      ),
+                      onZoomOut: () => _changeSeatZoom(
+                        _seatTransformation.value.getMaxScaleOnAxis() - 0.25,
+                      ),
+                      onReset: () =>
+                          _seatTransformation.value = Matrix4.identity(),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                     const _ScreenIndicator(),
                     const SizedBox(height: AppSpacing.md),
-                    InteractiveViewer(
-                      minScale: 1,
-                      maxScale: 2.2,
-                      boundaryMargin: const EdgeInsets.all(24),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: _SeatGrid(
-                          seatMap: seatMap,
-                          assignments: session.assignments,
-                          unavailableSeatIds: session.unavailableSeatIds,
-                          enabled: !holding && !submitting,
-                          onSeat: (seat) => ref
-                              .read(bookingEntryProvider.notifier)
-                              .toggleSeatIds(
-                                _seatGroup(seat, seatMap.seats),
-                                unavailableSeatIds: seatMap.seats
-                                    .where((item) => !item.selectable)
-                                    .map((item) => item.seatId)
-                                    .toSet(),
-                              ),
-                        ),
-                      ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        _seatViewportWidth = constraints.maxWidth;
+                        return InteractiveViewer(
+                          key: const ValueKey('seat-map-interactive'),
+                          transformationController: _seatTransformation,
+                          minScale: 1,
+                          maxScale: 2.5,
+                          boundaryMargin: const EdgeInsets.all(24),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: _SeatGrid(
+                              seatMap: seatMap,
+                              assignments: session.assignments,
+                              unavailableSeatIds: session.unavailableSeatIds,
+                              ownHoldSeatIds: ownHoldSeatIds,
+                              enabled: mapFresh && !holding && !submitting,
+                              onSeat: (seat) => ref
+                                  .read(bookingEntryProvider.notifier)
+                                  .toggleSeatIds(
+                                    _seatGroup(seat, seatMap.seats),
+                                    unavailableSeatIds: seatMap.seats
+                                        .where((item) => !item.selectable)
+                                        .map((item) => item.seatId)
+                                        .toSet(),
+                                  ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    const _SeatLegend(),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Ghế đôi cần 2 vé cùng loại. Vuốt ngang hoặc phóng to để xem sơ đồ.',
-                      style: AppTextStyles.caption,
-                    ),
+                    _SeatLegend(ageRating: seatMap.showtime.movieAgeRating),
                     if (session.assignments.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.md),
                       _AssignmentSummary(
@@ -390,11 +600,6 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
                         seats: seatMap.seats,
                       ),
                     ],
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Phân loại phim: ${seatMap.showtime.movieAgeRating ?? "P"}${seatMap.showtime.movieAgeRating == "K" ? " • Trẻ dưới 13 tuổi cần người lớn đi cùng." : ""}',
-                      style: AppTextStyles.caption,
-                    ),
                     if (session.message != null) ...[
                       const SizedBox(height: AppSpacing.sm),
                       Text(
@@ -421,6 +626,7 @@ class _SeatSelectionPageState extends ConsumerState<SeatSelectionPage> {
               submitting: submitting,
               onContinue:
                   submitting ||
+                      (!holding && !mapFresh) ||
                       !session.assignmentComplete ||
                       (!holding && quote == null)
                   ? null
@@ -640,8 +846,9 @@ class _AssignmentSummary extends StatelessWidget {
 }
 
 class _ShowtimeSummary extends StatelessWidget {
-  const _ShowtimeSummary({required this.seatMap});
+  const _ShowtimeSummary({required this.seatMap, this.statusControl});
   final ShowtimeSeatMapDto seatMap;
+  final Widget? statusControl;
   @override
   Widget build(BuildContext context) {
     final showtime = seatMap.showtime;
@@ -655,9 +862,16 @@ class _ShowtimeSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            showtime.movieTitle ?? 'Chọn ghế',
-            style: AppTextStyles.cardTitle,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  showtime.movieTitle ?? 'Chọn ghế',
+                  style: AppTextStyles.cardTitle,
+                ),
+              ),
+              SizedBox.square(dimension: 48, child: statusControl),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
@@ -694,11 +908,98 @@ class _ScreenIndicator extends StatelessWidget {
   );
 }
 
+class _SeatZoomToolbar extends StatelessWidget {
+  const _SeatZoomToolbar({
+    required this.controller,
+    required this.onZoomIn,
+    required this.onZoomOut,
+    required this.onReset,
+  });
+
+  final TransformationController controller;
+  final VoidCallback onZoomIn;
+  final VoidCallback onZoomOut;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<Matrix4>(
+    valueListenable: controller,
+    builder: (context, matrix, _) {
+      final scale = matrix.getMaxScaleOnAxis();
+      final atOrigin =
+          scale <= 1.01 &&
+          matrix.storage[12].abs() < 0.5 &&
+          matrix.storage[13].abs() < 0.5;
+      return Container(
+        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceRaised,
+          borderRadius: AppRadii.control,
+          border: Border.all(color: AppColors.borderStrong),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.event_seat_outlined,
+                  color: AppColors.gold,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text('Sơ đồ ghế', style: AppTextStyles.cardTitle),
+                ),
+                Text(
+                  '${(scale * 100).round()}%',
+                  key: const ValueKey('seat-zoom-level'),
+                  style: AppTextStyles.emphasis.copyWith(color: AppColors.gold),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Chụm hai ngón hoặc dùng nút để phóng to',
+                    style: AppTextStyles.caption,
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('seat-zoom-out'),
+                  tooltip: 'Thu nhỏ sơ đồ',
+                  onPressed: scale <= 1.01 ? null : onZoomOut,
+                  icon: const Icon(Icons.remove_circle_outline),
+                ),
+                IconButton(
+                  key: const ValueKey('seat-zoom-in'),
+                  tooltip: 'Phóng to sơ đồ',
+                  onPressed: scale >= 2.49 ? null : onZoomIn,
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+                IconButton(
+                  key: const ValueKey('seat-zoom-reset'),
+                  tooltip: 'Đặt lại sơ đồ',
+                  onPressed: atOrigin ? null : onReset,
+                  icon: const Icon(Icons.center_focus_strong_outlined),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class _SeatGrid extends StatelessWidget {
   const _SeatGrid({
     required this.seatMap,
     required this.assignments,
     required this.unavailableSeatIds,
+    required this.ownHoldSeatIds,
     required this.enabled,
     required this.onSeat,
   });
@@ -706,6 +1007,7 @@ class _SeatGrid extends StatelessWidget {
   final ShowtimeSeatMapDto seatMap;
   final Map<int, SeatTicketAssignment> assignments;
   final Set<int> unavailableSeatIds;
+  final Set<int> ownHoldSeatIds;
   final bool enabled;
   final ValueChanged<ShowtimeSeatDto> onSeat;
 
@@ -751,6 +1053,7 @@ class _SeatGrid extends StatelessWidget {
                       forcedUnavailable: unavailableSeatIds.contains(
                         seat.seatId,
                       ),
+                      ownHold: ownHoldSeatIds.contains(seat.seatId),
                       enabled: enabled,
                       onTap: () => onSeat(seat),
                     ),
@@ -776,6 +1079,7 @@ class _SeatButton extends StatelessWidget {
     required this.seat,
     required this.assignment,
     required this.forcedUnavailable,
+    required this.ownHold,
     required this.enabled,
     required this.onTap,
   });
@@ -783,29 +1087,45 @@ class _SeatButton extends StatelessWidget {
   final ShowtimeSeatDto seat;
   final SeatTicketAssignment? assignment;
   final bool forcedUnavailable;
+  final bool ownHold;
   final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final selected = assignment != null;
+    final selected =
+        assignment != null &&
+        (seat.selectable ||
+            (ownHold && seat.runtimeStatus == SeatRuntimeStatus.holding));
     final available = seat.selectable && !forcedUnavailable;
+    final occupied = !available && !ownHold;
+    final unavailableReason = switch (seat.runtimeStatus) {
+      SeatRuntimeStatus.holding => 'đang được giữ',
+      SeatRuntimeStatus.booked || SeatRuntimeStatus.checkedIn => 'đã bán',
+      _ => 'không khả dụng',
+    };
+    const availableStandard = Color(0xFF32343A);
+    const unavailable = Color(0xFF101114);
     final color = selected
         ? _ticketColor(assignment!.ticketType)
         : !available
-        ? AppColors.border
+        ? unavailable
         : switch (seat.seatType.normalized) {
             CatalogSeatType.vip => AppColors.purple,
             CatalogSeatType.couple => AppColors.adultBadge,
-            _ => AppColors.surfaceRaised,
+            _ => availableStandard,
           };
     final label = '${seat.rowLabel}${seat.seatNumber}';
     return Semantics(
-      button: true,
+      button: available && enabled,
       enabled: available && enabled,
       selected: selected,
       label:
-          'Ghế $label, ${seat.seatType.normalized.wireValue}, ${available ? 'có thể chọn' : 'không khả dụng'}',
+          'Ghế $label, ${seat.seatType.normalized.wireValue}, ${ownHold
+              ? 'bạn đang giữ'
+              : available
+              ? 'có thể chọn'
+              : unavailableReason}',
       child: InkWell(
         key: ValueKey('seat-${seat.seatId}'),
         onTap: available && enabled ? onTap : null,
@@ -818,22 +1138,41 @@ class _SeatButton extends StatelessWidget {
             color: color,
             borderRadius: AppRadii.small,
             border: Border.all(
-              color: selected ? AppColors.text : AppColors.border,
-              width: selected ? 2 : 1,
+              color: selected
+                  ? AppColors.text
+                  : available
+                  ? const Color(0xFF9A9CA4)
+                  : const Color(0xFF303137),
+              width: selected
+                  ? 2.5
+                  : available
+                  ? 1.5
+                  : 1,
             ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(4),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                style: AppTextStyles.meta.copyWith(
-                  color: AppColors.text,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
+            child: occupied
+                ? Icon(
+                    switch (seat.runtimeStatus) {
+                      SeatRuntimeStatus.holding => Icons.hourglass_top_rounded,
+                      SeatRuntimeStatus.booked ||
+                      SeatRuntimeStatus.checkedIn => Icons.lock_outline_rounded,
+                      _ => Icons.block_rounded,
+                    },
+                    size: 18,
+                    color: AppColors.textDisabled,
+                  )
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      style: AppTextStyles.meta.copyWith(
+                        color: AppColors.text,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
           ),
         ),
       ),
@@ -842,42 +1181,122 @@ class _SeatButton extends StatelessWidget {
 }
 
 class _SeatLegend extends StatelessWidget {
-  const _SeatLegend();
+  const _SeatLegend({required this.ageRating});
+
+  final String? ageRating;
 
   @override
-  Widget build(BuildContext context) => const Wrap(
-    spacing: AppSpacing.sm,
-    runSpacing: AppSpacing.xs,
-    children: [
-      _LegendItem(label: 'Thường', color: AppColors.surfaceRaised),
-      _LegendItem(label: 'VIP', color: AppColors.purple),
-      _LegendItem(label: 'Ghế đôi', color: AppColors.adultBadge),
-      _LegendItem(label: 'Đang chọn', color: AppColors.gold),
-      _LegendItem(label: 'Đã giữ/đặt/bảo trì', color: AppColors.border),
-    ],
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(AppSpacing.sm),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceRaised,
+      borderRadius: AppRadii.control,
+      border: Border.all(color: AppColors.borderStrong),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Chú giải ghế', style: AppTextStyles.cardTitle),
+        const SizedBox(height: AppSpacing.sm),
+        const Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            _LegendItem(label: 'Thường', color: Color(0xFF32343A)),
+            _LegendItem(label: 'VIP', color: AppColors.purple),
+            _LegendItem(label: 'Ghế đôi', color: AppColors.adultBadge),
+            _LegendItem(label: 'Đang chọn', color: AppColors.gold),
+            _LegendItem(
+              label: 'Đang giữ',
+              color: Color(0xFF101114),
+              icon: Icons.hourglass_top_rounded,
+            ),
+            _LegendItem(
+              label: 'Đã bán',
+              color: Color(0xFF101114),
+              icon: Icons.lock_outline_rounded,
+            ),
+            _LegendItem(
+              label: 'Không khả dụng',
+              color: Color(0xFF101114),
+              icon: Icons.block_rounded,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const Divider(color: AppColors.borderStrong, height: 1),
+        const SizedBox(height: AppSpacing.sm),
+        const _SeatInfoRow(
+          icon: Icons.event_seat_outlined,
+          text: 'Ghế đôi cần 2 vé cùng loại. Vuốt ngang để xem hết sơ đồ.',
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        _SeatInfoRow(
+          icon: Icons.local_movies_outlined,
+          text:
+              'Phân loại phim: ${ageRating ?? "P"}${ageRating == "K" ? " • Trẻ dưới 13 tuổi cần người lớn đi cùng." : ""}',
+        ),
+      ],
+    ),
   );
 }
 
 class _LegendItem extends StatelessWidget {
-  const _LegendItem({required this.label, required this.color});
+  const _LegendItem({required this.label, required this.color, this.icon});
   final String label;
   final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceHigh,
+      borderRadius: AppRadii.pill,
+      border: Border.all(color: AppColors.borderStrong),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null)
+          Icon(icon, size: 16, color: AppColors.textMuted)
+        else
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: AppRadii.small,
+              border: Border.all(color: AppColors.textMuted),
+            ),
+          ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SeatInfoRow extends StatelessWidget {
+  const _SeatInfoRow({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Container(
-        width: 14,
-        height: 14,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: AppRadii.small,
-          border: Border.all(color: AppColors.textMuted),
-        ),
-      ),
-      const SizedBox(width: 4),
-      Flexible(child: Text(label, style: AppTextStyles.caption)),
+      Icon(icon, size: 18, color: AppColors.gold),
+      const SizedBox(width: 8),
+      Expanded(child: Text(text, style: AppTextStyles.body)),
     ],
   );
 }

@@ -1,6 +1,6 @@
 # UI-16 — Ghế đã bán/đang giữ và dữ liệu khả dụng
 
-Ngày lập: **17/10/2026**. Ưu tiên: **P0**. Trạng thái: **planned**.
+Ngày lập: **17/10/2026**. Ưu tiên: **P0**. Trạng thái: **Mobile đã triển khai và kiểm thử ngày 19/10/2026; QA hai khách thật và độ tin cậy dữ liệu BE còn mở**. Xem [UI16-RESULTS.md](UI16-RESULTS.md).
 
 ## Hiện trạng và nguồn dữ liệu
 

@@ -169,12 +169,59 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       state = _copy(movieAgeRating: movieAgeRating, couplePairs: couplePairs);
       return;
     }
+    _generation++;
     state = BookingEntryState(
       phase: BookingEntryPhase.selectingSeats,
       movieId: movieId,
       movieAgeRating: movieAgeRating,
       couplePairs: couplePairs,
       showtimeId: showtimeId,
+    );
+  }
+
+  /// Applies a server seat map without changing ticket quantities or choosing
+  /// replacement seats on the customer's behalf.
+  void reconcileSeatMap(
+    ShowtimeSeatMapDto map, {
+    bool duringHoldCheck = false,
+  }) {
+    if (map.showtime.id != state.showtimeId ||
+        (state.phase != BookingEntryPhase.selectingSeats &&
+            !(duringHoldCheck &&
+                state.phase == BookingEntryPhase.submittingHold))) {
+      return;
+    }
+    final unavailable = map.seats
+        .where((seat) => !seat.selectable)
+        .map((seat) => seat.seatId)
+        .toSet();
+    final present = map.seats.map((seat) => seat.seatId).toSet();
+    final lost = state.selectedSeatIds
+        .where((id) => unavailable.contains(id) || !present.contains(id))
+        .toSet();
+    final removed = <int>{...lost};
+    for (final id in lost) {
+      final partner = state.couplePairs[id];
+      if (partner != null) removed.add(partner);
+    }
+    final nextAssignments = Map<int, SeatTicketAssignment>.from(
+      state.assignments,
+    )..removeWhere((id, _) => removed.contains(id));
+    if (removed.isEmpty &&
+        unavailable.length == state.unavailableSeatIds.length &&
+        unavailable.containsAll(state.unavailableSeatIds)) {
+      return;
+    }
+    final labels = map.seats
+        .where((seat) => removed.contains(seat.seatId))
+        .map((seat) => '${seat.rowLabel}${seat.seatNumber}')
+        .toList(growable: false);
+    state = _copy(
+      assignments: nextAssignments,
+      unavailableSeatIds: unavailable,
+      message: removed.isEmpty
+          ? state.message
+          : 'Ghế ${labels.join(', ')} không còn trống. Vui lòng chọn lại ghế.',
     );
   }
 
@@ -328,6 +375,23 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     final mock = ref.read(seatHoldRepositoryProvider).canEnterMockCheckout;
     state = _copy(phase: BookingEntryPhase.submittingHold, clearMessage: true);
     try {
+      final freshMap = await ref.refresh(seatMapProvider(showtimeId).future);
+      if (!ref.mounted ||
+          generation != _generation ||
+          state.showtimeId != showtimeId) {
+        return null;
+      }
+      if (freshMap.showtime.id != showtimeId) {
+        throw StateError('Seat map does not match showtime');
+      }
+      reconcileSeatMap(freshMap, duringHoldCheck: true);
+      if (!state.assignmentComplete || state.selectedSeatIds.isEmpty) {
+        state = _copy(
+          phase: BookingEntryPhase.selectingSeats,
+          message: state.message ?? 'Sơ đồ ghế đã thay đổi. Hãy chọn lại ghế.',
+        );
+        return null;
+      }
       final tickets = state.assignments.values
           .map(
             (assignment) => TicketSelectionDto(
@@ -348,7 +412,11 @@ class BookingEntryController extends Notifier<BookingEntryState> {
               tickets: tickets,
             ),
           );
-      if (!ref.mounted || generation != _generation) return null;
+      if (!ref.mounted ||
+          generation != _generation ||
+          state.showtimeId != showtimeId) {
+        return null;
+      }
       state = _copy(phase: BookingEntryPhase.holding, booking: booking);
       final userId = ref.read(authSessionProvider).session?.user.id;
       if (userId != null && !mock) {
@@ -379,30 +447,14 @@ class BookingEntryController extends Notifier<BookingEntryState> {
         }
       }
       if (!ref.mounted || generation != _generation) return null;
-      final availableIds = freshMap?.seats
-          .where((seat) => seat.selectable)
-          .map((seat) => seat.seatId)
-          .toSet();
-      final assignments = availableIds == null
-          ? state.assignments
-          : Map<int, SeatTicketAssignment>.fromEntries(
-              state.assignments.entries.where(
-                (entry) => availableIds.contains(entry.key),
-              ),
-            );
+      if (freshMap != null) {
+        reconcileSeatMap(freshMap, duringHoldCheck: true);
+      }
       state = _copy(
         phase: BookingEntryPhase.selectingSeats,
-        unavailableSeatIds: availableIds == null
-            ? state.unavailableSeatIds
-            : {
-                ...state.unavailableSeatIds,
-                ...state.selectedSeatIds.where(
-                  (id) => !availableIds.contains(id),
-                ),
-              },
-        assignments: assignments,
         message: error.type == ApiErrorType.conflict
-            ? 'Ghế đã thay đổi trạng thái. Hãy chọn lại ghế còn trống.'
+            ? state.message ??
+                  'Ghế đã thay đổi trạng thái. Hãy chọn lại ghế còn trống.'
             : error.message,
       );
       return null;
@@ -410,7 +462,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       if (!ref.mounted || generation != _generation) return null;
       state = _copy(
         phase: BookingEntryPhase.selectingSeats,
-        message: error.toString(),
+        message: 'Chưa kiểm tra được trạng thái ghế. Vui lòng thử lại.',
       );
       return null;
     }
@@ -418,6 +470,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
 
   Future<bool> refreshExpiry() async {
     final booking = state.booking;
+    final generation = _generation;
     if (booking == null || !state.hasActiveHold) return false;
     if (remainingHold() == Duration.zero) {
       state = _copy(
@@ -429,6 +482,11 @@ class BookingEntryController extends Notifier<BookingEntryState> {
     final refreshed = await ref
         .read(seatHoldRepositoryProvider)
         .getBooking(booking.id);
+    if (!ref.mounted ||
+        generation != _generation ||
+        state.booking?.id != booking.id) {
+      return false;
+    }
     if (refreshed.status != BookingStatus.expired) return false;
     state = _copy(
       phase: BookingEntryPhase.expired,
@@ -478,9 +536,15 @@ class BookingEntryController extends Notifier<BookingEntryState> {
 
   Future<bool> editHeldSelection() async {
     final booking = state.booking;
+    final generation = _generation;
     if (booking == null || !state.hasActiveHold) return true;
     try {
       await ref.read(seatHoldRepositoryProvider).cancel(booking.id);
+      if (!ref.mounted ||
+          generation != _generation ||
+          state.booking?.id != booking.id) {
+        return false;
+      }
       state = _copy(
         phase: BookingEntryPhase.selectingSeats,
         clearBooking: true,
@@ -494,6 +558,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
   }
 
   void restartSelection() {
+    _generation++;
     state = BookingEntryState(
       phase: BookingEntryPhase.selectingSeats,
       movieId: state.movieId,

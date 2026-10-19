@@ -55,11 +55,11 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 
 ## Bổ sung theo phản hồi ngày 17/10 — Plan 16–23
 
-Trạng thái: **đã đối chiếu source và lập kế hoạch, chưa triển khai các batch 16–23**. Nhận xét, bằng chứng FE/BE và dependencies: [REVIEW-2026-10-17.md](REVIEW-2026-10-17.md).
+Trạng thái: **UI-16 đã triển khai phía Mobile ngày 19/10; độ tin cậy occupancy của BE và QA hai khách thật còn mở. UI-17–23 chưa triển khai.** Nhận xét, bằng chứng FE/BE và dependencies: [REVIEW-2026-10-17.md](REVIEW-2026-10-17.md).
 
 | Plan | Ưu tiên | Nội dung |
 | --- | --- | --- |
-| [UI-16](16-REALTIME-SEAT-AVAILABILITY.md) | P0 | Khả dụng ghế đã bán/đang hold, độ mới seat-map và conflict |
+| [UI-16](16-REALTIME-SEAT-AVAILABILITY.md) | P0 | Mobile đã làm mới/chặn ghế, preflight và conflict; [kết quả](UI16-RESULTS.md), còn QA hai khách và BE occupancy |
 | [UI-17](17-PAYMENT-RETURN-TO-APP.md) | P0 | VNPay quay lại app cho vé và food; return/landing contract |
 | [UI-18](18-CINEMA-DIRECTORY.md) | P1 | Danh sách và chi tiết rạp, nối lịch chiếu theo rạp |
 | [UI-19](19-UNIFIED-SHOWTIME-FILTERS.md) | P1 | Lịch chiếu chung với bộ lọc phim/rạp/ngày có thể xóa |
@@ -90,6 +90,7 @@ Kết quả UI-12: [UI12-RESULTS.md](UI12-RESULTS.md).
 Kết quả UI-13: [UI13-RESULTS.md](UI13-RESULTS.md).
 Kết quả UI-14: [UI14-RESULTS.md](UI14-RESULTS.md).
 Kết quả UI-15: [UI15-RESULTS.md](UI15-RESULTS.md).
+Kết quả UI-16: [UI16-RESULTS.md](UI16-RESULTS.md).
 
 - Kiểm tra chiều rộng 320, 360, 390, 430 logical px và tăng cỡ chữ: không overflow, không che CTA, không mất thông tin quan trọng.
 - Vùng chạm tối thiểu 48 logical px; thân nút có thể gọn hơn nếu vùng chạm đủ lớn.
