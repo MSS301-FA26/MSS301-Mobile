@@ -1,12 +1,16 @@
 # UI-17 — Thanh toán VNPay quay lại app
 
-Ngày lập: **17/10/2026**. Ưu tiên: **P0**. Trạng thái: **planned — có phụ thuộc return/browser**.
+Ngày lập: **17/10/2026**. Ưu tiên: **P0**. Trạng thái ngày 19/10: **đã triển khai Mobile bằng WebView; chờ QA sandbox thật trên Android/iOS**. Xem [UI17-RESULTS.md](UI17-RESULTS.md).
 
 ## Nguyên nhân hiện tại
 
 `UrlPaymentLauncher` mở browser/custom tab (`LaunchMode.inAppBrowserView`), không phải WebView có NavigationDelegate. BE ký `vnp_ReturnUrl` từ `VNPAY_RETURN_URL`; `PaymentController.vnpayReturn` thử xử lý kết quả rồi redirect theo `PAYMENT_SUCCESS_REDIRECT_URL`. Người dùng quan sát trang FE `localhost:3000` là browser redirect, không phải Mobile chủ động gọi API FE để xác nhận thành công.
 
 Mobile hiện refresh khi resume/poll nhưng chưa có receiver link để định tuyến cold start/warm start trở lại đúng giao dịch.
+
+**Phương án đã chọn:** VNPay xác nhận [MobileApp có thể mở URL thanh toán trong WebView và đóng WebView để về app](https://sandbox.vnpayment.vn/apis/docs/faqs/). Mobile dùng WebView cho vé và đơn bắp nước. BE vẫn xử lý URL return đã ký, rồi 302 tới FE redirect; Mobile chặn đúng origin + path của FE redirect trước khi WebView tải trang FE. Chặn URL này chỉ là tín hiệu quay về; trạng thái giao dịch luôn đọc lại từ BE.
+
+`PAYMENT_REDIRECT_URL` trong Mobile phải khớp `PAYMENT_SUCCESS_REDIRECT_URL` của payment-service; mặc định `http://localhost:3000/payment-callback` cho môi trường hiện tại. Nếu BE đổi redirect, truyền `--dart-define=PAYMENT_REDIRECT_URL=<URL>` khi build/chạy. Trên emulator, BE return `localhost:8080` cần `adb reverse tcp:8080 tcp:8080`. Thiết bị thật cần return HTTPS truy cập được từ thiết bị.
 
 ## Phương án triển khai và điều kiện
 

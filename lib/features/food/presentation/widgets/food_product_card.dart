@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../movie/data/models/food_quote_dto.dart';
 
@@ -166,10 +167,13 @@ class FoodProductCard extends StatelessWidget {
     backgroundColor: AppColors.surface,
     builder: (context) => SafeArea(
       top: false,
-      child: SizedBox(
+      child: ConstrainedBox(
         key: ValueKey('food-details-sheet-${product.selectionKey}'),
-        height: MediaQuery.sizeOf(context).height * .8,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .82,
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
@@ -191,25 +195,30 @@ class FoodProductCard extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
+            Flexible(
+              fit: FlexFit.loose,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(child: _FoodImage(product: product, size: 190)),
-                    const SizedBox(height: 20),
-                    Text(product.name, style: AppTextStyles.sectionTitle),
-                    const SizedBox(height: 12),
+                    _FoodImage(
+                      product: product,
+                      width: double.infinity,
+                      height: 210,
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      product.price.format(),
-                      style: AppTextStyles.sectionTitle.copyWith(
+                      product.isCombo ? 'COMBO BẮP NƯỚC' : 'BẮP & NƯỚC',
+                      style: AppTextStyles.caption.copyWith(
                         color: AppColors.gold,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(_availability, style: AppTextStyles.body),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 6),
+                    Text(product.name, style: AppTextStyles.sectionTitle),
+                    const SizedBox(height: 12),
+                    Text(_availability, style: AppTextStyles.caption),
+                    const SizedBox(height: 16),
                     Text(
                       product.isCombo ? 'Thông tin combo' : 'Mô tả sản phẩm',
                       style: AppTextStyles.cardTitle,
@@ -225,6 +234,48 @@ class FoodProductCard extends StatelessWidget {
                 ),
               ),
             ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceRaised,
+                border: Border(top: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Giá mỗi phần',
+                          style: AppTextStyles.caption,
+                        ),
+                        Text(
+                          product.price.format(),
+                          style: AppTextStyles.cardTitle.copyWith(
+                            color: AppColors.gold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      key: ValueKey('food-details-add-${product.selectionKey}'),
+                      label: quantity > 0 ? 'Thêm 1 phần' : 'Thêm vào đơn',
+                      onPressed: enabled && product.isAvailable && quantity < 8
+                          ? () {
+                              Navigator.pop(context);
+                              onChange(1);
+                            }
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -233,9 +284,16 @@ class FoodProductCard extends StatelessWidget {
 }
 
 class _FoodImage extends StatelessWidget {
-  const _FoodImage({required this.product, this.size = 104});
+  const _FoodImage({
+    required this.product,
+    this.size = 104,
+    this.width,
+    this.height,
+  });
   final FoodProductDto product;
   final double size;
+  final double? width;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
@@ -256,8 +314,8 @@ class _FoodImage extends StatelessWidget {
       borderRadius: AppRadii.control,
       child: SizedBox(
         key: ValueKey('food-image-${product.selectionKey}'),
-        width: size,
-        height: size,
+        width: width ?? size,
+        height: height ?? size,
         child: ColoredBox(
           color: AppColors.surfaceRaised,
           child: valid

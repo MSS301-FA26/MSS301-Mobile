@@ -195,13 +195,22 @@ class _CheckoutComboPickerState extends ConsumerState<CheckoutComboPicker> {
                 for (final product in combos)
                   Container(
                     key: ValueKey('checkout-combo-${product.id}'),
-                    width: MediaQuery.sizeOf(context).width < 360 ? 240 : 270,
+                    width: (MediaQuery.sizeOf(context).width - 56).clamp(
+                      264.0,
+                      340.0,
+                    ),
                     margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: (state.quantities[product.selectionKey] ?? 0) > 0
+                          ? AppColors.goldSurface
+                          : AppColors.surface,
                       borderRadius: AppRadii.card,
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(
+                        color: (state.quantities[product.selectionKey] ?? 0) > 0
+                            ? AppColors.gold
+                            : AppColors.border,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,32 +218,50 @@ class _CheckoutComboPickerState extends ConsumerState<CheckoutComboPicker> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(
-                              width: 64,
-                              height: 64,
-                              child: product.imageUrl?.trim().isNotEmpty == true
-                                  ? AppImage(
-                                      asset: product.imageUrl!,
-                                      fit: BoxFit.cover,
-                                      semanticLabel: product.name,
-                                    )
-                                  : const Icon(
-                                      Icons.fastfood_outlined,
-                                      color: AppColors.gold,
-                                    ),
+                            ClipRRect(
+                              borderRadius: AppRadii.control,
+                              child: SizedBox(
+                                width: 88,
+                                height: 88,
+                                child:
+                                    product.imageUrl?.trim().isNotEmpty == true
+                                    ? AppImage(
+                                        asset: product.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        semanticLabel: product.name,
+                                      )
+                                    : const ColoredBox(
+                                        color: AppColors.surfaceRaised,
+                                        child: Icon(
+                                          Icons.fastfood_outlined,
+                                          color: AppColors.gold,
+                                        ),
+                                      ),
+                              ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    product.name,
-                                    style: AppTextStyles.cardTitle,
+                                    'COMBO',
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: AppColors.gold,
+                                    ),
                                   ),
                                   Text(
+                                    product.name,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.cardTitle.copyWith(
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
                                     product.price.format(),
-                                    style: AppTextStyles.body.copyWith(
+                                    style: AppTextStyles.cardTitle.copyWith(
                                       color: AppColors.gold,
                                     ),
                                   ),
@@ -243,14 +270,30 @@ class _CheckoutComboPickerState extends ConsumerState<CheckoutComboPicker> {
                             ),
                           ],
                         ),
+                        if (product.description?.trim().isNotEmpty == true) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            product.description!.trim(),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption,
+                          ),
+                        ],
                         if (!product.isAvailable)
                           const Text(
                             'Không thể thêm • Có thể giảm để sửa giỏ',
                             style: AppTextStyles.caption,
                           ),
+                        const SizedBox(height: 8),
+                        const Divider(height: 1, color: AppColors.border),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
+                            const Text(
+                              'Số lượng',
+                              style: AppTextStyles.caption,
+                            ),
+                            const Spacer(),
                             IconButton(
                               key: ValueKey(
                                 'checkout-minus-${product.selectionKey}',
@@ -263,11 +306,14 @@ class _CheckoutComboPickerState extends ConsumerState<CheckoutComboPicker> {
                                           0
                                   ? () => _change(ref, product, -1)
                                   : null,
-                              icon: const Icon(Icons.remove_circle_outline),
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                size: 28,
+                              ),
                             ),
                             Text(
-                              '${state.quantities[product.selectionKey] ?? 0}/8',
-                              style: AppTextStyles.body,
+                              '${state.quantities[product.selectionKey] ?? 0}',
+                              style: AppTextStyles.cardTitle,
                             ),
                             IconButton(
                               key: ValueKey(
@@ -282,7 +328,11 @@ class _CheckoutComboPickerState extends ConsumerState<CheckoutComboPicker> {
                                           8
                                   ? () => _change(ref, product, 1)
                                   : null,
-                              icon: const Icon(Icons.add_circle_outline),
+                              icon: const Icon(
+                                Icons.add_circle,
+                                size: 28,
+                                color: AppColors.gold,
+                              ),
                             ),
                           ],
                         ),

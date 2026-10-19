@@ -9,7 +9,10 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../orders/presentation/providers/orders_provider.dart';
+import '../../../auth/application/auth_session.dart';
 import '../../../payment/application/payment_launcher.dart';
+import '../../../payment/application/payment_return_checkpoint.dart';
+import '../../../payment/presentation/pages/payment_handoff_page.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_hold_countdown.dart';
 
@@ -27,6 +30,34 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
   var _attached = false;
   Timer? _pollTimer;
   var _pollCount = 0;
+
+  Future<void> _openRealPayment() async {
+    final payment = ref.read(bookingCompletionProvider).payment;
+    final userId = ref.read(authSessionProvider).session?.user.id;
+    if (payment == null ||
+        userId == null ||
+        payment.userId != userId ||
+        payment.bookingId == null ||
+        payment.id != widget.paymentId ||
+        payment.paymentUrl == null) {
+      return;
+    }
+    await ref
+        .read(paymentReturnCheckpointStoreProvider)
+        .save(
+          PendingPaymentReturn(
+            userId: userId,
+            paymentId: payment.id,
+            orderId: payment.bookingId!,
+            kind: PendingPaymentKind.booking,
+          ),
+        );
+    if (!mounted) return;
+    await PaymentHandoffPage.open(context, payment);
+    if (!mounted) return;
+    await ref.read(bookingCompletionProvider.notifier).refreshPaymentStatus();
+    if (mounted) _startPolling();
+  }
 
   @override
   void initState() {
@@ -248,16 +279,8 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                             width: double.infinity,
                             child: AppButton(
                               key: const ValueKey('payment-launch'),
-                              label: 'Mở cổng thanh toán',
-                              onPressed: busy
-                                  ? null
-                                  : () => ref
-                                        .read(
-                                          bookingCompletionProvider.notifier,
-                                        )
-                                        .openPaymentGateway(
-                                          mode: PaymentLaunchMode.deepLink,
-                                        ),
+                              label: 'Mở VNPay trong app',
+                              onPressed: busy ? null : _openRealPayment,
                             ),
                           ),
                           const SizedBox(height: AppSpacing.sm),

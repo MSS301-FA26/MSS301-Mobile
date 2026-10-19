@@ -148,6 +148,16 @@ void main() {
     );
   });
 
+  test('a payment owned by another user never opens its booking', () async {
+    gateway.hasPayment = true;
+    gateway.paymentUserId = 9999;
+    await controller.attachPayment(99);
+    final state = container.read(bookingCompletionProvider);
+    expect(state.phase, BookingCompletionPhase.error);
+    expect(state.message, contains('không thuộc tài khoản hiện tại'));
+    expect(state.booking, isNull);
+  });
+
   test('SUCCESS waits for PAID and clears recovery state only after issuing ticket', () async {
     gateway.hasPayment = true;
     gateway.paymentStatus = 'SUCCESS';
@@ -561,6 +571,7 @@ class _Gateway implements HttpClientAdapter {
   bool checkoutPriceChange = false;
   bool hasPayment = false;
   String paymentStatus = 'PENDING';
+  int paymentUserId = 5101;
   String bookingStatus = 'HOLDING';
   String expiry = '2099-01-01T00:00:00';
   Completer<void>? paymentGate;
@@ -731,7 +742,7 @@ class _Gateway implements HttpClientAdapter {
       data = {
         'id': 99,
         'bookingId': 42,
-        'userId': 5101,
+        'userId': paymentUserId,
         'provider': 'VNPAY',
         'amount': total,
         'status': paymentStatus,

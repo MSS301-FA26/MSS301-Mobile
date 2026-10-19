@@ -118,6 +118,27 @@ Future<void> group(WidgetTester tester, FoodCatalogGroup value) async {
 }
 
 void main() {
+  testWidgets('detail sheet adds the selected combo to the cart', (
+    tester,
+  ) async {
+    await shop(tester, [product(combo: true)]);
+    final details = find.byKey(const ValueKey('food-details-combo:7'));
+    await reveal(tester, details);
+    await tester.tap(details);
+    await tester.pumpAndSettle();
+
+    final add = find.byKey(const ValueKey('food-details-add-combo:7'));
+    expect(add.hitTestable(), findsOneWidget);
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('food-details-sheet-combo:7')),
+      findsNothing,
+    );
+    expect(find.text('Đã chọn 1'), findsOneWidget);
+  });
+
   for (final width in [320.0, 360.0, 390.0, 430.0]) {
     testWidgets(
       'long food details sheet scrolls and closes at $width with large text',

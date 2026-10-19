@@ -16,6 +16,8 @@ import '../../../booking/presentation/widgets/checkout_order_summary.dart';
 import '../widgets/checkout_food_images_provider.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../payment/application/payment_launcher.dart';
+import '../../../payment/application/payment_return_checkpoint.dart';
+import '../../../payment/presentation/pages/payment_handoff_page.dart';
 import '../../data/models/food_order_dto.dart';
 import '../../data/repositories/standalone_food_repository.dart';
 import '../../data/repositories/food_order_providers.dart';
@@ -102,6 +104,17 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
               : 'Trạng thái mới nhất: ${order.status.label}.';
         }
       });
+      if (order.status != FoodOrderStatus.pendingPayment) {
+        final userId = ref.read(authSessionProvider).session?.user.id;
+        if (userId != null) {
+          final store = ref.read(paymentReturnCheckpointStoreProvider);
+          final pending = await store.read(userId);
+          if (pending?.kind == PendingPaymentKind.foodOrder &&
+              pending?.orderId == widget.orderId) {
+            await store.clear(userId, paymentId: pending!.paymentId);
+          }
+        }
+      }
       ref.invalidate(myFoodOrdersProvider);
     } catch (error) {
       if (mounted && generation == _generation) {
@@ -139,9 +152,29 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
         setState(() => _message = 'Thời gian thanh toán đơn đã hết.');
         return;
       }
-      final result = await ref.read(paymentLauncherProvider).open(payment);
-      if (!mounted || generation != _generation) return;
-      setState(() => _message = result.message);
+      if (payment.paymentUrl?.startsWith('mock://') == true) {
+        final result = await ref.read(paymentLauncherProvider).open(payment);
+        if (!mounted || generation != _generation) return;
+        setState(() => _message = result.message);
+      } else if (payment.paymentUrl != null) {
+        await ref
+            .read(paymentReturnCheckpointStoreProvider)
+            .save(
+              PendingPaymentReturn(
+                userId: user.id,
+                paymentId: payment.id,
+                orderId: widget.orderId,
+                kind: PendingPaymentKind.foodOrder,
+              ),
+            );
+        if (!mounted || generation != _generation) return;
+        await PaymentHandoffPage.open(context, payment);
+        if (!mounted || generation != _generation) return;
+        setState(() => _busy = false);
+        await _refresh(sync: true);
+      } else {
+        setState(() => _error = 'Giao dịch chưa có đường dẫn VNPay.');
+      }
     } catch (error) {
       if (mounted && generation == _generation) {
         setState(() => _error = foodActionError(error));

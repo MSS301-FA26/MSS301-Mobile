@@ -11,6 +11,7 @@ import '../../orders/data/models/booking_dto.dart';
 import '../../orders/data/models/booking_enums.dart';
 import '../../orders/data/repositories/booking_providers.dart';
 import '../../payment/application/payment_launcher.dart';
+import '../../payment/application/payment_return_checkpoint.dart';
 import '../../payment/data/models/payment_dto.dart';
 import '../../payment/data/models/payment_enums.dart';
 import '../../payment/data/repositories/payment_providers.dart';
@@ -515,11 +516,18 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     if (payment.bookingId == null) {
       throw StateError('Giao dịch không thuộc đơn vé.');
     }
+    final currentUserId = ref.read(authSessionProvider).session?.user.id;
+    if (currentUserId == null || payment.userId != currentUserId) {
+      throw StateError('Giao dịch không thuộc tài khoản hiện tại.');
+    }
     final booking = await ref
         .read(bookingRepositoryProvider)
         .getBooking(payment.bookingId!);
     if (!ref.mounted || generation != _generation) return false;
     if (booking == null) throw StateError('Không tìm thấy đơn vé.');
+    if (booking.userId != currentUserId) {
+      throw StateError('Đơn vé không thuộc tài khoản hiện tại.');
+    }
     final ready =
         payment.status == PaymentStatus.success &&
         (booking.status == BookingStatus.paid ||
@@ -571,6 +579,11 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         );
       }
       ref.invalidate(resumableBookingProvider);
+    }
+    if (ready || expired || payment.status == PaymentStatus.failed) {
+      await ref
+          .read(paymentReturnCheckpointStoreProvider)
+          .clear(currentUserId, paymentId: payment.id);
     }
     return ready;
   }
