@@ -11,6 +11,7 @@ import 'package:mss301_mobile/features/orders/data/models/booking_dto.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_providers.dart';
 import 'package:mss301_mobile/features/seat/application/booking_entry_session.dart';
 import 'package:mss301_mobile/features/seat/presentation/pages/seat_selection_page.dart';
+import 'package:mss301_mobile/features/showtime/presentation/widgets/date_selector.dart';
 
 import 'support/fake_auth_session.dart';
 import 'support/pump_test_app.dart';
@@ -39,9 +40,15 @@ void main() {
     await tester.ensureVisible(bookAvengers);
     await tester.tap(bookAvengers);
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('showtime-slot-1002')).hitTestable(),
-    );
+    await tester.tap(find.descendant(
+      of: find.byType(DateSelector),
+      matching: find.byType(InkWell),
+    ).at(1));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('showtime-slot-1002')));
+    await tester.drag(find.byType(ListView).first, const Offset(0, -180));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('showtime-slot-1002')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('showtime-continue')));
     await tester.pumpAndSettle();

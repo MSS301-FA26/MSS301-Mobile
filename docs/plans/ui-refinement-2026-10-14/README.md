@@ -55,14 +55,14 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 
 ## Bổ sung theo phản hồi ngày 17/10 — Plan 16–23
 
-Trạng thái: **UI-16 và UI-17 đã triển khai phía Mobile ngày 19/10; UI-18 đã triển khai ngày 23/10, Android/API thật đã kiểm tra, còn QA iOS/thiết bị thật. UI-19–23 chưa triển khai.** Nhận xét, bằng chứng FE/BE và dependencies: [REVIEW-2026-10-17.md](REVIEW-2026-10-17.md).
+Trạng thái: **UI-16 và UI-17 đã triển khai phía Mobile ngày 19/10; UI-18 và UI-19 đã triển khai ngày 23/10, Android/API thật đã kiểm tra, còn QA iOS/thiết bị thật. UI-20–23 chưa triển khai.** Nhận xét, bằng chứng FE/BE và dependencies: [REVIEW-2026-10-17.md](REVIEW-2026-10-17.md).
 
 | Plan | Ưu tiên | Nội dung |
 | --- | --- | --- |
 | [UI-16](16-REALTIME-SEAT-AVAILABILITY.md) | P0 | Mobile đã làm mới/chặn ghế, preflight và conflict; [kết quả](UI16-RESULTS.md), còn QA hai khách và BE occupancy |
 | [UI-17](17-PAYMENT-RETURN-TO-APP.md) | P0 | WebView VNPay quay lại app cho vé và food; [kết quả](UI17-RESULTS.md), còn QA sandbox/iOS và browser landing |
 | [UI-18](18-CINEMA-DIRECTORY.md) | P1 | Đã triển khai danh sách, chi tiết, rạp ưu tiên và lịch theo `cinemaId`; [kết quả](UI18-RESULTS.md) |
-| [UI-19](19-UNIFIED-SHOWTIME-FILTERS.md) | P1 | Lịch chiếu chung với bộ lọc phim/rạp/ngày có thể xóa |
+| [UI-19](19-UNIFIED-SHOWTIME-FILTERS.md) | P1 | Đã triển khai lọc phim/rạp/ngày theo route, xóa riêng và xóa tất cả; [kết quả](UI19-RESULTS.md) |
 | [UI-20](20-PAYMENT-AND-SUCCESS-REDESIGN.md) | P1 | Bố cục thanh toán/kết quả thống nhất cho vé và food |
 | [UI-21](21-MOVIE-DETAIL-REFINEMENT.md) | P2 | Chi tiết phim và entry lịch chiếu/watchlist |
 | [UI-22](22-WATCHLIST.md) | P2 | Danh sách muốn xem; phân biệt local MVP và remote sync |
@@ -93,6 +93,7 @@ Kết quả UI-15: [UI15-RESULTS.md](UI15-RESULTS.md).
 Kết quả UI-16: [UI16-RESULTS.md](UI16-RESULTS.md).
 Kết quả UI-17: [UI17-RESULTS.md](UI17-RESULTS.md).
 Kết quả UI-18: [UI18-RESULTS.md](UI18-RESULTS.md).
+Kết quả UI-19: [UI19-RESULTS.md](UI19-RESULTS.md).
 
 - Kiểm tra chiều rộng 320, 360, 390, 430 logical px và tăng cỡ chữ: không overflow, không che CTA, không mất thông tin quan trọng.
 - Vùng chạm tối thiểu 48 logical px; thân nút có thể gọn hơn nếu vùng chạm đủ lớn.

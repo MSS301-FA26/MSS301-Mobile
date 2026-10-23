@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/time/vietnam_time.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../models/catalog_enums.dart';
 import '../models/cinema_dto.dart';
@@ -17,11 +18,21 @@ class RemoteCatalogRepository implements CatalogRepository {
     MovieStatus? status,
     String? keyword,
   }) async {
-    return (await getMoviePage(
-      status: status,
-      keyword: keyword,
-      size: 100,
-    )).items;
+    final movies = <MovieDto>[];
+    var page = 0;
+    while (true) {
+      final result = await getMoviePage(
+        status: status,
+        keyword: keyword,
+        page: page,
+        size: 100,
+      );
+      movies.addAll(result.items);
+      if (result.items.isEmpty || page + 1 >= result.totalPages) {
+        return movies;
+      }
+      page++;
+    }
   }
 
   @override
@@ -102,7 +113,12 @@ class RemoteCatalogRepository implements CatalogRepository {
       );
       final items = _list(data['items'], ShowtimeDto.fromJson);
       values.addAll(
-        items.where((item) => cinemaId == null || item.cinemaId == cinemaId),
+        items.where(
+          (item) =>
+              (cinemaId == null || item.cinemaId == cinemaId) &&
+              (movieId == null || item.movieId == movieId) &&
+              (date == null || isVietnamDate(item.startTime, date)),
+        ),
       );
       final totalPages = data['totalPages'];
       if (items.isEmpty ||

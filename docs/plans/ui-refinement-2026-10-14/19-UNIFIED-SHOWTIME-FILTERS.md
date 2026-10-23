@@ -1,6 +1,6 @@
 # UI-19 — Một màn lịch chiếu, lọc phim/rạp/ngày có thể xóa
 
-Ngày lập: **17/10/2026**. Ưu tiên: **P1**. Trạng thái: **planned**. Liên quan UI-18.
+Ngày lập: **17/10/2026**. Ưu tiên: **P1**. Trạng thái: **đã triển khai Mobile và kiểm tra Android/API local ngày 23/10/2026; còn QA iOS/thiết bị thật và E2E đặt vé**. Liên quan UI-18. Xem [UI19-RESULTS](UI19-RESULTS.md).
 
 ## Flow cần đạt
 

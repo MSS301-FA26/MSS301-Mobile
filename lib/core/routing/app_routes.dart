@@ -41,13 +41,28 @@ abstract final class AppRoutes {
 
   static String movieDetail(int movieId) => '/movie/$movieId';
 
-  static String showtimesForMovie(int movieId) =>
-      Uri(path: showtimes, queryParameters: {'movieId': '$movieId'}).toString();
-
-  static String showtimesForCinema(int cinemaId) => Uri(
+  static String showtimesWithFilters({
+    int? movieId,
+    int? cinemaId,
+    DateTime? date,
+  }) => Uri(
     path: showtimes,
-    queryParameters: {'cinemaId': '$cinemaId'},
+    queryParameters: {
+      if (movieId != null) 'movieId': '$movieId',
+      if (cinemaId != null) 'cinemaId': '$cinemaId',
+      if (date != null)
+        'date':
+            '${date.year.toString().padLeft(4, '0')}-'
+            '${date.month.toString().padLeft(2, '0')}-'
+            '${date.day.toString().padLeft(2, '0')}',
+    },
   ).toString();
+
+  static String showtimesForMovie(int movieId) =>
+      showtimesWithFilters(movieId: movieId);
+
+  static String showtimesForCinema(int cinemaId) =>
+      showtimesWithFilters(cinemaId: cinemaId);
 
   static String cinemaDetail(int cinemaId) => '/cinemas/$cinemaId';
 
