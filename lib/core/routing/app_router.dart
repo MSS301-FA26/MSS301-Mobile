@@ -10,6 +10,8 @@ import '../../features/booking/presentation/pages/concessions_page.dart';
 import '../../features/booking/presentation/pages/payment_result_page.dart';
 import '../../features/booking/presentation/pages/ticket_page.dart';
 import '../../features/discover/presentation/pages/discover_page.dart';
+import '../../features/cinema/presentation/pages/cinema_directory_page.dart';
+import '../../features/cinema/presentation/pages/cinema_detail_page.dart';
 import '../../features/food/presentation/pages/food_orders_history_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/movie/presentation/pages/movie_detail_page.dart';
@@ -59,6 +61,17 @@ final appRouter = GoRouter(
       name: 'showtimes',
       builder: (context, state) => ShowtimesPage(
         movieId: int.tryParse(state.uri.queryParameters['movieId'] ?? ''),
+        cinemaId: int.tryParse(state.uri.queryParameters['cinemaId'] ?? ''),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.cinemas,
+      builder: (context, state) => const CinemaDirectoryPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.cinemaDetailPattern,
+      builder: (context, state) => CinemaDetailPage(
+        cinemaId: int.tryParse(state.pathParameters['cinemaId'] ?? '') ?? -1,
       ),
     ),
     GoRoute(
@@ -123,8 +136,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.cinemaInfo,
-      builder: (context, state) =>
-          const InformationPage(type: InformationPageType.cinema),
+      redirect: (context, state) => AppRoutes.cinemas,
     ),
     GoRoute(
       path: AppRoutes.policies,

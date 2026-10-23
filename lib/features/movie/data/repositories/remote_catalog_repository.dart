@@ -74,15 +74,43 @@ class RemoteCatalogRepository implements CatalogRepository {
       _list(_data(await _get('/api/v1/cinemas'))['items'], CinemaDto.fromJson);
 
   @override
-  Future<List<ShowtimeDto>> getShowtimes({int? movieId, DateTime? date}) async {
+  Future<CinemaDto?> getCinema(int cinemaId) async {
+    try {
+      return CinemaDto.fromJson(_data(await _get('/api/v1/cinemas/$cinemaId')));
+    } on ApiException catch (error) {
+      if (error.type == ApiErrorType.notFound) return null;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<ShowtimeDto>> getShowtimes({
+    int? movieId,
+    int? cinemaId,
+    DateTime? date,
+  }) async {
     final queryParameters = <String, Object>{'page': 0, 'size': 100};
     if (movieId != null) queryParameters['movieId'] = movieId;
+    if (cinemaId != null) queryParameters['cinemaId'] = cinemaId;
     if (date != null) queryParameters['date'] = _date(date);
-    final response = await _get(
-      '/api/v1/showtimes',
-      queryParameters: queryParameters,
-    );
-    return _list(_data(response)['items'], ShowtimeDto.fromJson);
+    final values = <ShowtimeDto>[];
+    var page = 0;
+    while (true) {
+      queryParameters['page'] = page;
+      final data = _data(
+        await _get('/api/v1/showtimes', queryParameters: queryParameters),
+      );
+      final items = _list(data['items'], ShowtimeDto.fromJson);
+      values.addAll(
+        items.where((item) => cinemaId == null || item.cinemaId == cinemaId),
+      );
+      final totalPages = data['totalPages'];
+      if (items.isEmpty ||
+          (totalPages is num ? page + 1 >= totalPages : items.length < 100)) {
+        return values;
+      }
+      page++;
+    }
   }
 
   @override
@@ -178,10 +206,7 @@ class RemoteCatalogRepository implements CatalogRepository {
         path,
         queryParameters: queryParameters,
         options: Options(
-          extra: const {
-            'skipAuthorization': true,
-            'skipAuthRefresh': true,
-          },
+          extra: const {'skipAuthorization': true, 'skipAuthRefresh': true},
         ),
       );
     } on DioException catch (error) {

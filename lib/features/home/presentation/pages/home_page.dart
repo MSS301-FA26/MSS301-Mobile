@@ -74,7 +74,7 @@ class HomePage extends ConsumerWidget {
               onOpen: (movie) => _openMovie(context, movie),
               onBook: (movie) => _bookMovie(context, movie),
             ),
-            HomeCinemasSection(onBook: (id) => _openSeats(context, ref, id)),
+            const HomeCinemasSection(),
             // F&B stays hidden until a production catalog is integrated.
             const SizedBox(height: 32),
           ],

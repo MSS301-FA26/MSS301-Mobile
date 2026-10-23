@@ -60,7 +60,7 @@ class AccountPage extends ConsumerWidget {
                 AccountMenuItemData(
                   icon: Icons.apartment_rounded,
                   label: 'Thông tin rạp',
-                  onTap: () => context.go(AppRoutes.cinemaInfo),
+                  onTap: () => context.push(AppRoutes.cinemas),
                 ),
                 AccountMenuItemData(
                   icon: Icons.policy_outlined,
@@ -211,7 +211,7 @@ class AccountPage extends ConsumerWidget {
                 icon: Icons.apartment_rounded,
                 label: 'Thông tin rạp',
                 iconColor: AppColors.textMuted,
-                onTap: () => context.go(AppRoutes.cinemaInfo),
+                onTap: () => context.push(AppRoutes.cinemas),
               ),
               AccountMenuItemData(
                 icon: Icons.policy_outlined,

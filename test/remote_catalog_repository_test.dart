@@ -26,6 +26,7 @@ void main() {
       final movies = await repository.getMovies(keyword: 'Dune');
       final movie = await repository.getMovie(7);
       final cinemas = await repository.getCinemas();
+      final cinema = await repository.getCinema(3);
       final showtimes = await repository.getShowtimes(
         movieId: 7,
         date: DateTime(2026, 10, 7),
@@ -35,10 +36,27 @@ void main() {
       expect(movies.single.posterUrl, isNull);
       expect(movie?.id, 7);
       expect(cinemas.single.name, 'Cine Central');
+      expect(cinema?.id, 3);
       expect(showtimes.single.status.wireValue, 'OPEN');
       expect(adapter.showtimeQuery['movieId'], '7');
       expect(adapter.showtimeQuery['date'], '2026-10-07');
       expect(adapter.movieQuery['keyword'], 'Dune');
+    },
+  );
+
+  test(
+    'passes cinemaId to showtime API and retains only matching cinema',
+    () async {
+      final adapter = _CatalogAdapter();
+      final repository = RemoteCatalogRepository(
+        Dio()..httpClientAdapter = adapter,
+      );
+      final matching = await repository.getShowtimes(cinemaId: 3);
+      expect(adapter.showtimeQuery['cinemaId'], '3');
+      expect(matching.single.cinemaId, 3);
+      final other = await repository.getShowtimes(cinemaId: 4);
+      expect(adapter.showtimeQuery['cinemaId'], '4');
+      expect(other, isEmpty);
     },
   );
 
@@ -254,6 +272,9 @@ class _CatalogAdapter implements HttpClientAdapter {
         'success': true,
         'data': [_cinema],
       });
+    }
+    if (options.path == '/api/v1/cinemas/3') {
+      return _json({'success': true, 'data': _cinema});
     }
     if (options.path == '/api/v1/movies/7') {
       return _json({'success': true, 'data': _movie});

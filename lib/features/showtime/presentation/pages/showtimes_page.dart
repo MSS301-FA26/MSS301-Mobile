@@ -7,10 +7,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
-import '../../../../shared/widgets/cinema_info_sheet.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../booking/presentation/widgets/booking_progress.dart';
+import '../../../cinema/application/cinema_preferences.dart';
+import '../../../home/presentation/providers/home_providers.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
 import '../models/showtime_models.dart';
@@ -20,9 +21,10 @@ import '../widgets/date_selector.dart';
 import '../widgets/showtime_movie_card.dart';
 
 class ShowtimesPage extends ConsumerStatefulWidget {
-  const ShowtimesPage({super.key, this.movieId});
+  const ShowtimesPage({super.key, this.movieId, this.cinemaId});
 
   final int? movieId;
+  final int? cinemaId;
 
   @override
   ConsumerState<ShowtimesPage> createState() => _ShowtimesPageState();
@@ -31,7 +33,20 @@ class ShowtimesPage extends ConsumerStatefulWidget {
 class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   int? _selectedDate;
   int? _selectedMovieId;
+  bool _cinemaFilterCleared = false;
   ShowtimeSlot? _selectedSlot;
+
+  @override
+  void didUpdateWidget(covariant ShowtimesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cinemaId != widget.cinemaId ||
+        oldWidget.movieId != widget.movieId) {
+      _cinemaFilterCleared = false;
+      _selectedSlot = null;
+      _selectedMovieId = null;
+    }
+  }
+
   void _selectDate(int index) => setState(() {
     if (_selectedDate == index) return;
     _selectedDate = index;
@@ -75,6 +90,8 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
             formatBadge: room.formatBadge,
             screenDetail: room.screenDetail,
             slots: slots,
+            cinemaId: room.cinemaId,
+            cinemaName: room.cinemaName,
           );
         })
         .where((room) => room.slots.isNotEmpty)
@@ -107,6 +124,20 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
   @override
   Widget build(BuildContext context) {
     final moviesState = ref.watch(moviesProvider);
+    final cinemasState = ref.watch(homeCinemasProvider);
+    final preferredId = ref.watch(preferredCinemaProvider).value;
+    final activePreferredId =
+        (cinemasState.value ?? []).any(
+          (cinema) => cinema.id == preferredId && cinema.active,
+        )
+        ? preferredId
+        : null;
+    final selectedCinemaId = _cinemaFilterCleared
+        ? null
+        : widget.cinemaId ?? activePreferredId;
+    final selectedCinema = (cinemasState.value ?? [])
+        .where((cinema) => cinema.id == selectedCinemaId)
+        .firstOrNull;
     final now = ref.watch(appClockProvider).now();
     final dates = _dates(vietnamCalendar(now));
     final selectedDate = _selectedDate == null
@@ -114,6 +145,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
         : dates[_selectedDate!].date;
     final showtimesQuery = ShowtimeQuery(
       movieId: widget.movieId,
+      cinemaId: selectedCinemaId,
       date: selectedDate,
     );
     final showtimesState = ref.watch(showtimesProvider(showtimesQuery));
@@ -186,15 +218,27 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                     },
                   ),
                 const BookingProgress(currentStep: 0),
-                CinemaStatusCard(
-                  onInfo: () => showModalBottomSheet<void>(
-                    context: context,
-                    backgroundColor: AppColors.surface,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: AppRadii.card,
+                if (selectedCinemaId != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
                     ),
-                    builder: (context) => const CinemaInfoSheet(),
+                    child: InputChip(
+                      key: const ValueKey('showtime-cinema-filter'),
+                      label: Text(
+                        selectedCinema?.name ?? 'Rạp #$selectedCinemaId',
+                      ),
+                      onDeleted: () => setState(() {
+                        _cinemaFilterCleared = true;
+                        _selectedSlot = null;
+                        _selectedMovieId = null;
+                      }),
+                    ),
                   ),
+                CinemaStatusCard(
+                  cinema: selectedCinema,
+                  cinemaId: selectedCinemaId,
+                  onInfo: () => context.push(AppRoutes.cinemas),
                 ),
                 const Padding(
                   padding: EdgeInsets.fromLTRB(

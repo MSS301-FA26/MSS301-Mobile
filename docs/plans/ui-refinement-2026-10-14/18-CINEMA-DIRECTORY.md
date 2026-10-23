@@ -1,6 +1,6 @@
 # UI-18 — Hệ thống rạp và trang chi tiết rạp
 
-Ngày lập: **17/10/2026**. Ưu tiên: **P1**. Trạng thái: **planned**.
+Ngày lập: **17/10/2026**. Ưu tiên: **P1**. Trạng thái: **đã triển khai Mobile, Android/emulator và API thật đã kiểm tra; còn QA iOS/thiết bị thật**. Xem [UI18-RESULTS](UI18-RESULTS.md).
 
 ## Mục tiêu
 

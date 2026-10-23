@@ -6,6 +6,8 @@ abstract final class AppRoutes {
   static String foodOrderDetail(int id) => '/food-order/$id';
   static const discover = '/discover';
   static const showtimes = '/showtimes';
+  static const cinemas = '/cinemas';
+  static const cinemaDetailPattern = '/cinemas/:cinemaId';
   static const orders = '/orders';
   static const account = '/account';
   static const login = '/auth/login';
@@ -41,6 +43,13 @@ abstract final class AppRoutes {
 
   static String showtimesForMovie(int movieId) =>
       Uri(path: showtimes, queryParameters: {'movieId': '$movieId'}).toString();
+
+  static String showtimesForCinema(int cinemaId) => Uri(
+    path: showtimes,
+    queryParameters: {'cinemaId': '$cinemaId'},
+  ).toString();
+
+  static String cinemaDetail(int cinemaId) => '/cinemas/$cinemaId';
 
   static String seatSelection(int showtimeId) => '/seat-selection/$showtimeId';
 

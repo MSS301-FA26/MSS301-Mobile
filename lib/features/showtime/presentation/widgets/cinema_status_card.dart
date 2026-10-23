@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../movie/data/models/cinema_dto.dart';
 
 class CinemaStatusCard extends StatelessWidget {
-  const CinemaStatusCard({super.key, required this.onInfo});
+  const CinemaStatusCard({
+    super.key,
+    required this.onInfo,
+    this.cinema,
+    this.cinemaId,
+  });
 
   final VoidCallback onInfo;
+  final CinemaDto? cinema;
+  final int? cinemaId;
 
   @override
   Widget build(BuildContext context) {
@@ -36,25 +44,23 @@ class CinemaStatusCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    Text(
-                      'CineAI Central',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.label.copyWith(
-                        color: AppColors.text,
-                        fontSize: 14,
-                      ),
-                    ),
-                    _OpenBadge(),
-                  ],
+                Text(
+                  cinema?.name ??
+                      (cinemaId == null ? 'Tất cả rạp' : 'Rạp #$cinemaId'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.text,
+                    fontSize: 14,
+                  ),
                 ),
                 SizedBox(height: 3),
                 Text(
-                  'Tầng 5, 1 Nguyễn Huệ, P. Bến Nghé, Quận 1',
+                  cinema?.address.trim().isNotEmpty == true
+                      ? cinema!.address
+                      : cinemaId == null
+                      ? 'Chọn rạp để xem lịch chiếu theo địa điểm'
+                      : 'Đang xem lịch chiếu tại rạp này',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption,
@@ -69,32 +75,6 @@ class CinemaStatusCard extends StatelessWidget {
             icon: const Icon(Icons.info_outline_rounded, size: 20),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _OpenBadge extends StatelessWidget {
-  const _OpenBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.allAgesBadge.withValues(alpha: 0.14),
-        borderRadius: AppRadii.small,
-        border: Border.all(
-          color: AppColors.allAgesBadge.withValues(alpha: 0.3),
-        ),
-      ),
-      child: const Text(
-        'Đang chiếu',
-        style: TextStyle(
-          color: AppColors.allAgesBadge,
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-        ),
       ),
     );
   }
