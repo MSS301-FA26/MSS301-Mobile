@@ -10,6 +10,7 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/checkout_summary.dart';
+import '../../../../shared/widgets/checkout_outcome_header.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../booking/presentation/widgets/checkout_order_summary.dart';
@@ -325,6 +326,35 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
+                      CheckoutOutcomeHeader(
+                        icon: switch (order.status) {
+                          FoodOrderStatus.paid || FoodOrderStatus.pickedUp =>
+                            Icons.check_circle_outline_rounded,
+                          FoodOrderStatus.cancelled ||
+                          FoodOrderStatus.expired => Icons.event_busy_rounded,
+                          _ => Icons.receipt_long_outlined,
+                        },
+                        color: switch (order.status) {
+                          FoodOrderStatus.paid ||
+                          FoodOrderStatus.pickedUp => Colors.greenAccent,
+                          FoodOrderStatus.cancelled ||
+                          FoodOrderStatus.expired => AppColors.adultBadge,
+                          _ => AppColors.gold,
+                        },
+                        title: 'Trạng thái: ${order.status.label}',
+                        description: order.status == FoodOrderStatus.paid
+                            ? 'Đơn đã thanh toán. Dùng mã nhận hàng bên dưới tại rạp.'
+                            : order.status == FoodOrderStatus.pendingPayment
+                            ? 'Đơn đang chờ VNPay. Nếu đã trả tiền, hãy kiểm tra lại kết quả.'
+                            : order.status == FoodOrderStatus.unknown
+                            ? 'Chưa xác định được kết quả. Hãy kiểm tra lại với hệ thống.'
+                            : 'Thông tin đơn được xác nhận theo trạng thái từ hệ thống.',
+                        reference: order.orderCode.isEmpty
+                            ? 'Đơn #${order.id}'
+                            : 'Mã đơn: ${order.orderCode}',
+                        amount: order.totalAmount.format(),
+                      ),
+                      const SizedBox(height: 16),
                       CheckoutSection(
                         title: 'Thông tin đơn',
                         children: [
@@ -392,12 +422,24 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                       const SizedBox(height: 16),
                       if (order.status == FoodOrderStatus.paid &&
                           order.qrCode?.isNotEmpty == true)
-                        Center(
-                          child: Container(
-                            color: Colors.white,
-                            padding: const EdgeInsets.all(12),
-                            child: QrImageView(data: order.qrCode!, size: 200),
-                          ),
+                        Column(
+                          children: [
+                            const Text(
+                              'Mã nhận bắp nước',
+                              style: AppTextStyles.cardTitle,
+                            ),
+                            const SizedBox(height: 8),
+                            Center(
+                              child: Container(
+                                color: Colors.white,
+                                padding: const EdgeInsets.all(12),
+                                child: QrImageView(
+                                  data: order.qrCode!,
+                                  size: 200,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       if (_pending)
                         TextButton(

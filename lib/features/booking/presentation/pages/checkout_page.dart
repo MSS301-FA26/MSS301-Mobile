@@ -97,41 +97,64 @@ class CheckoutPage extends ConsumerWidget {
                     metadata: metadata,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  CheckoutTicketSummary(quote: quote),
+                  Material(
+                    color: Colors.transparent,
+                    child: ExpansionTile(
+                      key: const ValueKey('checkout-ticket-details'),
+                      initiallyExpanded: true,
+                      title: Text('Chi tiết ${quote.seats.length} vé'),
+                      children: [CheckoutTicketSummary(quote: quote)],
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   CheckoutComboPicker(bookingId: bookingId),
-                  CheckoutSection(
-                    title: 'Bắp nước',
-                    children: [
-                      if (foods.isEmpty)
-                        const CheckoutLine('Sản phẩm', 'Không chọn'),
-                      for (final food in foods)
-                        CheckoutFoodSummaryLine(
-                          key: ValueKey(
-                            'checkout-food-${food.isCombo ? 'combo' : 'item'}:${food.productId}',
-                          ),
-                          name: food.productName,
-                          quantity: food.quantity,
-                          isCombo: food.isCombo,
-                          unitPrice: food.unitPrice,
-                          lineTotal: food.lineTotal,
-                          imageUrl:
-                              productImages['${food.isCombo ? 'combo' : 'item'}:${food.productId}'],
-                        ),
-                      TextButton.icon(
-                        key: const ValueKey('checkout-edit-food'),
-                        onPressed: state.isBusy || state.payment != null
-                            ? null
-                            : () =>
-                                  context.go(AppRoutes.concessions(bookingId)),
-                        icon: const Icon(Icons.edit_outlined),
-                        label: Text(
-                          foods.isEmpty
-                              ? 'Quay lại chọn bắp nước'
-                              : 'Sửa bắp nước',
-                        ),
+                  Material(
+                    color: Colors.transparent,
+                    child: ExpansionTile(
+                      key: const ValueKey('checkout-food-details'),
+                      initiallyExpanded: true,
+                      title: Text(
+                        foods.isEmpty
+                            ? 'Bắp nước • Không chọn'
+                            : 'Bắp nước • ${foods.length} loại',
                       ),
-                    ],
+                      children: [
+                        CheckoutSection(
+                          title: 'Chi tiết bắp nước',
+                          children: [
+                            if (foods.isEmpty)
+                              const CheckoutLine('Sản phẩm', 'Không chọn'),
+                            for (final food in foods)
+                              CheckoutFoodSummaryLine(
+                                key: ValueKey(
+                                  'checkout-food-${food.isCombo ? 'combo' : 'item'}:${food.productId}',
+                                ),
+                                name: food.productName,
+                                quantity: food.quantity,
+                                isCombo: food.isCombo,
+                                unitPrice: food.unitPrice,
+                                lineTotal: food.lineTotal,
+                                imageUrl:
+                                    productImages['${food.isCombo ? 'combo' : 'item'}:${food.productId}'],
+                              ),
+                            TextButton.icon(
+                              key: const ValueKey('checkout-edit-food'),
+                              onPressed: state.isBusy || state.payment != null
+                                  ? null
+                                  : () => context.go(
+                                      AppRoutes.concessions(bookingId),
+                                    ),
+                              icon: const Icon(Icons.edit_outlined),
+                              label: Text(
+                                foods.isEmpty
+                                    ? 'Quay lại chọn bắp nước'
+                                    : 'Sửa bắp nước',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   CheckoutSection(
@@ -168,7 +191,9 @@ class CheckoutPage extends ConsumerWidget {
             ),
             PaymentActionBar(
               total: quote.total,
-              notice: state.message,
+              notice: state.quoteNeedsRefresh
+                  ? 'Giá hoặc sản phẩm đã đổi. Vui lòng chờ báo giá mới trước khi thanh toán.'
+                  : state.message,
               label: state.phase == BookingCompletionPhase.preparingCheckout
                   ? 'Đang cập nhật báo giá…'
                   : state.isBusy

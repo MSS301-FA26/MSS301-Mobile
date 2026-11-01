@@ -10,6 +10,7 @@ import '../../orders/data/models/booking_enums.dart';
 import '../../showtime/data/models/showtime_dto.dart';
 import '../data/repositories/seat_hold_providers.dart';
 import '../presentation/providers/seat_map_provider.dart';
+import 'single_seat_gap.dart';
 
 enum BookingEntryPhase {
   idle,
@@ -120,6 +121,16 @@ class BookingEntryController extends Notifier<BookingEntryState> {
 
   bool _leaving = false;
   int _generation = 0;
+  ShowtimeSeatMapDto? _latestSeatMap;
+
+  String? _gapMessage(Set<int> before, Set<int> after) {
+    final map = _latestSeatMap;
+    if (map == null || map.showtime.id != state.showtimeId) return null;
+    final seat = newlyOrphanedSeat(map.seats, before, after);
+    return seat == null
+        ? null
+        : 'Hàng ${seat.rowLabel}: ghế ${seat.rowLabel}${seat.seatNumber} sẽ bị bỏ trống đơn lẻ. Hãy chọn liền ghế hoặc đổi nhóm.';
+  }
 
   void restoreBooking(
     BookingDto booking, {
@@ -170,6 +181,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       return;
     }
     _generation++;
+    _latestSeatMap = null;
     state = BookingEntryState(
       phase: BookingEntryPhase.selectingSeats,
       movieId: movieId,
@@ -191,6 +203,7 @@ class BookingEntryController extends Notifier<BookingEntryState> {
                 state.phase == BookingEntryPhase.submittingHold))) {
       return;
     }
+    _latestSeatMap = map;
     final unavailable = map.seats
         .where((seat) => !seat.selectable)
         .map((seat) => seat.seatId)
@@ -264,6 +277,16 @@ class BookingEntryController extends Notifier<BookingEntryState> {
         if (partner != null) nextAssignments.remove(partner);
       }
     }
+    final gap = _gapMessage(
+      state.selectedSeatIds,
+      nextAssignments.keys.toSet(),
+    );
+    if (gap != null) {
+      state = _copy(
+        message: '$gap Bỏ toàn bộ nhóm ghế liên quan trước khi giảm vé.',
+      );
+      return false;
+    }
     final quantities = Map<TicketType, int>.from(state.ticketQuantities);
     if (nextQuantity == 0) {
       quantities.remove(type);
@@ -310,6 +333,11 @@ class BookingEntryController extends Notifier<BookingEntryState> {
       for (final id in seatIds) {
         next.remove(id);
       }
+      final gap = _gapMessage(state.selectedSeatIds, next.keys.toSet());
+      if (gap != null) {
+        state = _copy(message: gap);
+        return;
+      }
       state = _copy(assignments: next, clearMessage: true);
       return;
     }
@@ -347,6 +375,11 @@ class BookingEntryController extends Notifier<BookingEntryState> {
         ticketType: type,
         viewerAge: BookingTicketPolicy.defaultViewerAge(type),
       );
+    }
+    final gap = _gapMessage(state.selectedSeatIds, next.keys.toSet());
+    if (gap != null) {
+      state = _copy(message: gap);
+      return;
     }
     state = _copy(assignments: next, clearMessage: true);
   }
@@ -389,6 +422,19 @@ class BookingEntryController extends Notifier<BookingEntryState> {
         state = _copy(
           phase: BookingEntryPhase.selectingSeats,
           message: state.message ?? 'Sơ đồ ghế đã thay đổi. Hãy chọn lại ghế.',
+        );
+        return null;
+      }
+      final gap = newlyOrphanedSeat(
+        freshMap.seats,
+        const {},
+        state.selectedSeatIds,
+      );
+      if (gap != null) {
+        state = _copy(
+          phase: BookingEntryPhase.selectingSeats,
+          message:
+              'Sơ đồ ghế đã thay đổi: ghế ${gap.rowLabel}${gap.seatNumber} bị bỏ trống đơn lẻ. Hãy điều chỉnh lựa chọn.',
         );
         return null;
       }

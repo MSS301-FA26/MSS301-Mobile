@@ -8,6 +8,8 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/checkout_outcome_header.dart';
+import '../widgets/payment_booking_summary.dart';
 import '../../../orders/presentation/providers/orders_provider.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../payment/application/payment_launcher.dart';
@@ -208,16 +210,19 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Column(
                       children: [
-                        Icon(icon, size: 76, color: color),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          title,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.sectionTitle,
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          state.message ??
+                        CheckoutOutcomeHeader(
+                          icon: icon,
+                          color: color,
+                          title: title,
+                          reference:
+                              state.booking?.bookingCode.isNotEmpty == true
+                              ? 'Mã đặt vé: ${state.booking!.bookingCode}'
+                              : 'Giao dịch #${widget.paymentId}',
+                          amount:
+                              state.payment?.amount.format() ??
+                              'Đang tải số tiền…',
+                          description:
+                              state.message ??
                               (ready
                                   ? 'Thanh toán thành công. Vé của bạn đã sẵn sàng.'
                                   : failed
@@ -228,19 +233,21 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                                         BookingCompletionPhase.verifyingBooking
                                   ? 'Đã nhận kết quả thanh toán, đang chờ hệ thống xác nhận vé.'
                                   : 'Mở VNPay để thanh toán. Khi quay lại, ứng dụng sẽ kiểm tra kết quả. Không cần tạo giao dịch mới khi kết quả chưa rõ.'),
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.caption,
                         ),
                         const SizedBox(height: AppSpacing.lg),
-                        if (state.payment != null) ...[
-                          Text(
-                            state.payment!.amount.format(),
-                            style: AppTextStyles.sectionTitle.copyWith(
-                              color: AppColors.gold,
+                        if (state.booking != null)
+                          Material(
+                            color: Colors.transparent,
+                            child: ExpansionTile(
+                              title: const Text('Chi tiết vé và giao dịch'),
+                              children: [
+                                PaymentBookingSummary(
+                                  payment: state.payment,
+                                  booking: state.booking,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.md),
-                        ],
                         if (!realPayment &&
                             state.payment?.paymentUrl != null &&
                             !ready) ...[
@@ -408,6 +415,15 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                               onPressed: () => context.go(
                                 AppRoutes.ticket(state.booking!.id),
                               ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              label: 'Đơn của tôi',
+                              variant: AppButtonVariant.secondary,
+                              onPressed: () => context.go(AppRoutes.orders),
                             ),
                           ),
                         ],

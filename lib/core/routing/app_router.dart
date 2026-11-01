@@ -15,6 +15,7 @@ import '../../features/cinema/presentation/pages/cinema_detail_page.dart';
 import '../../features/food/presentation/pages/food_orders_history_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/movie/presentation/pages/movie_detail_page.dart';
+import '../../features/movie/presentation/pages/watchlist_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
 import '../../features/preview/data/provisional_preview_repository.dart';
 import '../../features/preview/presentation/pages/preview_feature_page.dart';
@@ -134,6 +135,10 @@ final appRouter = GoRouter(
       path: AppRoutes.foodOrders,
       builder: (context, state) =>
           const AuthGuard(child: FoodOrdersHistoryPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.watchlist,
+      builder: (context, state) => const AuthGuard(child: WatchlistPage()),
     ),
     GoRoute(
       path: AppRoutes.cinemaInfo,

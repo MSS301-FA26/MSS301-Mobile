@@ -186,13 +186,12 @@ class AccountPage extends ConsumerWidget {
                   status: 'Preview',
                   onTap: () => context.go(AppRoutes.vip),
                 ),
-              if (FeatureFlags.socialMoviePreview)
-                AccountMenuItemData(
-                  icon: Icons.favorite_outline_rounded,
-                  label: 'Yêu thích',
-                  status: 'Preview',
-                  onTap: () => context.go(AppRoutes.favorites),
-                ),
+              AccountMenuItemData(
+                icon: Icons.favorite_outline_rounded,
+                label: 'Danh sách muốn xem',
+                status: 'Trên thiết bị này',
+                onTap: () => context.go(AppRoutes.watchlist),
+              ),
               if (FeatureFlags.socialMoviePreview)
                 AccountMenuItemData(
                   icon: Icons.notifications_none_rounded,

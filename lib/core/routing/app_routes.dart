@@ -26,6 +26,7 @@ abstract final class AppRoutes {
   static const vouchers = '/preview/vouchers';
   static const vip = '/preview/vip';
   static const favorites = '/preview/favorites';
+  static const watchlist = '/account/watchlist';
   static const notifications = '/preview/notifications';
   static const popBot = '/preview/popbot';
   static const seatSelectionPattern = '/seat-selection/:showtimeId';
