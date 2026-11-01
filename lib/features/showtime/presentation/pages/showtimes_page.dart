@@ -18,6 +18,7 @@ import '../../../movie/presentation/providers/movies_provider.dart';
 import '../models/showtime_models.dart';
 import '../providers/showtimes_provider.dart';
 import '../widgets/date_selector.dart';
+import '../widgets/showtime_filter_panel.dart';
 import '../widgets/showtime_movie_card.dart';
 
 class ShowtimesPage extends ConsumerStatefulWidget {
@@ -122,7 +123,8 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
     final selected = await showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceHigh,
+      showDragHandle: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, update) {
           final visible = items
@@ -142,11 +144,16 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                 MediaQuery.viewInsetsOf(sheetContext).bottom + AppSpacing.md,
               ),
               child: SizedBox(
-                height: MediaQuery.sizeOf(sheetContext).height * .55,
+                height: MediaQuery.sizeOf(sheetContext).height * .58,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: AppTextStyles.cardTitle),
+                    Text('Chọn $title', style: AppTextStyles.sectionTitle),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      'Lọc suất chiếu theo $title bạn muốn xem',
+                      style: AppTextStyles.caption,
+                    ),
                     const SizedBox(height: AppSpacing.sm),
                     TextField(
                       autofocus: true,
@@ -160,12 +167,41 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                     Expanded(
                       child: visible.isEmpty
                           ? const Center(child: Text('Không tìm thấy kết quả'))
-                          : ListView.builder(
+                          : ListView.separated(
                               itemCount: visible.length,
-                              itemBuilder: (context, index) => ListTile(
-                                title: Text(label(visible[index])),
-                                onTap: () =>
-                                    Navigator.pop(sheetContext, visible[index]),
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: AppSpacing.xs),
+                              itemBuilder: (context, index) => Material(
+                                color: AppColors.surfaceRaised,
+                                borderRadius: AppRadii.medium,
+                                child: ListTile(
+                                  shape: const RoundedRectangleBorder(
+                                    borderRadius: AppRadii.medium,
+                                  ),
+                                  leading: Icon(
+                                    title == 'phim'
+                                        ? Icons.movie_outlined
+                                        : Icons.location_on_outlined,
+                                    color: AppColors.gold,
+                                  ),
+                                  title: Text(
+                                    label(visible[index]),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.body.copyWith(
+                                      color: AppColors.text,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  onTap: () => Navigator.pop(
+                                    sheetContext,
+                                    visible[index],
+                                  ),
+                                ),
                               ),
                             ),
                     ),
@@ -266,19 +302,6 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
       }
     }
 
-    Widget filterButton(String title, String value, VoidCallback? onTap) =>
-        OutlinedButton(
-          onPressed: onTap,
-          child: Text(
-            '$title: $value',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        );
-    final filtered =
-        widget.movieId != null ||
-        widget.cinemaId != null ||
-        selectedDate != today;
     return AppShell(
       currentIndex: 2,
       body: Column(
@@ -297,131 +320,63 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                       ref.invalidate(homeCinemasProvider);
                     },
                   ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.sm,
-                    AppSpacing.md,
-                    0,
-                  ),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      filterButton(
-                        'Phim',
-                        chosenMovie?.title ??
-                            (widget.movieId == null
-                                ? 'Tất cả'
-                                : '#${widget.movieId}'),
-                        moviesState.isLoading || moviesState.hasError
-                            ? null
-                            : () => _pickItem<Movie>(
-                                title: 'phim',
-                                items: movies,
-                                label: (m) => m.title,
-                                onSelected: (m) => _setFilters(
-                                  movieId: m.id,
-                                  cinemaId: widget.cinemaId,
-                                  date: selectedDate == today
-                                      ? null
-                                      : selectedDate,
-                                ),
-                              ),
-                      ),
-                      filterButton(
-                        'Rạp',
-                        chosenCinema?.name ??
-                            (widget.cinemaId == null
-                                ? 'Tất cả'
-                                : '#${widget.cinemaId}'),
-                        cinemasState.isLoading || cinemasState.hasError
-                            ? null
-                            : () => _pickItem<CinemaDto>(
-                                title: 'rạp',
-                                items: cinemas.where((c) => c.active).toList(),
-                                label: (c) => '${c.name} · ${c.city}',
-                                onSelected: (c) => _setFilters(
-                                  movieId: widget.movieId,
-                                  cinemaId: c.id,
-                                  date: selectedDate == today
-                                      ? null
-                                      : selectedDate,
-                                ),
-                              ),
-                      ),
-                      filterButton(
-                        'Ngày',
-                        '${selectedDate.day}/${selectedDate.month}',
-                        () => _pickDate(today, selectedDate),
-                      ),
-                    ],
-                  ),
-                ),
-                if (filtered)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                    ),
-                    child: Wrap(
-                      spacing: 6,
-                      children: [
-                        if (widget.movieId != null)
-                          InputChip(
-                            key: const ValueKey('showtime-movie-filter'),
-                            backgroundColor: AppColors.surfaceRaised,
-                            labelStyle: AppTextStyles.label.copyWith(
-                              color: AppColors.text,
-                            ),
-                            deleteIconColor: AppColors.text,
-                            label: Text(
-                              'Phim: ${chosenMovie?.title ?? '#${widget.movieId}'}',
-                            ),
-                            onDeleted: () => _setFilters(
-                              cinemaId: widget.cinemaId,
-                              date: selectedDate == today ? null : selectedDate,
-                            ),
+                ShowtimeFilterPanel(
+                  movie:
+                      chosenMovie?.title ??
+                      (widget.movieId == null
+                          ? 'Tất cả phim'
+                          : '#${widget.movieId}'),
+                  cinema:
+                      chosenCinema?.name ??
+                      (widget.cinemaId == null
+                          ? 'Tất cả rạp'
+                          : '#${widget.cinemaId}'),
+                  date:
+                      '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}',
+                  movieSelected: widget.movieId != null,
+                  cinemaSelected: widget.cinemaId != null,
+                  dateSelected: selectedDate != today,
+                  onMovieTap: moviesState.isLoading || moviesState.hasError
+                      ? null
+                      : () => _pickItem<Movie>(
+                          title: 'phim',
+                          items: movies,
+                          label: (movie) => movie.title,
+                          onSelected: (movie) => _setFilters(
+                            movieId: movie.id,
+                            cinemaId: widget.cinemaId,
+                            date: selectedDate == today ? null : selectedDate,
                           ),
-                        if (widget.cinemaId != null)
-                          InputChip(
-                            key: const ValueKey('showtime-cinema-filter'),
-                            backgroundColor: AppColors.surfaceRaised,
-                            labelStyle: AppTextStyles.label.copyWith(
-                              color: AppColors.text,
-                            ),
-                            deleteIconColor: AppColors.text,
-                            label: Text(
-                              'Rạp: ${chosenCinema?.name ?? '#${widget.cinemaId}'}',
-                            ),
-                            onDeleted: () => _setFilters(
-                              movieId: widget.movieId,
-                              date: selectedDate == today ? null : selectedDate,
-                            ),
-                          ),
-                        if (selectedDate != today)
-                          InputChip(
-                            key: const ValueKey('showtime-date-filter'),
-                            backgroundColor: AppColors.surfaceRaised,
-                            labelStyle: AppTextStyles.label.copyWith(
-                              color: AppColors.text,
-                            ),
-                            deleteIconColor: AppColors.text,
-                            label: Text(
-                              'Ngày: ${selectedDate.day}/${selectedDate.month}',
-                            ),
-                            onDeleted: () => _setFilters(
-                              movieId: widget.movieId,
-                              cinemaId: widget.cinemaId,
-                            ),
-                          ),
-                        TextButton(
-                          key: const ValueKey('showtime-clear-all'),
-                          onPressed: () => _setFilters(),
-                          child: const Text('Xóa tất cả'),
                         ),
-                      ],
-                    ),
+                  onCinemaTap: cinemasState.isLoading || cinemasState.hasError
+                      ? null
+                      : () => _pickItem<CinemaDto>(
+                          title: 'rạp',
+                          items: cinemas
+                              .where((cinema) => cinema.active)
+                              .toList(),
+                          label: (cinema) => '${cinema.name} · ${cinema.city}',
+                          onSelected: (cinema) => _setFilters(
+                            movieId: widget.movieId,
+                            cinemaId: cinema.id,
+                            date: selectedDate == today ? null : selectedDate,
+                          ),
+                        ),
+                  onDateTap: () => _pickDate(today, selectedDate),
+                  onClearMovie: () => _setFilters(
+                    cinemaId: widget.cinemaId,
+                    date: selectedDate == today ? null : selectedDate,
                   ),
+                  onClearCinema: () => _setFilters(
+                    movieId: widget.movieId,
+                    date: selectedDate == today ? null : selectedDate,
+                  ),
+                  onClearDate: () => _setFilters(
+                    movieId: widget.movieId,
+                    cinemaId: widget.cinemaId,
+                  ),
+                  onClearAll: () => _setFilters(),
+                ),
                 DateSelector(
                   dates: dates,
                   selectedIndex: selectedDate.difference(today).inDays,

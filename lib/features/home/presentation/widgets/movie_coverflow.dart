@@ -21,6 +21,7 @@ class MovieCoverflow extends StatefulWidget {
     this.initialMovieId,
     this.onSelected,
     this.keyPrefix = 'hero',
+    this.recommendationReasons = const {},
   });
   final List<Movie> movies;
   final Future<Color> Function(String) colorLoader;
@@ -28,6 +29,7 @@ class MovieCoverflow extends StatefulWidget {
   final int? initialMovieId;
   final ValueChanged<Movie>? onSelected;
   final String keyPrefix;
+  final Map<int, String> recommendationReasons;
   @override
   State<MovieCoverflow> createState() => _MovieCoverflowState();
 }
@@ -426,6 +428,27 @@ class _MovieCoverflowState extends State<MovieCoverflow>
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: AppTextStyles.caption,
+                                    ),
+                                  ),
+                                if (widget
+                                        .recommendationReasons[movie.id]
+                                        ?.isNotEmpty ==
+                                    true)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      8,
+                                      16,
+                                      0,
+                                    ),
+                                    child: Text(
+                                      widget.recommendationReasons[movie.id]!,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: AppColors.gold,
+                                      ),
                                     ),
                                   ),
                               ],

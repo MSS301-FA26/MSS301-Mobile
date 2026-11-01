@@ -32,20 +32,31 @@ void main() {
       ],
     );
 
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-tab-now-showing')),
+    );
+    await tester.tap(find.byKey(const ValueKey('home-tab-now-showing')));
+    await tester.pumpAndSettle();
     final carousel = find.byKey(const ValueKey('movie-coverflow'));
     await tester.ensureVisible(carousel);
     await tester.drag(carousel, const Offset(-110, 0));
     await tester.pumpAndSettle();
-    final bookAvengers = find.byKey(const ValueKey('home-3d-book-2'));
+    final bookAvengers = find.byKey(const ValueKey('home-now-book-2'));
     await tester.ensureVisible(bookAvengers);
     await tester.tap(bookAvengers);
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(
-      of: find.byType(DateSelector),
-      matching: find.byType(InkWell),
-    ).at(1));
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(DateSelector),
+            matching: find.byType(InkWell),
+          )
+          .at(1),
+    );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('showtime-slot-1002')));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('showtime-slot-1002')),
+    );
     await tester.drag(find.byType(ListView).first, const Offset(0, -180));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('showtime-slot-1002')));
@@ -131,10 +142,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 20));
     expect(container.read(bookingEntryProvider).hasActiveDraft, isFalse);
-    expect(
-      find.byKey(const ValueKey('home-category-NOW_SHOWING')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('home-ai-coverflow')), findsOneWidget);
   });
 
   testWidgets('R4 guest auth resumes the exact selected showtime', (

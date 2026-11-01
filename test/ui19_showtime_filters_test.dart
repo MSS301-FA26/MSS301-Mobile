@@ -14,6 +14,7 @@ import 'package:mss301_mobile/features/movie/presentation/models/movie.dart';
 import 'package:mss301_mobile/features/movie/presentation/providers/movies_provider.dart';
 import 'package:mss301_mobile/features/showtime/presentation/models/showtime_models.dart';
 import 'package:mss301_mobile/features/showtime/presentation/providers/showtimes_provider.dart';
+import 'package:mss301_mobile/features/showtime/presentation/widgets/showtime_filter_panel.dart';
 import 'package:mss301_mobile/features/showtime/data/models/showtime_dto.dart';
 
 import 'support/pump_test_app.dart';
@@ -71,12 +72,56 @@ MovieShowtime schedule(int movieId, int cinemaId, int slotId) => MovieShowtime(
   ],
 );
 
-Future<void> removeChip(WidgetTester tester, String key) async {
-  tester.widget<InputChip>(find.byKey(ValueKey(key))).onDeleted!();
+Future<void> removeFilter(WidgetTester tester, String key) async {
+  await tester.tap(find.byKey(ValueKey(key)));
   await tester.pumpAndSettle();
 }
 
 void main() {
+  testWidgets('filter panel keeps its height when filters become active', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    Future<void> showPanel(bool selected) => tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ShowtimeFilterPanel(
+              movie: selected ? 'Avengers: Secret Wars' : 'Tất cả phim',
+              cinema: selected ? 'CinemaAI Central' : 'Tất cả rạp',
+              date: '01/11',
+              movieSelected: selected,
+              cinemaSelected: selected,
+              dateSelected: false,
+              onMovieTap: () {},
+              onCinemaTap: () {},
+              onDateTap: () {},
+              onClearMovie: () {},
+              onClearCinema: () {},
+              onClearDate: () {},
+              onClearAll: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await showPanel(false);
+    final initialHeight = tester
+        .getSize(find.byType(ShowtimeFilterPanel))
+        .height;
+    await showPanel(true);
+    expect(
+      tester.getSize(find.byType(ShowtimeFilterPanel)).height,
+      initialHeight,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   test('route serializes movie, cinema and Vietnam calendar date', () {
     final route = AppRoutes.showtimesWithFilters(
       movieId: 2,
@@ -133,7 +178,7 @@ void main() {
     expect(queries.last.movieId, 1);
     expect(queries.last.cinemaId, 10);
     expect(queries.last.date, DateTime(2026, 10, 15));
-    await removeChip(tester, 'showtime-movie-filter');
+    await removeFilter(tester, 'showtime-movie-filter');
     expect(queries.last.movieId, isNull);
     expect(queries.last.cinemaId, 10);
     expect(queries.last.date, DateTime(2026, 10, 15));
@@ -141,7 +186,7 @@ void main() {
       appRouter.routeInformationProvider.value.uri.queryParameters['movieId'],
       isNull,
     );
-    await removeChip(tester, 'showtime-cinema-filter');
+    await removeFilter(tester, 'showtime-cinema-filter');
     expect(queries.last.cinemaId, isNull);
     expect(queries.last.date, DateTime(2026, 10, 15));
     await tester.tap(find.byKey(const ValueKey('showtime-clear-all')));
@@ -176,7 +221,7 @@ void main() {
     );
     expect(find.text('Rạp A'), findsWidgets);
     expect(find.text('Rạp B'), findsWidgets);
-    await tester.tap(find.text('Rạp: Tất cả'));
+    await tester.tap(find.byKey(const ValueKey('showtime-filter-cinema')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Rạp B');
     await tester.pumpAndSettle();
@@ -209,7 +254,7 @@ void main() {
         ),
       ],
     );
-    await removeChip(tester, 'showtime-movie-filter');
+    await removeFilter(tester, 'showtime-movie-filter');
     expect(find.text('PHIM HAI'), findsWidgets);
     slow.complete([schedule(1, 10, 101)]);
     await tester.pumpAndSettle();
@@ -241,7 +286,7 @@ void main() {
     await tester.tap(slot);
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('showtime-continue')), findsOneWidget);
-    await removeChip(tester, 'showtime-movie-filter');
+    await removeFilter(tester, 'showtime-movie-filter');
     expect(find.byKey(const ValueKey('showtime-continue')), findsNothing);
     expect(find.byKey(const ValueKey('showtime-slot-202')), findsOneWidget);
     expect(tester.takeException(), isNull);

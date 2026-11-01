@@ -10,7 +10,7 @@ import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
 import '../widgets/home_cinemas_section.dart';
 import '../widgets/home_hero_carousel.dart';
-import '../widgets/home_movie_section.dart';
+import '../widgets/home_personalized_movies.dart';
 import '../widgets/home_quick_booking.dart';
 import '../providers/home_providers.dart';
 
@@ -70,7 +70,7 @@ class HomePage extends ConsumerWidget {
                         .toList(growable: false),
               onBook: (id) => _openSeats(context, ref, id),
             ),
-            HomeMovieSection(
+            HomePersonalizedMovies(
               onOpen: (movie) => _openMovie(context, movie),
               onBook: (movie) => _bookMovie(context, movie),
             ),

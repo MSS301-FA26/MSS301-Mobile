@@ -10,10 +10,7 @@ void main() {
     await pumpTestApp(tester, size: const Size(430, 900));
 
     expect(find.text('MUA VÉ NHANH'), findsNWidgets(2));
-    expect(
-      find.byKey(const ValueKey('home-category-NOW_SHOWING')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('home-ai-coverflow')), findsOneWidget);
     expect(find.text('RẠP CINEPREMIER'), findsOneWidget);
   });
 

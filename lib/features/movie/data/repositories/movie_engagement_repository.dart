@@ -57,6 +57,32 @@ class MovieEngagementRepository {
         .toList(growable: false);
   }
 
+  Future<List<RecommendationDto>> getUserRecommendations(int userId) =>
+      _getRecommendationSet('/api/v1/recommendations/users/$userId');
+
+  Future<List<RecommendationDto>> getTrendingRecommendations() =>
+      _getRecommendationSet('/api/v1/recommendations/trending');
+
+  Future<List<RecommendationDto>> _getRecommendationSet(String path) async {
+    final response = await _get(path, query: {'limit': 12});
+    final body = response.data;
+    final data = body is Map ? body['data'] : null;
+    final items = data is Map ? data['recommendations'] : null;
+    if (body is! Map || body['success'] != true || items is! List) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Invalid AI recommendation response.',
+      );
+    }
+    return items
+        .map(
+          (item) => RecommendationDto.fromJson(
+            Map<String, Object?>.from(item as Map),
+          ),
+        )
+        .toList(growable: false);
+  }
+
   Future<Response<dynamic>> _get(
     String path, {
     Map<String, dynamic>? query,
