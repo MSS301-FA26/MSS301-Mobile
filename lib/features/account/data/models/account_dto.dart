@@ -116,7 +116,9 @@ class WalletTransactionDto {
   final int userId;
   final int? bookingId;
   final WalletTransactionType type;
-  final VndMoney amount;
+
+  /// BE sends credits as positive values and debits as negative values.
+  final int amount;
   final VndMoney balanceAfter;
   final String? referenceCode;
   final String? description;
@@ -129,7 +131,7 @@ class WalletTransactionDto {
         userId: intFromJson(json['userId']),
         bookingId: nullableIntFromJson(json['bookingId']),
         type: WalletTransactionType.parse(json['type']),
-        amount: VndMoney.fromJson(json['amount']),
+        amount: intFromJson(json['amount'], field: 'amount'),
         balanceAfter: VndMoney.fromJson(json['balanceAfter']),
         referenceCode: json['referenceCode']?.toString(),
         description: json['description']?.toString(),
@@ -151,6 +153,15 @@ class WithdrawalCreateRequestDto {
   final String accountNumber;
   final String accountHolder;
   final String? walletPhone;
+
+  Map<String, Object?> toJson() => {
+    'amount': amount.amount,
+    'bankName': bankName,
+    'accountNumber': accountNumber,
+    'accountHolder': accountHolder,
+    if (walletPhone != null && walletPhone!.trim().isNotEmpty)
+      'walletPhone': walletPhone!.trim(),
+  };
 }
 
 class WithdrawalDto {

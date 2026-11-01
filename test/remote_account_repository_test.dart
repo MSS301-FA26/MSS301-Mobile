@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mss301_mobile/core/money/vnd_money.dart';
 import 'package:mss301_mobile/core/network/api_exception.dart';
+import 'package:mss301_mobile/features/account/data/models/account_dto.dart';
 import 'package:mss301_mobile/features/account/data/repositories/remote_account_repositories.dart';
 
 void main() {
@@ -13,8 +15,51 @@ void main() {
     final wallet = await repository.getWallet(99);
     final transactions = await repository.getTransactions(99);
     expect(wallet.balance.amount, 125000);
-    expect(transactions.single.amount.amount, 50000);
+    expect(transactions.single.amount, 50000);
     expect(adapter.paths, contains('/api/v1/wallet/transactions'));
+  });
+
+  test('keeps signed debits and submits withdrawal with BE fields', () async {
+    final adapter = _Adapter();
+    final repository = RemoteWalletRepository(
+      Dio()..httpClientAdapter = adapter,
+    );
+    final transaction = WalletTransactionDto.fromJson({
+      ..._transaction,
+      'type': 'WITHDRAWAL_HOLD',
+      'amount': -100000,
+    });
+    expect(transaction.amount, -100000);
+    final withdrawal = await repository.createWithdrawal(
+      99,
+      const WithdrawalCreateRequestDto(
+        amount: VndMoney(100000),
+        bankName: 'VCB',
+        accountNumber: '0123456789',
+        accountHolder: 'NGUYEN MINH ANH',
+      ),
+    );
+    expect(withdrawal.status.wireValue, 'PENDING');
+    expect(adapter.lastMethod, 'POST');
+    expect(adapter.lastPath, '/api/v1/wallet/withdrawals');
+    expect(adapter.lastBody, {
+      'amount': 100000,
+      'bankName': 'VCB',
+      'accountNumber': '0123456789',
+      'accountHolder': 'NGUYEN MINH ANH',
+    });
+  });
+
+  test('uses requested pages for wallet history', () async {
+    final adapter = _Adapter();
+    final repository = RemoteWalletRepository(
+      Dio()..httpClientAdapter = adapter,
+    );
+    await repository.getTransactions(99, page: 2, size: 30);
+    expect(adapter.lastQuery, {'page': 2, 'size': 30});
+    await repository.getWithdrawals(99, page: 1, size: 30);
+    expect(adapter.lastPath, '/api/v1/wallet/withdrawals');
+    expect(adapter.lastQuery, {'page': 1, 'size': 30});
   });
 
   test('maps loyalty points and configuration', () async {
@@ -92,6 +137,7 @@ class _Adapter implements HttpClientAdapter {
   String? lastMethod;
   String? lastPath;
   Map<String, dynamic>? lastQuery;
+  Map<String, dynamic>? lastBody;
   @override
   void close({bool force = false}) {}
   @override
@@ -104,6 +150,10 @@ class _Adapter implements HttpClientAdapter {
     lastMethod = options.method;
     lastPath = options.path;
     lastQuery = options.queryParameters;
+    if (requestStream != null) {
+      final raw = await utf8.decoder.bind(requestStream).join();
+      if (raw.isNotEmpty) lastBody = Map<String, dynamic>.from(jsonDecode(raw));
+    }
     Object? data;
     if (options.path == '/api/v1/wallet') {
       data = {'id': 1, 'balance': 125000, 'createdAt': '2026-10-01T00:00:00'};
@@ -115,6 +165,16 @@ class _Adapter implements HttpClientAdapter {
         'totalElements': 1,
         'totalPages': 1,
       };
+    } else if (options.path == '/api/v1/wallet/withdrawals') {
+      data = options.method == 'POST'
+          ? _withdrawal
+          : {
+              'content': [_withdrawal],
+              'page': 0,
+              'size': 30,
+              'totalElements': 1,
+              'totalPages': 1,
+            };
     } else if (options.path == '/api/v1/loyalty/me' ||
         options.path == '/api/v1/loyalty/me/redeem') {
       data = {
@@ -172,4 +232,15 @@ const _transaction = {
   'referenceCode': 'BK-7',
   'description': 'Refund',
   'createdAt': '2026-10-01T00:00:00',
+};
+
+const _withdrawal = {
+  'id': 9,
+  'amount': 100000,
+  'bankName': 'VCB',
+  'accountNumber': '0123456789',
+  'accountHolder': 'NGUYEN MINH ANH',
+  'status': 'PENDING',
+  'createdAt': '2026-10-01T00:00:00',
+  'userId': 99,
 };

@@ -10,6 +10,7 @@
       "preLaunchTask": "Mobile: forward local gateway",
       "toolArgs": [
         "--dart-define=API_BASE_URL=http://localhost:8080",
+        "--dart-define=GOOGLE_SERVER_CLIENT_ID=316168245134-0oda35k7fpifvgq2fgv0k66ifuq0omko.apps.googleusercontent.com",
         "--dart-define=UI_PREVIEW=false"
       ]
     },
@@ -22,6 +23,7 @@
       "preLaunchTask": "Mobile: forward local gateway",
       "toolArgs": [
         "--dart-define=API_BASE_URL=http://localhost:8080",
+        "--dart-define=GOOGLE_SERVER_CLIENT_ID=316168245134-0oda35k7fpifvgq2fgv0k66ifuq0omko.apps.googleusercontent.com",
         "--dart-define=UI_PREVIEW=true"
       ]
     }

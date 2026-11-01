@@ -12,9 +12,17 @@ abstract interface class ProfileRepository {
 abstract interface class WalletRepository {
   Future<WalletDto> getWallet(int userId);
 
-  Future<List<WalletTransactionDto>> getTransactions(int userId);
+  Future<List<WalletTransactionDto>> getTransactions(
+    int userId, {
+    int page = 0,
+    int size = 30,
+  });
 
-  Future<List<WithdrawalDto>> getWithdrawals(int userId);
+  Future<List<WithdrawalDto>> getWithdrawals(
+    int userId, {
+    int page = 0,
+    int size = 30,
+  });
 
   Future<WithdrawalDto> createWithdrawal(
     int userId,

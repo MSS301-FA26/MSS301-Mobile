@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/account/presentation/pages/account_page.dart';
 import '../../features/account/presentation/pages/account_detail_pages.dart';
+import '../../features/account/presentation/pages/wallet_page.dart';
 import '../../features/account/presentation/pages/information_pages.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/auth/presentation/widgets/auth_guard.dart';
