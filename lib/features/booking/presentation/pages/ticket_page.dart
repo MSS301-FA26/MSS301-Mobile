@@ -222,6 +222,25 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.local_movies_outlined,
+                              size: 17,
+                              color: AppColors.gold,
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'THÔNG TIN VÉ',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.gold,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .6,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
                         CheckoutLine(
                           'Rạp',
                           booking.cinemaNameSnapshot ??
@@ -232,12 +251,13 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                           'Phòng',
                           booking.roomNameSnapshot ?? booking.roomName ?? '—',
                         ),
-                        CheckoutLine(
-                          'Ghế',
-                          booking.seats
-                              .map((seat) => seat.seatLabel)
-                              .join(', '),
-                        ),
+                        if (booking.tickets.isEmpty)
+                          CheckoutLine(
+                            'Ghế',
+                            booking.seats
+                                .map((seat) => seat.seatLabel)
+                                .join(', '),
+                          ),
                         for (final type in const [
                           TicketType.adult,
                           TicketType.student,
@@ -278,16 +298,18 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                             '${food.productName} × ${food.quantity}',
                             food.lineTotal.format(),
                           ),
-                        CheckoutLine('Tổng tiền', booking.totalAmount.format()),
+                        const Divider(color: AppColors.borderStrong),
+                        const SizedBox(height: 6),
                         CheckoutLine(
-                          'Trạng thái',
-                          _statusLabel(booking.status),
+                          'Tổng tiền',
+                          booking.totalAmount.format(),
+                          emphasized: true,
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: 18),
                 if (booking.status == BookingStatus.holding ||
                     booking.status == BookingStatus.pendingPayment)
                   AppButton(
@@ -297,26 +319,25 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                 if (booking.status == BookingStatus.used ||
                     (booking.status == BookingStatus.paid &&
                         booking.qrCode?.trim().isNotEmpty == true)) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      AppButton(
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final stackActions =
+                          constraints.maxWidth < 330 ||
+                          MediaQuery.textScalerOf(context).scale(14) > 18;
+                      final save = _TicketActionButton(
                         key: const ValueKey('ticket-save'),
                         label: _exporting ? 'Đang xử lý…' : 'Lưu vé PDF',
                         icon: Icons.download_rounded,
-                        variant: AppButtonVariant.secondary,
+                        primary: true,
                         onPressed: _exporting
                             ? null
                             : () => _export(false, Rect.zero),
-                      ),
-                      Builder(
-                        builder: (context) => AppButton(
+                      );
+                      final share = Builder(
+                        builder: (context) => _TicketActionButton(
                           key: const ValueKey('ticket-share'),
                           label: 'Chia sẻ vé',
                           icon: Icons.share_rounded,
-                          variant: AppButtonVariant.secondary,
                           onPressed: _exporting
                               ? null
                               : () {
@@ -328,25 +349,49 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                                   );
                                 },
                         ),
-                      ),
-                    ],
+                      );
+                      if (stackActions) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [save, const SizedBox(height: 10), share],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: save),
+                          const SizedBox(width: 10),
+                          Expanded(child: share),
+                        ],
+                      );
+                    },
                   ),
                 ],
+                const SizedBox(height: 10),
+                const Divider(color: AppColors.border),
+                const SizedBox(height: 2),
                 if (booking.status == BookingStatus.used)
-                  TextButton(
+                  TextButton.icon(
                     onPressed: () =>
                         context.push(AppRoutes.movieReviews(booking.movieId)),
-                    child: const Text('Xem đánh giá phim'),
+                    icon: const Icon(Icons.rate_review_outlined, size: 18),
+                    label: const Text('Xem đánh giá phim'),
                   ),
-                AppButton(
-                  label: 'Tải lại đơn',
-                  variant: AppButtonVariant.secondary,
-                  onPressed: _exporting
-                      ? null
-                      : () {
-                          ref.invalidate(ticketBookingProvider(bookingId));
-                          ref.invalidate(ordersProvider);
-                        },
+                Center(
+                  child: TextButton.icon(
+                    key: const ValueKey('ticket-refresh'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      minimumSize: const Size(0, 44),
+                    ),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Tải lại đơn'),
+                    onPressed: _exporting
+                        ? null
+                        : () {
+                            ref.invalidate(ticketBookingProvider(bookingId));
+                            ref.invalidate(ordersProvider);
+                          },
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
@@ -369,6 +414,53 @@ class _TicketPageState extends ConsumerState<TicketPage> {
   }
 }
 
+class _TicketActionButton extends StatelessWidget {
+  const _TicketActionButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.primary = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 52,
+    child: FilledButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: ButtonStyle(
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 10),
+        ),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: AppRadii.control),
+        ),
+        textStyle: const WidgetStatePropertyAll(
+          TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return AppColors.disabled;
+          return primary ? AppColors.gold : AppColors.surfaceRaised;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return AppColors.textMuted;
+          return primary ? AppColors.background : AppColors.text;
+        }),
+        side: WidgetStatePropertyAll(
+          BorderSide(color: primary ? AppColors.gold : AppColors.goldBorder),
+        ),
+      ),
+    ),
+  );
+}
+
 String _ticketLabel(TicketType type) => switch (type) {
   TicketType.child => 'Vé trẻ em',
   TicketType.student => 'Vé sinh viên',
@@ -376,14 +468,3 @@ String _ticketLabel(TicketType type) => switch (type) {
 };
 
 String _dateTime(DateTime value) => formatVietnamDateTime(value);
-
-String _statusLabel(BookingStatus status) => switch (status) {
-  BookingStatus.holding => 'Đang giữ ghế',
-  BookingStatus.pendingPayment => 'Chờ thanh toán',
-  BookingStatus.paid => 'Đã thanh toán',
-  BookingStatus.used => 'Đã sử dụng',
-  BookingStatus.cancelled => 'Đã hủy',
-  BookingStatus.expired => 'Đã hết hạn',
-  BookingStatus.refunded => 'Đã hoàn tiền',
-  BookingStatus.unknown => 'Chưa xác định',
-};

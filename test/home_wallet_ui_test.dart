@@ -38,4 +38,19 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('quick booking movie search keeps the entered filter', (
+    tester,
+  ) async {
+    await pumpTestApp(tester, size: const Size(390, 844));
+    await tester.tap(find.byKey(const ValueKey('home-quick-step-1')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'Avengers');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-choice-2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-choice-1')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

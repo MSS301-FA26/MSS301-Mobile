@@ -266,8 +266,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('home-choice-2')));
       await tester.pumpAndSettle();
-      await switchTab(tester, MovieStatus.upcoming);
-      await switchTab(tester, MovieStatus.nowShowing);
+      final nowTab = find.byKey(const ValueKey('home-tab-now-showing'));
+      await tester.ensureVisible(nowTab);
+      await tester.tap(nowTab);
+      await tester.pumpAndSettle();
+      final aiTab = find.byKey(const ValueKey('home-tab-ai'));
+      await tester.tap(aiTab);
+      await tester.pumpAndSettle();
       expect(
         identical(tester.state(find.byType(HomeQuickBooking)), quickState),
         isTrue,
