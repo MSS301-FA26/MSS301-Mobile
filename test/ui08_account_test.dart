@@ -54,9 +54,16 @@ Future<void> openCards(
                 children: [
                   AccountProfileCard(user: value),
                   MembershipCard(user: value, onQr: null, onRetry: retry),
-                  WalletTile(user: value, onManage: () {}, onRetry: retry),
                   AccountMenu(
                     items: [
+                      AccountMenuItemData(
+                        icon: Icons.account_balance_wallet_outlined,
+                        label: 'CineWallet',
+                        status:
+                            'Số dư: ${value.walletBalance?.format() ?? 'Chưa tải được số dư'}',
+                        detailLabel: 'Chi tiết',
+                        onTap: () {},
+                      ),
                       AccountMenuItemData(
                         icon: Icons.support_agent,
                         label: 'Trung tâm trợ giúp và chăm sóc khách hàng',
@@ -102,17 +109,14 @@ void main() {
       await openCards(tester, value, retry: () => retries++);
       expect(find.text(value.name), findsOneWidget);
       expect(find.text('Chưa tải được điểm'), findsOneWidget);
-      expect(find.text('Chưa tải được số dư'), findsOneWidget);
+      expect(find.text('Số dư: Chưa tải được số dư'), findsOneWidget);
+      expect(find.text('Chi tiết'), findsOneWidget);
       expect(find.text('0đ'), findsNothing);
       await tester.ensureVisible(
         find.byKey(const ValueKey('account-points-retry')),
       );
       await tester.tap(find.byKey(const ValueKey('account-points-retry')));
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('account-wallet-retry')),
-      );
-      await tester.tap(find.byKey(const ValueKey('account-wallet-retry')));
-      expect(retries, 2);
+      expect(retries, 1);
     },
   );
 
@@ -121,8 +125,7 @@ void main() {
   ) async {
     await openCards(tester, user(points: 0, balance: VndMoney.zero));
     expect(find.text('0'), findsOneWidget);
-    expect(find.text('0đ'), findsOneWidget);
-    expect(find.byKey(const ValueKey('account-wallet-retry')), findsNothing);
+    expect(find.text('Số dư: 0đ'), findsOneWidget);
     expect(find.byKey(const ValueKey('account-points-retry')), findsNothing);
   });
 

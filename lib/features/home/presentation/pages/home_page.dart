@@ -39,7 +39,6 @@ class HomePage extends ConsumerWidget {
     final quickBookingMovies = ref.watch(quickBookingMoviesProvider);
     return AppShell(
       currentIndex: 0,
-      compactHeader: true,
       body: SingleChildScrollView(
         key: const ValueKey('home-scroll'),
         child: Column(

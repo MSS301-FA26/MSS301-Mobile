@@ -16,7 +16,7 @@ class AppShell extends ConsumerWidget {
     required this.body,
     required this.currentIndex,
     this.showBottomNavigation = true,
-    this.compactHeader = false,
+    this.compactHeader = true,
     this.bookingTitle,
     this.bookingSubtitle,
     this.onBookingBack,

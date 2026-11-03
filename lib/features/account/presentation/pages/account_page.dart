@@ -63,11 +63,6 @@ class AccountPage extends ConsumerWidget {
                   onTap: () => context.push(AppRoutes.cinemas),
                 ),
                 AccountMenuItemData(
-                  icon: Icons.policy_outlined,
-                  label: 'Chính sách',
-                  onTap: () => context.go(AppRoutes.policies),
-                ),
-                AccountMenuItemData(
                   icon: Icons.support_agent_rounded,
                   label: 'Trung tâm trợ giúp & CSKH',
                   onTap: () => context.go(AppRoutes.support),
@@ -128,31 +123,20 @@ class AccountPage extends ConsumerWidget {
                 : () => ref.invalidate(accountSummaryProvider),
           ),
           const SizedBox(height: AppSpacing.md),
-          WalletTile(
-            user: user,
-            onManage: () => context.go(AppRoutes.wallet),
-            refreshing: accountState.isLoading,
-            onRetry: accountState.isLoading
-                ? null
-                : () => ref.invalidate(accountSummaryProvider),
-          ),
-          const SizedBox(height: AppSpacing.md),
           AccountMenu(
             items: [
               AccountMenuItemData(
-                icon: Icons.confirmation_number_outlined,
-                label: 'Vé xem phim của tôi',
-                onTap: () => context.go(AppRoutes.orders),
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'CineWallet',
+                status:
+                    'Số dư: ${user.walletBalance?.format() ?? (accountState.isLoading ? 'Đang tải…' : 'Chưa tải được')}',
+                detailLabel: 'Chi tiết',
+                onTap: () => context.go(AppRoutes.wallet),
               ),
               AccountMenuItemData(
                 icon: Icons.fastfood_outlined,
                 label: 'Lịch sử đơn bắp nước',
                 onTap: () => context.go(AppRoutes.foodOrders),
-              ),
-              AccountMenuItemData(
-                icon: Icons.stars_rounded,
-                label: 'CinePoints',
-                onTap: () => context.go(AppRoutes.points),
               ),
               AccountMenuItemData(
                 icon: Icons.person_outline_rounded,
@@ -186,12 +170,6 @@ class AccountPage extends ConsumerWidget {
                   status: 'Preview',
                   onTap: () => context.go(AppRoutes.vip),
                 ),
-              AccountMenuItemData(
-                icon: Icons.favorite_outline_rounded,
-                label: 'Danh sách muốn xem',
-                status: 'Trên thiết bị này',
-                onTap: () => context.go(AppRoutes.watchlist),
-              ),
               if (FeatureFlags.socialMoviePreview)
                 AccountMenuItemData(
                   icon: Icons.notifications_none_rounded,
@@ -211,12 +189,6 @@ class AccountPage extends ConsumerWidget {
                 label: 'Thông tin rạp',
                 iconColor: AppColors.textMuted,
                 onTap: () => context.push(AppRoutes.cinemas),
-              ),
-              AccountMenuItemData(
-                icon: Icons.policy_outlined,
-                label: 'Chính sách',
-                iconColor: AppColors.textMuted,
-                onTap: () => context.go(AppRoutes.policies),
               ),
               AccountMenuItemData(
                 icon: Icons.support_agent_rounded,
