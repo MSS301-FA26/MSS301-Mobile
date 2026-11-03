@@ -239,6 +239,34 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
     }
   }
 
+  List<MovieShowtime> _hidePastShowtimes(
+    List<MovieShowtime> items,
+    DateTime now,
+  ) => [
+    for (final item in items)
+      if (item.rooms.any(
+        (room) => room.slots.any((slot) => slot.startAt.isAfter(now)),
+      ))
+        MovieShowtime(
+          movieId: item.movieId,
+          rooms: [
+            for (final room in item.rooms)
+              if (room.slots.any((slot) => slot.startAt.isAfter(now)))
+                ShowtimeRoom(
+                  id: room.id,
+                  name: room.name,
+                  formatBadge: room.formatBadge,
+                  screenDetail: room.screenDetail,
+                  cinemaId: room.cinemaId,
+                  cinemaName: room.cinemaName,
+                  slots: room.slots
+                      .where((slot) => slot.startAt.isAfter(now))
+                      .toList(growable: false),
+                ),
+          ],
+        ),
+  ];
+
   List<ShowtimeRoom> _roomsAtCinema(MovieShowtime item, int cinemaId) => item
       .rooms
       .where((room) => (room.cinemaId ?? 0) == cinemaId)
@@ -280,8 +308,11 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
         .where((c) => c.id == widget.cinemaId)
         .firstOrNull;
     final items = showtimesState.value ?? <MovieShowtime>[];
+    final visibleItems = selectedDate == today
+        ? _hidePastShowtimes(items, now)
+        : items;
     final cinemaIds = <int>{
-      for (final item in items)
+      for (final item in visibleItems)
         for (final room in item.rooms) room.cinemaId ?? 0,
     }.toList(growable: false);
     cinemaIds.sort(
@@ -290,7 +321,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
     );
 
     ShowtimeSlot? validSelection;
-    for (final item in items.where(
+    for (final item in visibleItems.where(
       (item) => item.movieId == _selectedMovieId,
     )) {
       for (final room in item.rooms) {
@@ -408,9 +439,13 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                       onRetry: () => ref.invalidate(showtimesProvider(query)),
                     ),
                   if (cinemaIds.isEmpty)
-                    const RepositoryStatePane.empty(
-                      title: 'Chưa có lịch chiếu',
-                      message: 'Không có suất phù hợp trong ngày này. Hãy thử bộ lọc khác.',
+                    RepositoryStatePane.empty(
+                      title: selectedDate == today && items.isNotEmpty
+                          ? 'Hôm nay đã hết suất'
+                          : 'Chưa có lịch chiếu',
+                      message: selectedDate == today && items.isNotEmpty
+                          ? 'Các suất chiếu hôm nay đều đã qua. Hãy chọn ngày khác.'
+                          : 'Không có suất phù hợp trong ngày này. Hãy thử bộ lọc khác.',
                     ),
                   for (final cinemaId in cinemaIds) ...[
                     Padding(
@@ -435,7 +470,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                                       .where((c) => c.id == cinemaId)
                                       .firstOrNull
                                       ?.name ??
-                                  items
+                                  visibleItems
                                       .expand((i) => i.rooms)
                                       .where((r) => r.cinemaId == cinemaId)
                                       .first
@@ -447,7 +482,7 @@ class _ShowtimesPageState extends ConsumerState<ShowtimesPage> {
                         ],
                       ),
                     ),
-                    for (final item in items)
+                    for (final item in visibleItems)
                       if (_roomsAtCinema(item, cinemaId).isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(
