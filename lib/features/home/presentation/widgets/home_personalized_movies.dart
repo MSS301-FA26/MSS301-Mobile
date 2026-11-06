@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
@@ -150,9 +151,12 @@ class _HomePersonalizedMoviesState
                 layout: RepositorySkeleton.poster,
               ),
             ),
-            error: (_, _) => RepositoryStatePane.error(
+            error: (error, _) => RepositoryStatePane.error(
               compact: true,
               title: 'Chưa tải được gợi ý AI',
+              message: error is HomeRecommendationLoadException
+                  ? error.userMessage
+                  : userFacingErrorMessage(error),
               onRetry: () => ref.invalidate(homeRecommendationsProvider),
             ),
             data: (items) => items.isEmpty
@@ -180,9 +184,10 @@ class _HomePersonalizedMoviesState
                 layout: RepositorySkeleton.poster,
               ),
             ),
-            error: (_, _) => RepositoryStatePane.error(
+            error: (error, _) => RepositoryStatePane.error(
               compact: true,
               title: 'Chưa tải được phim đang chiếu',
+              message: userFacingErrorMessage(error),
               onRetry: () => ref.invalidate(
                 homeCategoryMoviesProvider(MovieStatus.nowShowing),
               ),

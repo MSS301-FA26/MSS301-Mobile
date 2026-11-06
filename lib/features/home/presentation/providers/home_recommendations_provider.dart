@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/application/auth_session.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/presentation/providers/movie_engagement_provider.dart';
@@ -52,12 +53,25 @@ final homeRecommendationsProvider = FutureProvider<List<HomeRecommendation>>((
     authSessionProvider.select((state) => state.session?.user.id),
   );
   final ai = ref.watch(movieEngagementRepositoryProvider);
-  final (recommendations, showing) = await (
+  final aiResultFuture = _capture(
     userId == null
         ? ai.getTrendingRecommendations()
         : ai.getUserRecommendations(userId),
+  );
+  final catalogResultFuture = _capture(
     ref.watch(homeCategoryMoviesProvider(MovieStatus.nowShowing).future),
-  ).wait;
+  );
+  final aiResult = await aiResultFuture;
+  final catalogResult = await catalogResultFuture;
+
+  if (aiResult.error != null || catalogResult.error != null) {
+    throw HomeRecommendationLoadException(
+      recommendationError: aiResult.error,
+      catalogError: catalogResult.error,
+    );
+  }
+  final recommendations = aiResult.value!;
+  final showing = catalogResult.value!;
 
   final current = {for (final movie in showing) movie.id: movie};
   final seen = <int>{};
@@ -70,3 +84,38 @@ final homeRecommendationsProvider = FutureProvider<List<HomeRecommendation>>((
         ),
   ];
 }, retry: (retryCount, error) => null);
+
+class HomeRecommendationLoadException implements Exception {
+  const HomeRecommendationLoadException({
+    this.recommendationError,
+    this.catalogError,
+  });
+
+  final Object? recommendationError;
+  final Object? catalogError;
+
+  String get userMessage => [
+    if (recommendationError != null)
+      'Dịch vụ gợi ý AI: ${userFacingErrorMessage(recommendationError!)}',
+    if (catalogError != null)
+      'Danh mục phim: ${userFacingErrorMessage(catalogError!)}',
+  ].join(' ');
+
+  @override
+  String toString() => userMessage;
+}
+
+Future<_LoadResult<T>> _capture<T>(Future<T> future) async {
+  try {
+    return _LoadResult(value: await future);
+  } on Object catch (error) {
+    return _LoadResult(error: error);
+  }
+}
+
+class _LoadResult<T> {
+  const _LoadResult({this.value, this.error});
+
+  final T? value;
+  final Object? error;
+}

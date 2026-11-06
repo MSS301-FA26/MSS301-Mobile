@@ -102,6 +102,32 @@ void main() {
         containsPair('email', ['Email is invalid']),
       );
     });
+
+    test('provides safe Vietnamese messages for common API failures', () {
+      expect(
+        const ApiException(
+          type: ApiErrorType.unauthorized,
+          statusCode: 401,
+          message: 'Invalid username or password',
+        ).userMessage,
+        'Tên đăng nhập hoặc mật khẩu không chính xác.',
+      );
+      expect(
+        const ApiException(
+          type: ApiErrorType.network,
+          message: 'The network is unavailable.',
+        ).userMessage,
+        'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.',
+      );
+      expect(
+        const ApiException(
+          type: ApiErrorType.server,
+          statusCode: 503,
+          message: 'Request failed',
+        ).userMessage,
+        'Máy chủ đang gặp sự cố (503). Vui lòng thử lại sau.',
+      );
+    });
   });
 
   test(

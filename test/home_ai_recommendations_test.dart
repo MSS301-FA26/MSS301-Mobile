@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mss301_mobile/features/auth/application/auth_session.dart';
+import 'package:mss301_mobile/core/network/api_exception.dart';
 import 'package:mss301_mobile/features/home/presentation/providers/home_preview_provider.dart';
 import 'package:mss301_mobile/features/home/presentation/providers/home_recommendations_provider.dart';
 import 'package:mss301_mobile/features/movie/data/models/catalog_enums.dart';
@@ -48,6 +49,30 @@ void main() {
     expect(ai.trendingRequested, isTrue);
     expect(results.map((item) => item.movie.id), [2, 1]);
   });
+
+  test('Home recommendation errors identify the failing source', () async {
+    final aiContainer = _container(
+      _FakeAi(
+        recommendationError: const ApiException(
+          type: ApiErrorType.timeout,
+          message: 'The request timed out.',
+        ),
+      ),
+      unauthenticatedState,
+    );
+    addTearDown(aiContainer.dispose);
+
+    await expectLater(
+      aiContainer.read(homeRecommendationsProvider.future),
+      throwsA(
+        isA<HomeRecommendationLoadException>().having(
+          (error) => error.userMessage,
+          'userMessage',
+          contains('Dịch vụ gợi ý AI: Kết nối đến máy chủ quá lâu.'),
+        ),
+      ),
+    );
+  });
 }
 
 ProviderContainer _container(_FakeAi ai, AuthState auth) => ProviderContainer(
@@ -72,7 +97,9 @@ Movie _movie(int id) => Movie(
 );
 
 class _FakeAi extends MovieEngagementRepository {
-  _FakeAi() : super(Dio());
+  _FakeAi({this.recommendationError}) : super(Dio());
+
+  final Object? recommendationError;
 
   int? requestedUserId;
   bool trendingRequested = false;
@@ -86,12 +113,14 @@ class _FakeAi extends MovieEngagementRepository {
 
   @override
   Future<List<RecommendationDto>> getUserRecommendations(int userId) async {
+    if (recommendationError case final error?) throw error;
     requestedUserId = userId;
     return items;
   }
 
   @override
   Future<List<RecommendationDto>> getTrendingRecommendations() async {
+    if (recommendationError case final error?) throw error;
     trendingRequested = true;
     return items;
   }
