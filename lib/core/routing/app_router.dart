@@ -5,6 +5,7 @@ import '../../features/discover/presentation/pages/discover_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/movie/presentation/pages/movie_detail_placeholder.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
+import '../../features/payment/presentation/pages/payment_webview_page.dart';
 import '../../features/showtime/presentation/pages/showtimes_page.dart';
 
 final appRouter = GoRouter(
@@ -41,6 +42,21 @@ final appRouter = GoRouter(
       name: 'movieDetail',
       builder: (context, state) =>
           MovieDetailPlaceholder(movieId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/payment-webview',
+      name: 'paymentWebview',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final paymentUrl = extra['paymentUrl'] as String? ?? state.uri.queryParameters['url'] ?? '';
+        final title = extra['title'] as String? ?? 'Thanh toán VNPay';
+        final orderId = extra['orderId'] as String? ?? state.uri.queryParameters['orderId'];
+        return PaymentWebviewPage(
+          paymentUrl: paymentUrl,
+          title: title,
+          orderId: orderId,
+        );
+      },
     ),
   ],
 );
