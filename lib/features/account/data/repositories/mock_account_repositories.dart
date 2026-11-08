@@ -159,7 +159,7 @@ class MockAccountStore
   }
 
   @override
-  Future<LoyaltyConfigurationDto> getConfiguration() async {
+  Future<LoyaltyConfigurationDto> getConfiguration({int? cinemaId}) async {
     await _wait();
     return const LoyaltyConfigurationDto(
       id: 1,

@@ -16,13 +16,26 @@ class GoogleAuthException implements Exception {
 class GoogleOAuthConfig {
   const GoogleOAuthConfig({
     required this.serverClientId,
+    required this.webClientId,
     this.iosClientId = '',
   });
-  factory GoogleOAuthConfig.fromDartDefines() => const GoogleOAuthConfig(
-    serverClientId: String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID'),
-    iosClientId: String.fromEnvironment('GOOGLE_IOS_CLIENT_ID'),
-  );
+  factory GoogleOAuthConfig.fromDartDefines() {
+    const serverClientId = String.fromEnvironment(
+      'GOOGLE_SERVER_CLIENT_ID',
+      defaultValue:
+          '316168245134-0oda35k7fpifvgq2fgv0k66ifuq0omko.apps.googleusercontent.com',
+    );
+    return const GoogleOAuthConfig(
+      serverClientId: serverClientId,
+      webClientId: String.fromEnvironment(
+        'GOOGLE_WEB_CLIENT_ID',
+        defaultValue: serverClientId,
+      ),
+      iosClientId: String.fromEnvironment('GOOGLE_IOS_CLIENT_ID'),
+    );
+  }
   final String serverClientId;
+  final String webClientId;
   final String iosClientId;
 }
 
@@ -37,7 +50,7 @@ class GoogleSignInAuthAdapter implements GoogleAuthAdapter {
   Future<void> initialize() => _initialization ??= _initialize();
 
   Future<void> _initialize() async {
-    if (config.serverClientId.trim().isEmpty ||
+    if ((kIsWeb ? config.webClientId : config.serverClientId).trim().isEmpty ||
         (!kIsWeb &&
             defaultTargetPlatform == TargetPlatform.iOS &&
             config.iosClientId.trim().isEmpty)) {
@@ -61,7 +74,7 @@ class GoogleSignInAuthAdapter implements GoogleAuthAdapter {
       // https://pub.dev/packages/google_sign_in_android#integration
       await _google.initialize(
         clientId: kIsWeb
-            ? config.serverClientId
+            ? config.webClientId
             : defaultTargetPlatform == TargetPlatform.iOS
             ? config.iosClientId
             : null,

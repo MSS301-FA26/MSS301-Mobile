@@ -248,6 +248,8 @@ class LoyaltyConfigurationDto {
     required this.expiryMonth,
     required this.expiryDay,
     required this.expiryTime,
+    this.redemptionRatePercent = 100,
+    this.maxRedemptionPercent = 100,
     this.lastExpiredAt,
     this.lastResetAt,
     this.lastResetSource,
@@ -260,21 +262,26 @@ class LoyaltyConfigurationDto {
   final int expiryMonth;
   final int expiryDay;
   final String expiryTime;
+  final double redemptionRatePercent;
+  final double maxRedemptionPercent;
   final DateTime? lastExpiredAt;
   final DateTime? lastResetAt;
   final String? lastResetSource;
 
-  factory LoyaltyConfigurationDto.fromJson(Map<String, Object?> json) =>
-      LoyaltyConfigurationDto(
-        id: intFromJson(json['id']),
-        earningRatePercent: doubleFromJson(json['earningRatePercent'] ?? 0),
-        redemptionPoints: intFromJson(json['redemptionPoints'] ?? 0),
-        redemptionValueVnd: VndMoney.fromJson(json['redemptionValueVnd']),
-        expiryMonth: intFromJson(json['expiryMonth'] ?? 0),
-        expiryDay: intFromJson(json['expiryDay'] ?? 0),
-        expiryTime: json['expiryTime']?.toString() ?? '',
-        lastExpiredAt: nullableDateTimeFromJson(json['lastExpiredAt']),
-        lastResetAt: nullableDateTimeFromJson(json['lastResetAt']),
-        lastResetSource: json['lastResetSource']?.toString(),
-      );
+  factory LoyaltyConfigurationDto.fromJson(
+    Map<String, Object?> json,
+  ) => LoyaltyConfigurationDto(
+    id: intFromJson(json['id']),
+    earningRatePercent: doubleFromJson(json['earningRatePercent'] ?? 0),
+    redemptionPoints: intFromJson(json['redemptionPoints'] ?? 0),
+    redemptionValueVnd: VndMoney.fromJson(json['redemptionValueVnd']),
+    expiryMonth: intFromJson(json['expiryMonth'] ?? 0),
+    expiryDay: intFromJson(json['expiryDay'] ?? 0),
+    expiryTime: json['expiryTime']?.toString() ?? '',
+    redemptionRatePercent: doubleFromJson(json['redemptionRatePercent'] ?? 100),
+    maxRedemptionPercent: doubleFromJson(json['maxRedemptionPercent'] ?? 100),
+    lastExpiredAt: nullableDateTimeFromJson(json['lastExpiredAt']),
+    lastResetAt: nullableDateTimeFromJson(json['lastResetAt']),
+    lastResetSource: json['lastResetSource']?.toString(),
+  );
 }

@@ -20,16 +20,21 @@ class TicketDocument {
 class TicketDocumentBuilder {
   Future<TicketDocument> build(BookingDto booking) async {
     final used = booking.status == BookingStatus.used;
-    if (!used &&
-        (booking.status != BookingStatus.paid ||
-            booking.qrCode?.trim().isNotEmpty != true)) {
+    final start = booking.showtimeStartSnapshot ?? booking.showtimeStart;
+    final end = booking.showtimeEnd ?? start?.add(const Duration(minutes: 120));
+    final ended = end != null && !DateTime.now().isBefore(end);
+    final validStatus =
+        booking.status == BookingStatus.paid ||
+        booking.status == BookingStatus.used;
+    final showQr =
+        validStatus && !ended && booking.qrCode?.trim().isNotEmpty == true;
+    if (!validStatus || (!ended && !showQr)) {
       throw StateError('Đơn chưa có vé có thể lưu hoặc chia sẻ.');
     }
     final font = pw.Font.ttf(
       await rootBundle.load('assets/fonts/Inter-Variable.ttf'),
     );
     final doc = pw.Document();
-    final start = booking.showtimeStartSnapshot ?? booking.showtimeStart;
     final lines = <MapEntry<String, String>>[
       MapEntry('Mã đơn', booking.bookingCode),
       MapEntry(
@@ -61,7 +66,7 @@ class TicketDocumentBuilder {
             style: const pw.TextStyle(fontSize: 22),
           ),
           pw.SizedBox(height: 16),
-          if (!used)
+          if (showQr)
             pw.Center(
               child: pw.BarcodeWidget(
                 barcode: pw.Barcode.qrCode(),
@@ -70,7 +75,10 @@ class TicketDocumentBuilder {
                 height: 160,
               ),
             ),
-          if (used) pw.Text('Vé đã được soát và không thể sử dụng lại.'),
+          if (ended)
+            pw.Text('Suất chiếu đã kết thúc. Mã QR không còn hiệu lực.')
+          else if (used)
+            pw.Text('Vé đã check-in và chỉ còn hiệu lực đến hết suất chiếu.'),
           pw.SizedBox(height: 16),
           for (final line in lines)
             pw.Padding(

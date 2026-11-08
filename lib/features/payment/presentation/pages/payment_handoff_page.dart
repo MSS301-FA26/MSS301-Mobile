@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -42,10 +43,10 @@ class PaymentHandoffPage extends ConsumerStatefulWidget {
 class _PaymentHandoffPageState extends ConsumerState<PaymentHandoffPage> {
   static const _redirect = String.fromEnvironment(
     'PAYMENT_REDIRECT_URL',
-    defaultValue: 'http://localhost:3000/payment-callback',
+    defaultValue: 'http://localhost:6789/payment-callback',
   );
 
-  late final WebViewController _webView;
+  WebViewController? _webView;
   bool _loading = false;
   bool _started = false;
   bool _returning = false;
@@ -54,6 +55,7 @@ class _PaymentHandoffPageState extends ConsumerState<PaymentHandoffPage> {
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) return;
     final matcher = PaymentReturnMatcher(Uri.parse(_redirect));
     _webView = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -82,12 +84,16 @@ class _PaymentHandoffPageState extends ConsumerState<PaymentHandoffPage> {
   }
 
   void _openInApp() {
+    if (kIsWeb) {
+      _openExternally();
+      return;
+    }
     if (_started) return;
     setState(() {
       _started = true;
       _loading = true;
     });
-    _webView.loadRequest(Uri.parse(widget.payment.paymentUrl!));
+    _webView!.loadRequest(Uri.parse(widget.payment.paymentUrl!));
   }
 
   void _returnToApp() {
@@ -102,7 +108,12 @@ class _PaymentHandoffPageState extends ConsumerState<PaymentHandoffPage> {
     final url = Uri.tryParse(widget.payment.paymentUrl ?? '');
     if (url == null) return;
     try {
-      final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+      final opened = await launchUrl(
+        url,
+        mode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
+      );
       if (!mounted) return;
       if (opened) {
         _returnToApp();
@@ -138,7 +149,7 @@ class _PaymentHandoffPageState extends ConsumerState<PaymentHandoffPage> {
         if (_loading) const LinearProgressIndicator(),
         Expanded(
           child: _started
-              ? WebViewWidget(controller: _webView)
+              ? WebViewWidget(controller: _webView!)
               : Center(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.lg),
@@ -167,7 +178,15 @@ class _PaymentHandoffPageState extends ConsumerState<PaymentHandoffPage> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                if (!_started)
+                if (!_started && kIsWeb)
+                  AppButton(
+                    key: const ValueKey('payment-open-browser'),
+                    label: 'Mở VNPay',
+                    icon: Icons.open_in_new_rounded,
+                    onPressed: _openExternally,
+                    fullWidth: true,
+                  )
+                else if (!_started)
                   Row(
                     children: [
                       Expanded(

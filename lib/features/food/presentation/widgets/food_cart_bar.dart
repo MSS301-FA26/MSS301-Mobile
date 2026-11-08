@@ -72,6 +72,7 @@ class FoodCartBar extends StatelessWidget {
           final button = AppButton(
             key: buttonKey,
             label: label,
+            fullWidth: true,
             onPressed: onContinue,
           );
           if (constraints.maxWidth < 330 ||

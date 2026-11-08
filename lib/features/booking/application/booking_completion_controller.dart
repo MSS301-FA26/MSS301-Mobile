@@ -45,6 +45,7 @@ class BookingCompletionState {
     this.quantities = const {},
     this.message,
     this.quoteNeedsRefresh = false,
+    this.loyaltyPointsToRedeem = 0,
   });
 
   final BookingCompletionPhase phase;
@@ -55,6 +56,7 @@ class BookingCompletionState {
   final Map<String, int> quantities;
   final String? message;
   final bool quoteNeedsRefresh;
+  final int loyaltyPointsToRedeem;
 
   bool get isBusy => switch (phase) {
     BookingCompletionPhase.loading ||
@@ -74,6 +76,7 @@ class BookingCompletionState {
     String? message,
     bool clearMessage = false,
     bool? quoteNeedsRefresh,
+    int? loyaltyPointsToRedeem,
   }) => BookingCompletionState(
     phase: phase ?? this.phase,
     booking: booking ?? this.booking,
@@ -83,6 +86,7 @@ class BookingCompletionState {
     quantities: quantities ?? this.quantities,
     message: clearMessage ? null : message ?? this.message,
     quoteNeedsRefresh: quoteNeedsRefresh ?? this.quoteNeedsRefresh,
+    loyaltyPointsToRedeem: loyaltyPointsToRedeem ?? this.loyaltyPointsToRedeem,
   );
 }
 
@@ -182,6 +186,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             '${food.isCombo ? 'combo' : 'item'}:${food.productId}':
                 food.quantity,
         },
+        loyaltyPointsToRedeem: booking.loyaltyPointsRedeemed,
       );
     } catch (error) {
       if (!ref.mounted || generation != _generation) return;
@@ -280,6 +285,22 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     }
   }
 
+  Future<void> applyLoyaltyPoints(int points) async {
+    if (state.phase != BookingCompletionPhase.checkout ||
+        state.isBusy ||
+        state.payment != null) {
+      return;
+    }
+    final normalized = points < 0 ? 0 : points;
+    if (normalized == state.loyaltyPointsToRedeem) return;
+    state = state.copyWith(
+      loyaltyPointsToRedeem: normalized,
+      quoteNeedsRefresh: true,
+      clearMessage: true,
+    );
+    await refreshCheckoutCart();
+  }
+
   List<FoodSelectionDto> get _foodSelections => state.products
       .where((product) => (state.quantities[product.selectionKey] ?? 0) > 0)
       .map(
@@ -343,6 +364,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             UpdateHoldingBookingRequestDto(
               tickets: _ticketSelections,
               foods: _foodSelections,
+              loyaltyPointsToRedeem: state.loyaltyPointsToRedeem,
             ),
           );
       if (!ref.mounted || generation != _generation) return false;
@@ -384,6 +406,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
                     ),
                   )
                   .toList(growable: false),
+              cinePointsToUse: state.loyaltyPointsToRedeem,
               bookingSessionId: updated.id,
             ),
           );
@@ -454,6 +477,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             UpdateHoldingBookingRequestDto(
               tickets: _ticketSelections,
               foods: _foodSelections,
+              loyaltyPointsToRedeem: state.loyaltyPointsToRedeem,
             ),
           );
       if (!ref.mounted || generation != _generation) return null;

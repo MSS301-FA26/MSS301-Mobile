@@ -33,6 +33,7 @@ abstract final class AppRoutes {
   static const concessionsPattern = '/booking/:bookingId/concessions';
   static const checkoutPattern = '/booking/:bookingId/checkout';
   static const paymentPattern = '/payment/:paymentId';
+  static const paymentCallback = '/payment-callback';
   static const ticketPattern = '/ticket/:bookingId';
 
   static String movieReviews(int movieId) => Uri(

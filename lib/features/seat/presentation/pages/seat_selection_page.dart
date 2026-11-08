@@ -1020,63 +1020,129 @@ class _SeatGrid extends StatelessWidget {
     for (final row in rows.values) {
       row.sort((a, b) => a.displayColumn.compareTo(b.displayColumn));
     }
+    final orderedRows = rows.entries.toList()
+      ..sort((a, b) {
+        final order = a.value.first.displayOrder.compareTo(
+          b.value.first.displayOrder,
+        );
+        return order != 0 ? order : a.key.compareTo(b.key);
+      });
+    var columnCount = seatMap.columnCount;
+    for (final seat in seatMap.seats) {
+      if (seat.displayColumn > columnCount) columnCount = seat.displayColumn;
+    }
+    const seatWidth = 32.0;
+    const seatHeight = 28.0;
+    const columnGap = 6.0;
+    final visibleGaps = columnCount > 1 ? columnCount - 1 : 0;
+    final trackWidth = columnCount * seatWidth + visibleGaps * columnGap;
+
     return Column(
       children: [
-        for (final row in rows.entries)
+        for (final row in orderedRows)
           Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                _RowLabel(row.key),
+                const SizedBox(width: 10),
                 SizedBox(
-                  width: 24,
-                  child: Text(row.key, style: AppTextStyles.caption),
-                ),
-                for (final seat in row.value)
-                  Padding(
-                    padding: EdgeInsets.only(
-                      left:
-                          seat.displayColumn > 1 &&
-                              !row.value.any(
-                                (other) =>
-                                    other.displayColumn ==
-                                    seat.displayColumn - 1,
-                              )
-                          ? 18
-                          : 3,
-                      right: 3,
-                    ),
-                    child: _SeatButton(
-                      seat: seat,
-                      assignment: assignments[seat.seatId],
-                      forcedUnavailable: unavailableSeatIds.contains(
-                        seat.seatId,
-                      ),
-                      ownHold: ownHoldSeatIds.contains(seat.seatId),
-                      enabled: enabled,
-                      onTap: () => onSeat(seat),
-                    ),
-                  ),
-                SizedBox(
-                  width: 24,
-                  child: Text(
-                    row.key,
-                    textAlign: TextAlign.end,
-                    style: AppTextStyles.caption,
+                  width: trackWidth,
+                  height: seatHeight,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      for (final item in _renderItems(row.value))
+                        Positioned(
+                          left:
+                              (item.seat.displayColumn - 1) *
+                              (seatWidth + columnGap),
+                          child: _SeatButton(
+                            seat: item.seat,
+                            pairSeat: item.pairSeat,
+                            assignment:
+                                assignments[item.seat.seatId] ??
+                                (item.pairSeat == null
+                                    ? null
+                                    : assignments[item.pairSeat!.seatId]),
+                            forcedUnavailable: item.seats.any(
+                              (seat) =>
+                                  unavailableSeatIds.contains(seat.seatId),
+                            ),
+                            ownHold: item.seats.every(
+                              (seat) => ownHoldSeatIds.contains(seat.seatId),
+                            ),
+                            enabled: enabled,
+                            onTap: () => onSeat(item.seat),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
+                const SizedBox(width: 10),
+                _RowLabel(row.key),
               ],
             ),
           ),
       ],
     );
   }
+
+  List<_SeatRenderItem> _renderItems(List<ShowtimeSeatDto> seats) {
+    final items = <_SeatRenderItem>[];
+    var index = 0;
+    while (index < seats.length) {
+      final seat = seats[index];
+      final next = index + 1 < seats.length ? seats[index + 1] : null;
+      final isPair =
+          seat.seatType.normalized == CatalogSeatType.couple &&
+          next?.seatType.normalized == CatalogSeatType.couple &&
+          next!.displayColumn == seat.displayColumn + 1;
+      items.add(_SeatRenderItem(seat, isPair ? next : null));
+      index += isPair ? 2 : 1;
+    }
+    return items;
+  }
+}
+
+class _SeatRenderItem {
+  const _SeatRenderItem(this.seat, this.pairSeat);
+
+  final ShowtimeSeatDto seat;
+  final ShowtimeSeatDto? pairSeat;
+
+  List<ShowtimeSeatDto> get seats => [seat, ?pairSeat];
+}
+
+class _RowLabel extends StatelessWidget {
+  const _RowLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 36,
+    height: 32,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: const Color(0xFF101318),
+      border: Border.all(color: const Color(0xFF30353D)),
+    ),
+    child: Text(
+      label,
+      style: AppTextStyles.meta.copyWith(
+        color: const Color(0xFFD5D8DC),
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
 }
 
 class _SeatButton extends StatelessWidget {
   const _SeatButton({
     required this.seat,
+    this.pairSeat,
     required this.assignment,
     required this.forcedUnavailable,
     required this.ownHold,
@@ -1085,6 +1151,7 @@ class _SeatButton extends StatelessWidget {
   });
 
   final ShowtimeSeatDto seat;
+  final ShowtimeSeatDto? pairSeat;
   final SeatTicketAssignment? assignment;
   final bool forcedUnavailable;
   final bool ownHold;
@@ -1093,35 +1160,50 @@ class _SeatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final seats = [seat, ?pairSeat];
+    final isCouple = pairSeat != null;
     final selected =
         assignment != null &&
-        (seat.selectable ||
-            (ownHold && seat.runtimeStatus == SeatRuntimeStatus.holding));
-    final available = seat.selectable && !forcedUnavailable;
+        (seats.every((item) => item.selectable) ||
+            (ownHold &&
+                seats.every(
+                  (item) => item.runtimeStatus == SeatRuntimeStatus.holding,
+                )));
+    final available =
+        seats.every((item) => item.selectable) && !forcedUnavailable;
     final occupied = !available && !ownHold;
     final unavailableReason = switch (seat.runtimeStatus) {
       SeatRuntimeStatus.holding => 'đang được giữ',
       SeatRuntimeStatus.booked || SeatRuntimeStatus.checkedIn => 'đã bán',
       _ => 'không khả dụng',
     };
-    const availableStandard = Color(0xFF32343A);
-    const unavailable = Color(0xFF101114);
+    const availableStandard = Color(0xFF161B20);
+    const availableVip = Color(0x242F2500);
+    const availableCouple = Color(0xFF831843);
+    const unavailable = Color(0xFF1E232A);
     final color = selected
         ? _ticketColor(assignment!.ticketType)
         : !available
         ? unavailable
-        : switch (seat.seatType.normalized) {
-            CatalogSeatType.vip => AppColors.purple,
-            CatalogSeatType.couple => AppColors.adultBadge,
+        : switch (isCouple
+              ? CatalogSeatType.couple
+              : seat.seatType.normalized) {
+            CatalogSeatType.vip => availableVip,
+            CatalogSeatType.couple => availableCouple,
             _ => availableStandard,
           };
-    final label = '${seat.rowLabel}${seat.seatNumber}';
+    final label = isCouple
+        ? '${seat.seatNumber} ♥ ${pairSeat!.seatNumber}'
+        : '${seat.seatNumber}';
+    final accessibleLabel = isCouple
+        ? '${seat.rowLabel}${seat.seatNumber}-${pairSeat!.rowLabel}${pairSeat!.seatNumber}'
+        : '${seat.rowLabel}${seat.seatNumber}';
     return Semantics(
       button: available && enabled,
       enabled: available && enabled,
       selected: selected,
       label:
-          'Ghế $label, ${seat.seatType.normalized.wireValue}, ${ownHold
+          'Ghế $accessibleLabel, ${seat.seatType.normalized.wireValue}, ${ownHold
               ? 'bạn đang giữ'
               : available
               ? 'có thể chọn'
@@ -1131,22 +1213,26 @@ class _SeatButton extends StatelessWidget {
         onTap: available && enabled ? onTap : null,
         borderRadius: AppRadii.small,
         child: Container(
-          width: seat.seatType.normalized == CatalogSeatType.couple ? 56 : 48,
-          height: 48,
+          width: isCouple ? 70 : 32,
+          height: 28,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: AppRadii.small,
+            borderRadius: BorderRadius.circular(2),
             border: Border.all(
               color: selected
                   ? AppColors.text
                   : available
-                  ? const Color(0xFF9A9CA4)
-                  : const Color(0xFF303137),
+                  ? isCouple
+                        ? const Color(0xFFEC4899)
+                        : seat.seatType.normalized == CatalogSeatType.vip
+                        ? AppColors.gold
+                        : const Color(0xFF697078)
+                  : const Color(0xFF2D333B),
               width: selected
-                  ? 2.5
+                  ? 2
                   : available
-                  ? 1.5
+                  ? 1.25
                   : 1,
             ),
           ),
@@ -1160,7 +1246,7 @@ class _SeatButton extends StatelessWidget {
                       SeatRuntimeStatus.checkedIn => Icons.lock_outline_rounded,
                       _ => Icons.block_rounded,
                     },
-                    size: 18,
+                    size: 14,
                     color: AppColors.textDisabled,
                   )
                 : FittedBox(
@@ -1168,7 +1254,12 @@ class _SeatButton extends StatelessWidget {
                     child: Text(
                       label,
                       style: AppTextStyles.meta.copyWith(
-                        color: AppColors.text,
+                        fontSize: 10.5,
+                        color: isCouple
+                            ? const Color(0xFFF9A8D4)
+                            : seat.seatType.normalized == CatalogSeatType.vip
+                            ? AppColors.gold
+                            : AppColors.text,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1343,6 +1434,7 @@ class _SeatActionBar extends StatelessWidget {
           : submitting
           ? 'Đang giữ ghế...'
           : 'Tiếp tục',
+      fullWidth: true,
       onPressed: onContinue,
     );
     return SafeArea(

@@ -33,7 +33,7 @@ abstract interface class WalletRepository {
 abstract interface class LoyaltyRepository {
   Future<LoyaltyDto> getLoyalty(int userId);
 
-  Future<LoyaltyConfigurationDto> getConfiguration();
+  Future<LoyaltyConfigurationDto> getConfiguration({int? cinemaId});
 
   Future<LoyaltyDto> redeemPoints(int points);
 }

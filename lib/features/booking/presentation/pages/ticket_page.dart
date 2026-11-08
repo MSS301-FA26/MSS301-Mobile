@@ -123,6 +123,29 @@ class _TicketPageState extends ConsumerState<TicketPage> {
               ),
             );
           }
+          final showtimeStart =
+              booking.showtimeStartSnapshot ?? booking.showtimeStart;
+          final showtimeEnd =
+              booking.showtimeEnd ??
+              showtimeStart?.add(const Duration(minutes: 120));
+          final showtimeEnded =
+              showtimeEnd != null && !DateTime.now().isBefore(showtimeEnd);
+          final refunded =
+              booking.status == BookingStatus.refunded ||
+              booking.refundedAt != null;
+          final cancelled = booking.status == BookingStatus.cancelled;
+          final checkedIn =
+              booking.status == BookingStatus.used ||
+              booking.checkedInAt != null ||
+              booking.seats.any(
+                (seat) => seat.status == BookingSeatStatus.checkedIn,
+              );
+          final canShowQr =
+              !refunded &&
+              !cancelled &&
+              !showtimeEnded &&
+              (booking.status == BookingStatus.paid || checkedIn) &&
+              booking.qrCode?.trim().isNotEmpty == true;
           return SafeArea(
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -169,8 +192,7 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        if (booking.status == BookingStatus.paid &&
-                            booking.qrCode?.trim().isNotEmpty == true)
+                        if (canShowQr)
                           LayoutBuilder(
                             builder: (context, constraints) {
                               final size = constraints.maxWidth.clamp(
@@ -198,9 +220,14 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                           )
                         else
                           Text(
-                            booking.status == BookingStatus.used
-                                ? 'Vé đã được sử dụng'
-                                : booking.status == BookingStatus.paid
+                            refunded
+                                ? 'Vé đã được hoàn tiền và mã QR không còn hiệu lực.'
+                                : cancelled
+                                ? 'Suất chiếu đã hủy và mã QR không còn hiệu lực.'
+                                : showtimeEnded
+                                ? 'Suất chiếu đã kết thúc. Mã QR không còn hiệu lực.'
+                                : booking.status == BookingStatus.paid ||
+                                      checkedIn
                                 ? 'Đã thanh toán. Mã QR chưa được cập nhật; vui lòng tải lại đơn.'
                                 : 'Đơn chưa có vé có thể sử dụng.',
                           ),
@@ -316,9 +343,8 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                     label: 'Tiếp tục đặt vé',
                     onPressed: () => resumeBooking(context, ref, booking.id),
                   ),
-                if (booking.status == BookingStatus.used ||
-                    (booking.status == BookingStatus.paid &&
-                        booking.qrCode?.trim().isNotEmpty == true)) ...[
+                if ((booking.status == BookingStatus.used || canShowQr) &&
+                    !showtimeEnded) ...[
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final stackActions =
@@ -395,8 +421,14 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  booking.status == BookingStatus.used
-                      ? 'Vé đã được soát và không thể sử dụng lại.'
+                  refunded
+                      ? 'Vé đã được hoàn tiền vào CineWallet.'
+                      : cancelled
+                      ? 'Suất chiếu đã bị hủy. Mã QR không còn hiệu lực.'
+                      : showtimeEnded
+                      ? 'Suất chiếu đã kết thúc. Mã QR không còn hiệu lực.'
+                      : checkedIn
+                      ? 'Vé đã check-in. Mã QR sẽ ngừng hiển thị khi suất chiếu kết thúc.'
                       : booking.status == BookingStatus.paid
                       ? booking.qrCode?.trim().isNotEmpty == true
                             ? 'Đưa mã QR này tại cổng soát vé. Chỉ chia sẻ với người sử dụng vé.'

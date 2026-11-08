@@ -39,16 +39,20 @@ class MovieEngagementRepository {
   }
 
   Future<List<RecommendationDto>> getRecommendations(int movieId) async {
-    final response = await _get('/api/v1/recommendation/content/$movieId');
+    final response = await _get(
+      '/api/v1/recommendations/movies/$movieId/similar',
+      query: {'limit': 12},
+    );
     final body = response.data;
-    final value = body is Map ? body['data'] : body;
-    if (value is! List) {
+    final data = body is Map ? body['data'] : null;
+    final items = data is Map ? data['recommendations'] : null;
+    if (body is! Map || body['success'] != true || items is! List) {
       throw const ApiException(
         type: ApiErrorType.unknown,
         message: 'Invalid recommendation response.',
       );
     }
-    return value
+    return items
         .map(
           (item) => RecommendationDto.fromJson(
             Map<String, Object?>.from(item as Map),

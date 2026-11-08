@@ -106,9 +106,16 @@ class RemoteLoyaltyRepository implements LoyaltyRepository {
   );
 
   @override
-  Future<LoyaltyConfigurationDto> getConfiguration() async =>
+  Future<LoyaltyConfigurationDto> getConfiguration({int? cinemaId}) async =>
       LoyaltyConfigurationDto.fromJson(
-        _data(await _request(() => _dio.get('/api/v1/loyalty/config'))),
+        _data(
+          await _request(
+            () => _dio.get(
+              '/api/v1/loyalty/config',
+              queryParameters: cinemaId == null ? null : {'cinemaId': cinemaId},
+            ),
+          ),
+        ),
       );
 
   @override

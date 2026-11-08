@@ -31,6 +31,19 @@ final appRouter = GoRouter(
   initialLocation: AppRoutes.home,
   routes: [
     GoRoute(
+      path: AppRoutes.paymentCallback,
+      redirect: (context, state) {
+        final transactionReference =
+            state.uri.queryParameters['vnp_TxnRef'] ?? '';
+        final paymentId = int.tryParse(
+          RegExp(r'^\d+').firstMatch(transactionReference)?.group(0) ?? '',
+        );
+        return paymentId == null
+            ? AppRoutes.orders
+            : AppRoutes.payment(paymentId);
+      },
+    ),
+    GoRoute(
       path: AppRoutes.foodShop,
       builder: (context, state) => const AuthGuard(child: StandaloneFoodPage()),
     ),

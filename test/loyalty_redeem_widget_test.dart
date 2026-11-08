@@ -82,7 +82,7 @@ class _LoyaltyRepository implements LoyaltyRepository {
   );
 
   @override
-  Future<LoyaltyConfigurationDto> getConfiguration() async =>
+  Future<LoyaltyConfigurationDto> getConfiguration({int? cinemaId}) async =>
       const LoyaltyConfigurationDto(
         id: 1,
         earningRatePercent: 1,

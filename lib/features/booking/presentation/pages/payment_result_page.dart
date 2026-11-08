@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -235,19 +236,49 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                                   : 'Mở VNPay để thanh toán. Khi quay lại, ứng dụng sẽ kiểm tra kết quả. Không cần tạo giao dịch mới khi kết quả chưa rõ.'),
                         ),
                         const SizedBox(height: AppSpacing.lg),
-                        if (state.booking != null)
-                          Material(
-                            color: Colors.transparent,
-                            child: ExpansionTile(
-                              title: const Text('Chi tiết vé và giao dịch'),
-                              children: [
-                                PaymentBookingSummary(
-                                  payment: state.payment,
-                                  booking: state.booking,
+                        if (state.booking != null) ...[
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceRaised,
+                              borderRadius: AppRadii.card,
+                              border: Border.all(color: AppColors.borderStrong),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Theme(
+                              data: Theme.of(context)
+                                  .copyWith(dividerColor: Colors.transparent),
+                              child: ExpansionTile(
+                                initiallyExpanded: true,
+                                tilePadding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                  vertical: AppSpacing.xs,
                                 ),
-                              ],
+                                childrenPadding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.sm,
+                                  0,
+                                  AppSpacing.sm,
+                                  AppSpacing.sm,
+                                ),
+                                leading: const Icon(
+                                  Icons.confirmation_number_outlined,
+                                  color: AppColors.gold,
+                                ),
+                                title: const Text(
+                                  'Chi tiết vé và giao dịch',
+                                  style: AppTextStyles.cardTitle,
+                                ),
+                                children: [
+                                  PaymentBookingSummary(
+                                    payment: state.payment,
+                                    booking: state.booking,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
+                          const SizedBox(height: AppSpacing.lg),
+                        ],
                         if (!realPayment &&
                             state.payment?.paymentUrl != null &&
                             !ready) ...[
@@ -286,7 +317,7 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                             width: double.infinity,
                             child: AppButton(
                               key: const ValueKey('payment-launch'),
-                              label: 'Mở VNPay trong app',
+                              label: kIsWeb ? 'Mở VNPay' : 'Mở VNPay trong app',
                               onPressed: busy ? null : _openRealPayment,
                             ),
                           ),
