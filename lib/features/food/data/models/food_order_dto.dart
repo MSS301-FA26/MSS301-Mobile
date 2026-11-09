@@ -94,7 +94,8 @@ class FoodOrderDto {
 
   factory FoodOrderDto.fromJson(Map<String, Object?> json) => FoodOrderDto(
     id: intFromJson(json['id']),
-    orderCode: json['orderCode']?.toString() ?? '',
+    orderCode:
+        (json['orderCode'] ?? json['foodOrderCode'])?.toString() ?? '',
     bookingId: nullableIntFromJson(json['bookingId']),
     bookingCode: json['bookingCode']?.toString(),
     status: FoodOrderStatus.parse(json['status']),

@@ -96,7 +96,13 @@ class AppShell extends ConsumerWidget {
           : null,
       body: SafeArea(
         top: false,
-        child: ColoredBox(color: AppColors.background, child: body),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const _CinematicBackground(),
+            body,
+          ],
+        ),
       ),
     );
   }
@@ -179,4 +185,43 @@ class AppShell extends ConsumerWidget {
     ref.invalidate(bookingCompletionProvider);
     context.go(route);
   }
+}
+
+class _CinematicBackground extends StatelessWidget {
+  const _CinematicBackground();
+
+  static const _image =
+      'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1000&q=72';
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          _image,
+          fit: BoxFit.cover,
+          opacity: const AlwaysStoppedAnimation(0.32),
+          errorBuilder: (_, _, _) => const ColoredBox(
+            color: AppColors.background,
+          ),
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0x8F000000),
+                Color(0xBA000000),
+                Color(0xD0000000),
+                Color(0xB8000000),
+              ],
+              stops: [0, 0.35, 0.72, 1],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

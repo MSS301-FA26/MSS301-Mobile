@@ -20,8 +20,15 @@ class CinemaDirectoryPage extends ConsumerStatefulWidget {
 }
 
 class _CinemaDirectoryPageState extends ConsumerState<CinemaDirectoryPage> {
+  final _searchController = TextEditingController();
   String _search = '';
   String? _cityKey;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,41 +67,88 @@ class _CinemaDirectoryPageState extends ConsumerState<CinemaDirectoryPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: 'Quay lại',
-                  onPressed: () => context.canPop()
-                      ? context.pop()
-                      : context.go(AppRoutes.home),
-                  icon: const Icon(Icons.arrow_back_rounded),
+            padding: const EdgeInsets.fromLTRB(12, 12, 16, 10),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(4, 10, 12, 10),
+              decoration: BoxDecoration(
+                borderRadius: AppRadii.medium,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.gold.withValues(alpha: 0.14),
+                    AppColors.surfaceRaised.withValues(alpha: 0.75),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                const Expanded(
-                  child: Text(
-                    'Hệ thống rạp',
-                    style: AppTextStyles.sectionTitle,
+                border: Border.all(color: AppColors.goldBorder),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Quay lại',
+                    onPressed: () => context.canPop()
+                        ? context.pop()
+                        : context.go(AppRoutes.home),
+                    icon: const Icon(Icons.arrow_back_rounded),
                   ),
-                ),
-              ],
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: const BoxDecoration(
+                      color: AppColors.gold,
+                      borderRadius: AppRadii.small,
+                    ),
+                    child: const Icon(
+                      Icons.theaters_rounded,
+                      color: AppColors.background,
+                      size: 21,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'HỆ THỐNG RẠP',
+                          style: AppTextStyles.sectionTitle,
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Tìm rạp và lịch chiếu gần bạn',
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
               key: const ValueKey('cinema-search'),
+              controller: _searchController,
               onChanged: (value) => setState(() => _search = value),
-              decoration: const InputDecoration(
-                hintText: 'Tìm tên rạp hoặc địa chỉ',
-                prefixIcon: Icon(Icons.search_rounded),
-                border: OutlineInputBorder(),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Tìm theo tên rạp, quận hoặc thành phố',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _search.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Xóa tìm kiếm',
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _search = '');
+                        },
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                      ),
               ),
             ),
           ),
           if (cities.isNotEmpty)
             SizedBox(
-              height: 58,
+              height: 56,
               child: ListView(
                 key: const ValueKey('cinema-city-filters'),
                 scrollDirection: Axis.horizontal,
@@ -151,75 +205,172 @@ class _CinemaDirectoryPageState extends ConsumerState<CinemaDirectoryPage> {
                     onRefresh: () async =>
                         ref.refresh(homeCinemasProvider.future),
                     child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                       itemCount: visible.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final cinema = visible[index];
-                        return Card(
-                          child: InkWell(
-                            key: ValueKey('cinema-card-${cinema.id}'),
-                            borderRadius: AppRadii.card,
-                            onTap: () =>
-                                context.push(AppRoutes.cinemaDetail(cinema.id)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Icon(
-                                        Icons.movie_outlined,
-                                        color: AppColors.gold,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          cinema.name,
-                                          style: AppTextStyles.cardTitle,
-                                        ),
-                                      ),
-                                      if (preferredId == cinema.id)
-                                        const Icon(
-                                          Icons.star_rounded,
-                                          color: AppColors.gold,
-                                        ),
-                                    ],
-                                  ),
-                                  if (cinema.address.trim().isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      cinema.address,
-                                      style: AppTextStyles.body,
-                                    ),
-                                  ],
-                                  if (cinema.city.trim().isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      cinema.city,
-                                      style: AppTextStyles.caption,
-                                    ),
-                                  ],
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Xem rạp và lịch chiếu',
-                                    style: AppTextStyles.label.copyWith(
-                                      color: AppColors.gold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        return _CinemaCard(
+                          key: ValueKey('cinema-card-${cinema.id}'),
+                          cinema: cinema,
+                          isPreferred: preferredId == cinema.id,
+                          onTap: () =>
+                              context.push(AppRoutes.cinemaDetail(cinema.id)),
                         );
                       },
                     ),
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CinemaCard extends StatelessWidget {
+  const _CinemaCard({
+    super.key,
+    required this.cinema,
+    required this.isPreferred,
+    required this.onTap,
+  });
+
+  final CinemaDto cinema;
+  final bool isPreferred;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadii.card,
+        side: BorderSide(
+          color: isPreferred ? AppColors.goldBorder : AppColors.border,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: const BoxDecoration(
+                  color: AppColors.goldSurface,
+                  borderRadius: AppRadii.medium,
+                ),
+                child: const Icon(
+                  Icons.theaters_rounded,
+                  color: AppColors.gold,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            cinema.name,
+                            style: AppTextStyles.cardTitle.copyWith(
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        if (isPreferred)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: AppColors.goldSurface,
+                              borderRadius: AppRadii.pill,
+                            ),
+                            child: Text(
+                              'RẠP ƯU TIÊN',
+                              style: AppTextStyles.meta.copyWith(
+                                color: AppColors.gold,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (cinema.address.trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 17,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              cinema.address,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.body,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        if (cinema.city.trim().isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 5,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: AppColors.surfaceRaised,
+                              borderRadius: AppRadii.pill,
+                            ),
+                            child: Text(
+                              cinema.city,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        const Spacer(),
+                        Text(
+                          'Xem lịch chiếu',
+                          style: AppTextStyles.label.copyWith(
+                            color: AppColors.gold,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 18,
+                          color: AppColors.gold,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

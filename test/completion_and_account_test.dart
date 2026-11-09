@@ -149,7 +149,7 @@ void main() {
         of: accountMenu,
         matching: find.text('Lịch sử đơn bắp nước'),
       ),
-      findsOneWidget,
+      findsNothing,
     );
     for (final removedItem in [
       'Vé xem phim của tôi',

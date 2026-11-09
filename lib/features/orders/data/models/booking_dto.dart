@@ -174,15 +174,25 @@ class BookingFoodDto {
   final VndMoney unitPrice;
   final VndMoney lineTotal;
 
-  factory BookingFoodDto.fromJson(Map<String, Object?> json) => BookingFoodDto(
-    id: intFromJson(json['id']),
-    productId: intFromJson(json['productId']),
-    isCombo: boolFromJson(json['isCombo']),
-    productName: json['productName']?.toString() ?? '',
-    quantity: intFromJson(json['quantity'] ?? 0),
-    unitPrice: VndMoney.fromJson(json['unitPrice']),
-    lineTotal: VndMoney.fromJson(json['lineTotal']),
-  );
+  factory BookingFoodDto.fromJson(Map<String, Object?> json) {
+    final productId = intFromJson(json['productId']);
+    final parsedName = (json['productName'] ??
+            json['name'] ??
+            json['productNameSnapshot'])
+        ?.toString()
+        .trim();
+    return BookingFoodDto(
+      id: intFromJson(json['id']),
+      productId: productId,
+      isCombo: boolFromJson(json['isCombo']),
+      productName: parsedName?.isNotEmpty == true
+          ? parsedName!
+          : 'Món bắp nước #$productId',
+      quantity: intFromJson(json['quantity'] ?? 0),
+      unitPrice: VndMoney.fromJson(json['unitPrice']),
+      lineTotal: VndMoney.fromJson(json['lineTotal']),
+    );
+  }
 }
 
 class BookingDto {

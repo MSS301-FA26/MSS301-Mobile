@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +9,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../application/watchlist.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_image.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
+import '../models/movie.dart';
 import '../providers/movies_provider.dart';
 import '../providers/movie_engagement_provider.dart';
 import '../widgets/movie_detail_sections.dart';
@@ -159,7 +163,11 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
                 ),
               ),
             ),
-      body: state.isLoading
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (movie != null) _MovieAmbientBackground(movie: movie),
+          state.isLoading
           ? const RepositoryStatePane.loading(
               layout: RepositorySkeleton.poster,
               title: 'Đang tải thông tin phim…',
@@ -320,6 +328,57 @@ class _MovieDetailPageState extends ConsumerState<MovieDetailPage> {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MovieAmbientBackground extends StatelessWidget {
+  const _MovieAmbientBackground({required this.movie});
+
+  final Movie movie;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = movie.bannerAsset?.trim().isNotEmpty == true
+        ? movie.bannerAsset!
+        : movie.posterAsset;
+    return IgnorePointer(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+            child: Transform.scale(
+              scale: 1.14,
+              child: Opacity(
+                opacity: 0.24,
+                child: AppImage(
+                  asset: image,
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.zero,
+                ),
+              ),
+            ),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x66000000),
+                  Color(0xE6000000),
+                  Color(0xF5000000),
+                  Color(0xE8000000),
+                ],
+                stops: [0, 0.34, 0.7, 1],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

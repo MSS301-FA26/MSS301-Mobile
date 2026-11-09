@@ -32,6 +32,8 @@ TicketOrder _ticket(int id, BookingStatus status) => TicketOrder(
 FoodOrderDto _foodOrder(int id, FoodOrderStatus status) => FoodOrderDto(
   id: id,
   orderCode: 'FO-$id',
+  bookingId: id.isEven ? 100 + id : null,
+  bookingCode: id.isEven ? 'BK-${100 + id}' : null,
   status: status,
   totalAmount: const VndMoney(50000),
   createdAt: DateTime.utc(2026, 11, id),
@@ -87,12 +89,12 @@ void main() {
       lessThan(tester.getTopLeft(find.text('FO-3')).dy),
     );
 
-    await tester.tap(find.byKey(const ValueKey('orders-filter-successful')));
+    await tester.tap(find.byKey(const ValueKey('food-filter-standalone')));
     await tester.pumpAndSettle();
     expect(find.text('FO-3'), findsOneWidget);
     expect(find.text('FO-4'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('orders-filter-unsuccessful')));
+    await tester.tap(find.byKey(const ValueKey('food-filter-with-ticket')));
     await tester.pumpAndSettle();
     expect(find.text('FO-3'), findsNothing);
     expect(find.text('FO-4'), findsOneWidget);

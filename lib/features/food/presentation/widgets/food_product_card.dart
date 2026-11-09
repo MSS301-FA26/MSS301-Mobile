@@ -33,7 +33,13 @@ class FoodProductCard extends StatelessWidget {
     key: ValueKey('food-card-${product.selectionKey}'),
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: quantity > 0 ? AppColors.goldSurface : AppColors.surface,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: quantity > 0
+            ? [AppColors.goldSurface, AppColors.surface]
+            : [AppColors.surfaceRaised, AppColors.surface],
+      ),
       borderRadius: AppRadii.card,
       border: Border.all(
         color: quantity > 0 ? AppColors.gold : AppColors.border,
@@ -51,10 +57,21 @@ class FoodProductCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.isCombo ? 'COMBO' : 'BẮP & NƯỚC',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.gold,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.goldSurface,
+                      borderRadius: AppRadii.pill,
+                    ),
+                    child: Text(
+                      product.isCombo ? 'COMBO' : 'BẮP & NƯỚC',
+                      style: AppTextStyles.meta.copyWith(
+                        color: AppColors.gold,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -116,42 +133,56 @@ class FoodProductCard extends StatelessWidget {
               quantity > 0 ? 'Đã chọn $quantity' : 'Số lượng',
               style: AppTextStyles.caption,
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  key: ValueKey('food-minus-${product.selectionKey}'),
-                  tooltip: 'Giảm ${product.name}',
-                  constraints: const BoxConstraints.tightFor(
-                    width: 48,
-                    height: 48,
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.background.withValues(alpha: 0.55),
+                borderRadius: AppRadii.pill,
+                border: Border.all(color: AppColors.borderStrong),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    key: ValueKey('food-minus-${product.selectionKey}'),
+                    tooltip: 'Giảm ${product.name}',
+                    constraints: const BoxConstraints.tightFor(
+                      width: 44,
+                      height: 44,
+                    ),
+                    onPressed: enabled && quantity > 0
+                        ? () => onChange(-1)
+                        : null,
+                    icon: const Icon(Icons.remove_rounded),
                   ),
-                  onPressed: enabled && quantity > 0
-                      ? () => onChange(-1)
-                      : null,
-                  icon: const Icon(Icons.remove_circle_outline),
-                ),
-                Semantics(
-                  liveRegion: true,
-                  label: '${product.name}, số lượng $quantity',
-                  child: ExcludeSemantics(
-                    child: Text('$quantity', style: AppTextStyles.cardTitle),
+                  Semantics(
+                    liveRegion: true,
+                    label: '${product.name}, số lượng $quantity',
+                    child: ExcludeSemantics(
+                      child: SizedBox(
+                        width: 28,
+                        child: Text(
+                          '$quantity',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.cardTitle,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                IconButton(
-                  key: ValueKey('food-plus-${product.selectionKey}'),
-                  tooltip: 'Tăng ${product.name}',
-                  constraints: const BoxConstraints.tightFor(
-                    width: 48,
-                    height: 48,
+                  IconButton(
+                    key: ValueKey('food-plus-${product.selectionKey}'),
+                    tooltip: 'Tăng ${product.name}',
+                    constraints: const BoxConstraints.tightFor(
+                      width: 44,
+                      height: 44,
+                    ),
+                    onPressed: enabled && product.isAvailable && quantity < 8
+                        ? () => onChange(1)
+                        : null,
+                    icon: const Icon(Icons.add_rounded),
+                    color: AppColors.gold,
                   ),
-                  onPressed: enabled && product.isAvailable && quantity < 8
-                      ? () => onChange(1)
-                      : null,
-                  icon: const Icon(Icons.add_circle_outline),
-                  color: AppColors.gold,
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

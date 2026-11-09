@@ -6,9 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_image.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
-import '../../application/cinema_preferences.dart';
+import '../cinema_visuals.dart';
 import '../providers/cinema_providers.dart';
 
 class CinemaDetailPage extends ConsumerWidget {
@@ -39,7 +40,6 @@ class CinemaDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final result = ref.watch(cinemaDetailProvider(cinemaId));
-    final preferredId = ref.watch(preferredCinemaProvider).value;
     return AppShell(
       currentIndex: 2,
       showBottomNavigation: false,
@@ -83,21 +83,90 @@ class CinemaDetailPage extends ConsumerWidget {
                         padding: const EdgeInsets.all(16),
                         children: [
                           const SizedBox(height: 12),
-                          Container(
-                            height: 150,
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceRaised,
-                              borderRadius: AppRadii.card,
-                            ),
-                            child: const Icon(
-                              Icons.theaters_rounded,
-                              size: 72,
-                              color: AppColors.gold,
+                          SizedBox(
+                            height: 220,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                AppImage(
+                                  asset: cinemaImageFor(cinema.id),
+                                  borderRadius: AppRadii.card,
+                                ),
+                                const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: AppRadii.card,
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Color(0x10000000),
+                                        Color(0x33000000),
+                                        Color(0xE6000000),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 16,
+                                  right: 16,
+                                  bottom: 16,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 42,
+                                        height: 42,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.gold,
+                                          borderRadius: AppRadii.medium,
+                                        ),
+                                        child: const Icon(
+                                          Icons.theaters_rounded,
+                                          color: AppColors.background,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              cinema.name,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: AppTextStyles.sectionTitle,
+                                            ),
+                                            Text(
+                                              cinema.active
+                                                  ? 'ĐANG MỞ CỬA ĐÓN KHÁCH'
+                                                  : 'TẠM NGỪNG HOẠT ĐỘNG',
+                                              style: AppTextStyles.meta.copyWith(
+                                                color: cinema.active
+                                                    ? AppColors.gold
+                                                    : AppColors.textMuted,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 20),
-                          Text(cinema.name, style: AppTextStyles.sectionTitle),
-                          const SizedBox(height: 12),
+                          const Text(
+                            'THÔNG TIN RẠP',
+                            style: TextStyle(
+                              color: AppColors.gold,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
                           if (cinema.address.trim().isNotEmpty)
                             _DetailLine(
                               Icons.location_on_outlined,
@@ -128,41 +197,6 @@ class CinemaDetailPage extends ConsumerWidget {
                                 ? () => context.push(
                                     AppRoutes.showtimesForCinema(cinema.id),
                                   )
-                                : null,
-                            fullWidth: true,
-                          ),
-                          const SizedBox(height: 10),
-                          AppButton(
-                            key: const ValueKey('cinema-preferred'),
-                            label: preferredId == cinema.id
-                                ? 'Bỏ rạp ưu tiên'
-                                : 'Đặt làm rạp ưu tiên',
-                            variant: AppButtonVariant.secondary,
-                            onPressed: cinema.active
-                                ? () async {
-                                    try {
-                                      await ref
-                                          .read(
-                                            preferredCinemaProvider.notifier,
-                                          )
-                                          .choose(
-                                            preferredId == cinema.id
-                                                ? null
-                                                : cinema.id,
-                                          );
-                                    } catch (_) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Chưa lưu được rạp ưu tiên. Vui lòng thử lại.',
-                                                ),
-                                              ),
-                                            );
-                                      }
-                                    }
-                                  }
                                 : null,
                             fullWidth: true,
                           ),

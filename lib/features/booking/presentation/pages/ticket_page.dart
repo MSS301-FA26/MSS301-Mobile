@@ -320,11 +320,35 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                                       booking.showtimeStart!,
                                 ),
                         ),
-                        for (final food in booking.foods)
-                          CheckoutLine(
-                            '${food.productName} × ${food.quantity}',
-                            food.lineTotal.format(),
+                        if (booking.foods.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          const Divider(color: AppColors.borderStrong),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.fastfood_outlined,
+                                size: 17,
+                                color: AppColors.gold,
+                              ),
+                              const SizedBox(width: 7),
+                              Text(
+                                'BẮP NƯỚC',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.gold,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: .6,
+                                ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 10),
+                          for (final food in booking.foods)
+                            CheckoutLine(
+                              '${food.productName} × ${food.quantity}',
+                              food.lineTotal.format(),
+                            ),
+                        ],
                         const Divider(color: AppColors.borderStrong),
                         const SizedBox(height: 6),
                         CheckoutLine(

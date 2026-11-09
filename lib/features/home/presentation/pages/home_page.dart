@@ -9,6 +9,7 @@ import '../../../auth/application/auth_session.dart';
 import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
 import '../widgets/home_cinemas_section.dart';
+import '../widgets/home_food_section.dart';
 import '../widgets/home_hero_carousel.dart';
 import '../widgets/home_personalized_movies.dart';
 import '../widgets/home_quick_booking.dart';
@@ -74,7 +75,7 @@ class HomePage extends ConsumerWidget {
               onBook: (movie) => _bookMovie(context, movie),
             ),
             const HomeCinemasSection(),
-            // F&B stays hidden until a production catalog is integrated.
+            const HomeFoodSection(),
             const SizedBox(height: 32),
           ],
         ),

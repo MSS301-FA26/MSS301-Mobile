@@ -319,102 +319,152 @@ class _WalletPageState extends ConsumerState<WalletPage> {
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
             Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
-                color: const Color(0xFF100E06),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF26200D), Color(0xFF11100B)],
+                ),
                 border: Border.all(color: AppColors.goldBorder),
                 borderRadius: AppRadii.card,
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.goldSurface,
-                      border: Border.all(color: AppColors.goldBorder),
-                      borderRadius: AppRadii.control,
-                    ),
-                    child: const Icon(
-                      Icons.account_balance_wallet_outlined,
-                      color: AppColors.gold,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'CINEWALLET',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.gold,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
-                          ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: .15),
+                          borderRadius: AppRadii.control,
                         ),
-                        Text(
-                          data.wallet.balance.format(),
-                          key: const ValueKey('wallet-balance'),
+                        child: const Icon(
+                          Icons.account_balance_wallet_outlined,
+                          color: AppColors.gold,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'CineWallet',
                           style: AppTextStyles.sectionTitle.copyWith(
-                            color: AppColors.text,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                      ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: AppColors.goldSurface,
+                          borderRadius: AppRadii.pill,
+                        ),
+                        child: Text(
+                          'HOẠT ĐỘNG',
+                          style: AppTextStyles.meta.copyWith(
+                            color: AppColors.gold,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const Text('Số dư khả dụng', style: AppTextStyles.caption),
+                  const SizedBox(height: 4),
+                  Text(
+                    data.wallet.balance.format(),
+                    key: const ValueKey('wallet-balance'),
+                    style: AppTextStyles.displayTitle.copyWith(
+                      color: AppColors.gold,
+                      fontSize: 30,
                     ),
                   ),
-                  OutlinedButton.icon(
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Tiền hoàn vé và các khoản hoàn trả sẽ được cộng vào đây.',
+                    style: AppTextStyles.caption,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FilledButton.icon(
                     key: const ValueKey('wallet-toggle-withdraw'),
-                    onPressed: () =>
-                        setState(() => _showWithdrawForm = !_showWithdrawForm),
+                    onPressed: () {
+                      if (data.wallet.balance.amount < 10000) {
+                        _notify(
+                          'Bạn cần tối thiểu 10.000đ trong ví để tạo yêu cầu rút.',
+                        );
+                        return;
+                      }
+                      setState(
+                        () => _showWithdrawForm = !_showWithdrawForm,
+                      );
+                    },
                     icon: Icon(
                       _showWithdrawForm
                           ? Icons.close_rounded
-                          : Icons.north_east_rounded,
-                      size: 16,
+                          : Icons.account_balance_outlined,
+                      size: 18,
                     ),
-                    label: Text(_showWithdrawForm ? 'Đóng' : 'Rút tiền'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.gold,
-                      side: const BorderSide(color: AppColors.goldBorder),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    label: Text(
+                      _showWithdrawForm
+                          ? 'Đóng biểu mẫu'
+                          : 'Yêu cầu rút tiền',
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.gold,
+                      foregroundColor: AppColors.background,
+                      minimumSize: const Size.fromHeight(48),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            if (_showWithdrawForm)
+            if (_showWithdrawForm && data.wallet.balance.amount >= 10000)
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.goldBorder),
+                  color: AppColors.surfaceRaised,
+                  border: Border.all(color: AppColors.borderStrong),
                   borderRadius: AppRadii.card,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '↗  TẠO YÊU CẦU RÚT TIỀN VỀ NGÂN HÀNG',
-                      style: AppTextStyles.label.copyWith(
-                        color: AppColors.gold,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.account_balance_outlined,
+                          color: AppColors.gold,
+                          size: 22,
+                        ),
+                        SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            'Rút tiền về ngân hàng',
+                            style: AppTextStyles.sectionTitle,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      'Số dư khả dụng: ${data.wallet.balance.format()}',
+                      'Bạn có thể rút tối đa ${data.wallet.balance.format()}. Thời gian xử lý dự kiến 1–3 ngày làm việc.',
                       style: AppTextStyles.caption,
                     ),
                     const Divider(height: AppSpacing.lg),
                     const Text(
-                      'Ngân hàng nhận tiền',
-                      style: AppTextStyles.sectionTitle,
+                      '1. Tài khoản nhận tiền',
+                      style: AppTextStyles.cardTitle,
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     const Text(
-                      'Thông tin này chỉ lưu trên thiết bị. Yêu cầu rút chỉ được gửi sau khi bạn xác nhận.',
+                      'Thông tin ngân hàng được lưu an toàn trên thiết bị này.',
                       style: AppTextStyles.caption,
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -494,8 +544,8 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     const Text(
-                      'Yêu cầu rút tiền',
-                      style: AppTextStyles.sectionTitle,
+                      '2. Số tiền muốn rút',
+                      style: AppTextStyles.cardTitle,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Form(
@@ -556,8 +606,8 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                             enabled: !_submitting,
                             keyboardType: TextInputType.phone,
                             decoration: const InputDecoration(
-                              labelText:
-                                  'Số điện thoại liên hệ (không bắt buộc)',
+                              labelText: 'Số điện thoại liên hệ',
+                              hintText: 'Không bắt buộc',
                             ),
                             validator: (value) =>
                                 (value?.trim().length ?? 0) > 20
@@ -587,29 +637,13 @@ class _WalletPageState extends ConsumerState<WalletPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Text(
-                      'Quản trị viên sẽ xem xét và chuyển khoản thủ công trong 1–3 ngày làm việc.',
-                      style: AppTextStyles.caption,
-                    ),
                   ],
                 ),
               ),
             const SizedBox(height: AppSpacing.lg),
-            SegmentedButton<_WalletTab>(
-              segments: const [
-                ButtonSegment(
-                  value: _WalletTab.withdrawals,
-                  label: Text('Rút gần đây'),
-                ),
-                ButtonSegment(
-                  value: _WalletTab.transactions,
-                  label: Text('Biến động gần đây'),
-                ),
-              ],
-              selected: {_tab},
-              onSelectionChanged: (values) =>
-                  setState(() => _tab = values.first),
+            _WalletHistoryTabs(
+              selected: _tab,
+              onSelected: (value) => setState(() => _tab = value),
             ),
             const SizedBox(height: AppSpacing.md),
             if (_tab == _WalletTab.withdrawals)
@@ -725,10 +759,24 @@ class _WalletPageState extends ConsumerState<WalletPage> {
               ChoiceChip(
                 label: Text(label),
                 selected: _filter == filter,
+                showCheckmark: false,
+                selectedColor: AppColors.gold,
+                backgroundColor: AppColors.surfaceRaised,
+                side: BorderSide(
+                  color: _filter == filter
+                      ? AppColors.gold
+                      : AppColors.borderStrong,
+                ),
+                labelStyle: AppTextStyles.label.copyWith(
+                  color: _filter == filter
+                      ? AppColors.background
+                      : AppColors.textSecondary,
+                ),
                 onSelected: (_) => setState(() => _filter = filter),
               ),
           ],
         ),
+        const SizedBox(height: AppSpacing.sm),
         if (visible.isEmpty)
           const _WalletEmptyState(
             icon: Icons.receipt_long_outlined,
@@ -736,16 +784,64 @@ class _WalletPageState extends ConsumerState<WalletPage> {
             message: 'Giao dịch hoàn vé và rút tiền sẽ hiển thị tại đây.',
           ),
         for (final item in visible)
-          Card(
+          Container(
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceRaised,
+              borderRadius: AppRadii.card,
+              border: Border.all(color: AppColors.border),
+            ),
             child: ListTile(
               key: ValueKey('wallet-transaction-${item.id}'),
-              title: Text(_transactionLabel(item.type)),
-              subtitle: Text(_date(item.createdAt)),
-              trailing: Text(
-                '${item.amount > 0 ? '+' : '-'}${VndMoney(item.amount.abs()).format()}',
-                style: TextStyle(
-                  color: item.amount > 0 ? AppColors.success : AppColors.text,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 6,
+              ),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: (item.amount > 0
+                          ? AppColors.success
+                          : AppColors.gold)
+                      .withValues(alpha: .12),
+                  borderRadius: AppRadii.medium,
                 ),
+                child: Icon(
+                  item.amount > 0
+                      ? Icons.south_west_rounded
+                      : Icons.north_east_rounded,
+                  color: item.amount > 0
+                      ? AppColors.success
+                      : AppColors.gold,
+                  size: 20,
+                ),
+              ),
+              title: Text(_transactionLabel(item.type)),
+              subtitle: Text(
+                '${_date(item.createdAt)}\nSố dư: ${item.balanceAfter.format()}',
+                style: AppTextStyles.caption,
+              ),
+              isThreeLine: true,
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${item.amount > 0 ? '+' : '-'}${VndMoney(item.amount.abs()).format()}',
+                    style: AppTextStyles.cardTitle.copyWith(
+                      color: item.amount > 0
+                          ? AppColors.success
+                          : AppColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textMuted,
+                    size: 18,
+                  ),
+                ],
               ),
               onTap: () => _showTransaction(item),
             ),
@@ -816,6 +912,84 @@ class _WalletPageState extends ConsumerState<WalletPage> {
   );
 }
 
+class _WalletHistoryTabs extends StatelessWidget {
+  const _WalletHistoryTabs({required this.selected, required this.onSelected});
+
+  final _WalletTab selected;
+  final ValueChanged<_WalletTab> onSelected;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceRaised,
+      borderRadius: AppRadii.control,
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Row(
+      children: [
+        _tab(
+          value: _WalletTab.withdrawals,
+          icon: Icons.account_balance_outlined,
+          label: 'Yêu cầu rút',
+        ),
+        const SizedBox(width: 4),
+        _tab(
+          value: _WalletTab.transactions,
+          icon: Icons.receipt_long_outlined,
+          label: 'Giao dịch',
+        ),
+      ],
+    ),
+  );
+
+  Widget _tab({
+    required _WalletTab value,
+    required IconData icon,
+    required String label,
+  }) {
+    final active = selected == value;
+    return Expanded(
+      child: Material(
+        color: active ? AppColors.gold : Colors.transparent,
+        borderRadius: AppRadii.small,
+        child: InkWell(
+          borderRadius: AppRadii.small,
+          onTap: () => onSelected(value),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 17,
+                  color: active ? AppColors.background : AppColors.textMuted,
+                ),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.label.copyWith(
+                      color: active
+                          ? AppColors.background
+                          : AppColors.textSecondary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WalletEmptyState extends StatelessWidget {
   const _WalletEmptyState({
     required this.icon,
@@ -835,13 +1009,25 @@ class _WalletEmptyState extends StatelessWidget {
       vertical: AppSpacing.lg,
     ),
     decoration: BoxDecoration(
-      color: AppColors.surface,
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppColors.surfaceRaised, AppColors.surface],
+      ),
       border: Border.all(color: AppColors.border),
       borderRadius: AppRadii.card,
     ),
     child: Column(
       children: [
-        Icon(icon, color: AppColors.textFaint, size: 30),
+        Container(
+          width: 52,
+          height: 52,
+          decoration: const BoxDecoration(
+            color: AppColors.goldSurface,
+            borderRadius: AppRadii.medium,
+          ),
+          child: Icon(icon, color: AppColors.gold, size: 27),
+        ),
         const SizedBox(height: AppSpacing.sm),
         Text(title, textAlign: TextAlign.center, style: AppTextStyles.emphasis),
         const SizedBox(height: AppSpacing.xs),

@@ -129,11 +129,6 @@ class AccountPage extends ConsumerWidget {
                 onTap: () => context.go(AppRoutes.wallet),
               ),
               AccountMenuItemData(
-                icon: Icons.fastfood_outlined,
-                label: 'Lịch sử đơn bắp nước',
-                onTap: () => context.go(AppRoutes.foodOrders),
-              ),
-              AccountMenuItemData(
                 icon: Icons.person_outline_rounded,
                 label: 'Hồ sơ cá nhân',
                 onTap: () => context.go(AppRoutes.profile),

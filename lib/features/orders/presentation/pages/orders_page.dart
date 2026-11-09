@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/config/feature_flags.dart';
+import '../../../../core/money/vnd_money.dart';
 import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/checkout_summary.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../booking/presentation/widgets/resume_booking_banner.dart';
 import '../../../food/data/models/food_order_dto.dart';
@@ -15,9 +17,11 @@ import '../../data/models/booking_enums.dart';
 import '../models/ticket_order.dart';
 import '../providers/orders_provider.dart';
 import '../widgets/order_card.dart';
+import '../widgets/booking_status_badge.dart';
 import '../widgets/orders_segmented_tabs.dart';
 
 enum _OutcomeFilter { all, successful, unsuccessful }
+enum _FoodSourceFilter { all, standalone, withTicket }
 
 class OrdersPage extends ConsumerStatefulWidget {
   const OrdersPage({super.key});
@@ -28,7 +32,8 @@ class OrdersPage extends ConsumerStatefulWidget {
 
 class _OrdersPageState extends ConsumerState<OrdersPage> {
   OrdersTab _tab = OrdersTab.tickets;
-  _OutcomeFilter _filter = _OutcomeFilter.all;
+  _OutcomeFilter _ticketFilter = _OutcomeFilter.all;
+  _FoodSourceFilter _foodFilter = _FoodSourceFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -37,9 +42,24 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
     final tickets = ticketsState.value ?? const <TicketOrder>[];
     final List<FoodOrderDto> foodOrders = [...?foodOrdersState.value]
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final linkedBookingIds = foodOrders
+        .map((order) => order.bookingId)
+        .whereType<int>()
+        .toSet();
+    final ticketFoodOrders = tickets
+        .where(
+          (ticket) =>
+              ticket.foods.isNotEmpty && !linkedBookingIds.contains(ticket.id),
+        )
+        .toList(growable: false);
 
     final ticketSuccessCount = tickets.where(_isSuccessfulTicket).length;
-    final foodSuccessCount = foodOrders.where(_isSuccessfulFoodOrder).length;
+    final standaloneFoodCount = foodOrders
+        .where((order) => order.bookingId == null)
+        .length;
+    final withTicketFoodCount =
+        foodOrders.length - standaloneFoodCount + ticketFoodOrders.length;
+    final allFoodCount = foodOrders.length + ticketFoodOrders.length;
     final selectedState = _tab == OrdersTab.tickets
         ? ticketsState
         : foodOrdersState;
@@ -54,7 +74,10 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
             if (_tab == OrdersTab.tickets) {
               await ref.read(ordersProvider.future);
             } else {
-              await ref.read(myFoodOrdersProvider.future);
+              await Future.wait([
+                ref.read(myFoodOrdersProvider.future),
+                ref.read(ordersProvider.future),
+              ]);
             }
           } catch (_) {
             // Keep the loaded history visible and let the inline error offer retry.
@@ -67,32 +90,47 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
             OrdersSegmentedTabs(
               selected: _tab,
               ticketsCount: ticketsState.hasValue ? tickets.length : null,
-              foodOrdersCount: foodOrdersState.hasValue
-                  ? foodOrders.length
+              foodOrdersCount: foodOrdersState.hasValue && ticketsState.hasValue
+                  ? allFoodCount
                   : null,
               onSelected: (tab) => setState(() {
                 _tab = tab;
-                _filter = _OutcomeFilter.all;
+                if (tab == OrdersTab.tickets) {
+                  _ticketFilter = _OutcomeFilter.all;
+                } else {
+                  _foodFilter = _FoodSourceFilter.all;
+                }
               }),
             ),
             const SizedBox(height: AppSpacing.sm),
-            _OutcomeFilters(
-              selected: _filter,
-              allCount: _tab == OrdersTab.tickets
-                  ? (ticketsState.hasValue ? tickets.length : null)
-                  : (foodOrdersState.hasValue ? foodOrders.length : null),
-              successCount: _tab == OrdersTab.tickets
-                  ? (ticketsState.hasValue ? ticketSuccessCount : null)
-                  : (foodOrdersState.hasValue ? foodSuccessCount : null),
-              unsuccessfulCount: _tab == OrdersTab.tickets
-                  ? (ticketsState.hasValue
-                        ? tickets.length - ticketSuccessCount
-                        : null)
-                  : (foodOrdersState.hasValue
-                        ? foodOrders.length - foodSuccessCount
-                        : null),
-              onSelected: (filter) => setState(() => _filter = filter),
-            ),
+            if (_tab == OrdersTab.tickets)
+              _OutcomeFilters(
+                selected: _ticketFilter,
+                allCount: ticketsState.hasValue ? tickets.length : null,
+                successCount: ticketsState.hasValue
+                    ? ticketSuccessCount
+                    : null,
+                unsuccessfulCount: ticketsState.hasValue
+                    ? tickets.length - ticketSuccessCount
+                    : null,
+                onSelected: (filter) =>
+                    setState(() => _ticketFilter = filter),
+              )
+            else
+              _FoodSourceFilters(
+                selected: _foodFilter,
+                allCount: foodOrdersState.hasValue && ticketsState.hasValue
+                    ? allFoodCount
+                    : null,
+                standaloneCount: foodOrdersState.hasValue
+                    ? standaloneFoodCount
+                    : null,
+                withTicketCount: foodOrdersState.hasValue
+                    ? withTicketFoodCount
+                    : null,
+                onSelected: (filter) =>
+                    setState(() => _foodFilter = filter),
+              ),
             const SizedBox(height: AppSpacing.md),
             if (selectedState.hasError && selectedState.hasValue)
               SizedBox(
@@ -132,7 +170,8 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
               _buildFoodOrderList(
                 context,
                 _filterFoodOrders(foodOrders),
-                foodOrders.isEmpty,
+                _filterTicketFoodOrders(ticketFoodOrders),
+                foodOrders.isEmpty && ticketFoodOrders.isEmpty,
               ),
           ],
         ),
@@ -145,12 +184,13 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
       ref.invalidate(ordersProvider);
     } else {
       ref.invalidate(myFoodOrdersProvider);
+      ref.invalidate(ordersProvider);
     }
   }
 
   List<TicketOrder> _filterTickets(List<TicketOrder> tickets) => tickets
       .where((ticket) {
-        return switch (_filter) {
+        return switch (_ticketFilter) {
           _OutcomeFilter.all => true,
           _OutcomeFilter.successful => _isSuccessfulTicket(ticket),
           _OutcomeFilter.unsuccessful => !_isSuccessfulTicket(ticket),
@@ -160,13 +200,18 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
 
   List<FoodOrderDto> _filterFoodOrders(List<FoodOrderDto> orders) => orders
       .where((order) {
-        return switch (_filter) {
-          _OutcomeFilter.all => true,
-          _OutcomeFilter.successful => _isSuccessfulFoodOrder(order),
-          _OutcomeFilter.unsuccessful => !_isSuccessfulFoodOrder(order),
+        return switch (_foodFilter) {
+          _FoodSourceFilter.all => true,
+          _FoodSourceFilter.standalone => order.bookingId == null,
+          _FoodSourceFilter.withTicket => order.bookingId != null,
         };
       })
       .toList(growable: false);
+
+  List<TicketOrder> _filterTicketFoodOrders(List<TicketOrder> orders) =>
+      _foodFilter == _FoodSourceFilter.standalone
+      ? const []
+      : orders;
 
   Widget _buildTicketList(
     BuildContext context,
@@ -178,7 +223,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
       return _EmptyHistory(
         title: noTickets
             ? 'Chưa có vé phim'
-            : _emptyFilterTitle('vé phim', _filter),
+            : _emptyFilterTitle('vé phim', _ticketFilter),
         message: noTickets
             ? 'Vé phim đã đặt sẽ xuất hiện ở đây.'
             : 'Không có vé nào thuộc trạng thái này.',
@@ -235,16 +280,19 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
   Widget _buildFoodOrderList(
     BuildContext context,
     List<FoodOrderDto> visible,
+    List<TicketOrder> ticketFoodOrders,
     bool noOrders,
   ) {
-    if (visible.isEmpty) {
+    if (visible.isEmpty && ticketFoodOrders.isEmpty) {
       return _EmptyHistory(
         title: noOrders
             ? 'Chưa có đơn bắp nước'
-            : _emptyFilterTitle('đơn bắp nước', _filter),
+            : _foodFilter == _FoodSourceFilter.standalone
+            ? 'Chưa có đơn mua riêng'
+            : 'Chưa có bắp nước mua theo vé',
         message: noOrders
             ? 'Các đơn bắp nước của bạn sẽ xuất hiện ở đây.'
-            : 'Không có đơn nào thuộc trạng thái này.',
+            : 'Không có đơn nào thuộc nhóm này.',
         onAction: () => context.push(AppRoutes.foodShop),
         actionLabel: 'Đặt bắp nước',
       );
@@ -252,6 +300,41 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
 
     return Column(
       children: [
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+          decoration: BoxDecoration(
+            color: AppColors.goldSurface,
+            borderRadius: AppRadii.control,
+            border: Border.all(color: AppColors.goldBorder),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.fastfood_outlined,
+                color: AppColors.gold,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Muốn mua riêng?', style: AppTextStyles.cardTitle),
+                    Text(
+                      'Đặt bắp nước không cần mua vé phim',
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.push(AppRoutes.foodShop),
+                child: const Text('Mua ngay'),
+              ),
+            ],
+          ),
+        ),
         for (final order in visible)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -260,17 +343,95 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
               child: FoodOrderCard(order: order),
             ),
           ),
+        for (final order in ticketFoodOrders)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: InkWell(
+              onTap: () => context.go(AppRoutes.ticket(order.id)),
+              child: _TicketFoodOrderCard(order: order),
+            ),
+          ),
       ],
+    );
+  }
+}
+
+class _TicketFoodOrderCard extends StatelessWidget {
+  const _TicketFoodOrderCard({required this.order});
+
+  final TicketOrder order;
+
+  @override
+  Widget build(BuildContext context) {
+    final foodTotal = order.foods.fold(
+      0,
+      (total, food) => total + food.lineTotal.amount,
+    );
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: AppRadii.card,
+        border: Border.all(color: AppColors.goldBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              BookingStatusBadge(status: order.status),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: AppRadii.pill,
+                  border: Border.all(color: AppColors.borderStrong),
+                ),
+                child: Text(
+                  'MUA THEO VÉ',
+                  style: AppTextStyles.meta.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(order.ticketCode, style: AppTextStyles.cardTitle),
+          const SizedBox(height: 4),
+          Text(
+            '${order.movieTitle} • ${order.dateTime}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (final food in order.foods)
+            CheckoutLine(
+              '${food.productName} × ${food.quantity}',
+              food.lineTotal.format(),
+            ),
+          const Divider(color: AppColors.border),
+          CheckoutLine(
+            'Tổng bắp nước',
+            VndMoney(foodTotal).format(),
+            emphasized: true,
+          ),
+        ],
+      ),
     );
   }
 }
 
 bool _isSuccessfulTicket(TicketOrder order) =>
     order.status == BookingStatus.paid || order.status == BookingStatus.used;
-
-bool _isSuccessfulFoodOrder(FoodOrderDto order) =>
-    order.status == FoodOrderStatus.paid ||
-    order.status == FoodOrderStatus.pickedUp;
 
 String _emptyFilterTitle(String type, _OutcomeFilter filter) =>
     switch (filter) {
@@ -324,6 +485,51 @@ class _OutcomeFilters extends StatelessWidget {
       ],
     );
   }
+}
+
+class _FoodSourceFilters extends StatelessWidget {
+  const _FoodSourceFilters({
+    required this.selected,
+    required this.allCount,
+    required this.standaloneCount,
+    required this.withTicketCount,
+    required this.onSelected,
+  });
+
+  final _FoodSourceFilter selected;
+  final int? allCount;
+  final int? standaloneCount;
+  final int? withTicketCount;
+  final ValueChanged<_FoodSourceFilter> onSelected;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      _OutcomeFilterButton(
+        key: const ValueKey('food-filter-all'),
+        label: 'Tất cả',
+        count: allCount,
+        selected: selected == _FoodSourceFilter.all,
+        onTap: () => onSelected(_FoodSourceFilter.all),
+      ),
+      const SizedBox(width: AppSpacing.xs),
+      _OutcomeFilterButton(
+        key: const ValueKey('food-filter-standalone'),
+        label: 'Mua riêng',
+        count: standaloneCount,
+        selected: selected == _FoodSourceFilter.standalone,
+        onTap: () => onSelected(_FoodSourceFilter.standalone),
+      ),
+      const SizedBox(width: AppSpacing.xs),
+      _OutcomeFilterButton(
+        key: const ValueKey('food-filter-with-ticket'),
+        label: 'Mua theo vé',
+        count: withTicketCount,
+        selected: selected == _FoodSourceFilter.withTicket,
+        onTap: () => onSelected(_FoodSourceFilter.withTicket),
+      ),
+    ],
+  );
 }
 
 class _OutcomeFilterButton extends StatelessWidget {

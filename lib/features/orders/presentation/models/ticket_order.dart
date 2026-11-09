@@ -19,6 +19,7 @@ class TicketOrder {
     this.showtimeEnd,
     required this.seats,
     required this.seatsTypeLabel,
+    this.foods = const [],
     required this.concessionsSummary,
     required this.totalPrice,
     required this.status,
@@ -37,6 +38,7 @@ class TicketOrder {
   final DateTime? showtimeEnd;
   final List<String> seats;
   final String seatsTypeLabel;
+  final List<BookingFoodDto> foods;
   final String concessionsSummary;
   final VndMoney totalPrice;
   final BookingStatus status;
@@ -95,7 +97,7 @@ TicketOrder mapBookingToOrder(
         '${booking.tickets.where((ticket) => ticket.ticketType == type).length} ${_ticketLabel(type)}',
   ].join(', ');
   final foods = booking.foods
-      .map((food) => '${food.quantity}x ${food.productName}')
+      .map((food) => '${food.productName} × ${food.quantity}')
       .join(', ');
   final room = booking.roomNameSnapshot ?? booking.roomName ?? 'Phòng chiếu';
   final cinema =
@@ -117,6 +119,7 @@ TicketOrder mapBookingToOrder(
     seatsTypeLabel: ticketSummary.isNotEmpty
         ? ticketSummary
         : '${booking.seats.length} vé${seatTypes.isEmpty ? '' : ' (${seatTypes.join(', ')})'}',
+    foods: booking.foods,
     concessionsSummary: foods.isEmpty ? 'Không kèm F&B' : foods,
     totalPrice: booking.totalAmount,
     status: booking.status,

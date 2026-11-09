@@ -85,9 +85,9 @@ class FoodCartBar extends StatelessWidget {
           }
           return Row(
             children: [
-              Expanded(child: summary),
+              Expanded(flex: 5, child: summary),
               const SizedBox(width: 12),
-              Flexible(child: SizedBox(width: 180, child: button)),
+              Expanded(flex: 6, child: button),
             ],
           );
         },

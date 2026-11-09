@@ -163,11 +163,64 @@ class _OrderCard extends StatelessWidget {
             style: AppTextStyles.body.copyWith(fontSize: 14),
           ),
           Text(order.seatsTypeLabel, style: AppTextStyles.caption),
-          if (order.concessionsSummary != 'Không kèm F&B') ...[
-            const SizedBox(height: 8),
-            Text(
-              'Bắp nước: ${order.concessionsSummary}',
-              style: AppTextStyles.caption,
+          if (order.foods.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceRaised,
+                borderRadius: AppRadii.control,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.fastfood_outlined,
+                        size: 17,
+                        color: AppColors.gold,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        'BẮP NƯỚC',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .7,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  for (var i = 0; i < order.foods.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            order.foods[i].productName,
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.text,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '× ${order.foods[i].quantity}',
+                          style: AppTextStyles.body.copyWith(
+                            color: AppColors.gold,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         ],

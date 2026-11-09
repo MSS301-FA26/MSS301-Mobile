@@ -79,6 +79,10 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
               .now()
               .toUtc()
               .isBefore(_order!.expiresAt!));
+
+  bool get _successful =>
+      _order?.status == FoodOrderStatus.paid ||
+      _order?.status == FoodOrderStatus.pickedUp;
   Future<void> _refresh({bool sync = false}) async {
     if (_busy || !mounted) return;
     final generation = _generation;
@@ -198,9 +202,14 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Quay lại'),
           ),
-          TextButton(
+          FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Hủy đơn'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.delete_outline_rounded, size: 18),
+            label: const Text('Hủy đơn'),
           ),
         ],
       ),
@@ -441,25 +450,118 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                             ),
                           ],
                         ),
-                      if (_pending)
-                        TextButton(
-                          onPressed: _busy ? null : _cancelOrder,
-                          child: const Text('Hủy đơn'),
-                        ),
-                      TextButton(
-                        onPressed: () => context.push(AppRoutes.foodOrders),
-                        child: const Text('Lịch sử đơn bắp nước'),
+                      const SizedBox(height: 8),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final cancelButton = OutlinedButton.icon(
+                            key: const ValueKey('food-order-cancel'),
+                            onPressed: _pending && !_busy ? _cancelOrder : null,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                              side: const BorderSide(color: AppColors.error),
+                              minimumSize: const Size(0, 50),
+                            ),
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 19,
+                            ),
+                            label: const Text('Hủy đơn'),
+                          );
+                          final historyButton = OutlinedButton.icon(
+                            key: const ValueKey('food-order-history'),
+                            onPressed: () =>
+                                context.push(AppRoutes.foodOrders),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.text,
+                              backgroundColor: AppColors.surfaceRaised,
+                              minimumSize: const Size(0, 50),
+                            ),
+                            icon: const Icon(
+                              Icons.receipt_long_outlined,
+                              size: 19,
+                            ),
+                            label: const Text('Lịch sử đơn'),
+                          );
+                          final homeButton = OutlinedButton.icon(
+                            key: const ValueKey('food-order-home'),
+                            onPressed: () => context.go(AppRoutes.home),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.text,
+                              backgroundColor: AppColors.surfaceRaised,
+                              minimumSize: const Size(0, 50),
+                            ),
+                            icon: const Icon(Icons.home_outlined, size: 19),
+                            label: const Text('Về trang chủ'),
+                          );
+                          final stack = constraints.maxWidth < 350 ||
+                              MediaQuery.textScalerOf(context).scale(14) > 18;
+                          if (!_pending) {
+                            if (!_successful) {
+                              return SizedBox(
+                                width: double.infinity,
+                                child: historyButton,
+                              );
+                            }
+                            if (stack) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  homeButton,
+                                  const SizedBox(height: 10),
+                                  historyButton,
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(child: homeButton),
+                                const SizedBox(width: 10),
+                                Expanded(child: historyButton),
+                              ],
+                            );
+                          }
+                          if (stack) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                historyButton,
+                                const SizedBox(height: 10),
+                                cancelButton,
+                              ],
+                            );
+                          }
+                          return Row(
+                            children: [
+                              Expanded(child: historyButton),
+                              const SizedBox(width: 10),
+                              Expanded(child: cancelButton),
+                            ],
+                          );
+                        },
                       ),
+                      const SizedBox(height: 8),
                     ],
                   ),
           ),
           if (order != null)
             PaymentActionBar(
               total: order.totalAmount,
-              buttonKey: ValueKey(_pending ? 'food-pay' : 'food-refresh'),
-              icon: _pending ? Icons.lock_outline : Icons.refresh,
+              buttonKey: ValueKey(
+                _pending
+                    ? 'food-pay'
+                    : _successful
+                    ? 'food-order-again'
+                    : 'food-refresh',
+              ),
+              icon: _pending
+                  ? Icons.lock_outline
+                  : _successful
+                  ? Icons.add_shopping_cart_rounded
+                  : Icons.refresh,
               label: _busy
                   ? 'Đang xử lý…'
+                  : _successful
+                  ? 'Đặt thêm bắp nước'
                   : !_pending
                   ? 'Kiểm tra kết quả đơn'
                   : changed
@@ -476,6 +578,8 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                   ? null
                   : _pending
                   ? _pay
+                  : _successful
+                  ? () => context.go(AppRoutes.foodShop)
                   : () => _refresh(sync: true),
             ),
         ],
