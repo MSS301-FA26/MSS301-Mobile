@@ -9,7 +9,7 @@ void main() {
   ) async {
     await pumpTestApp(tester, size: const Size(430, 900));
 
-    expect(find.text('MUA VÉ NHANH'), findsNWidgets(2));
+    expect(find.text('MUA VÉ NHANH'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-ai-coverflow')), findsOneWidget);
     expect(find.text('RẠP CINEPREMIER'), findsOneWidget);
   });
@@ -19,6 +19,8 @@ void main() {
   ) async {
     await pumpTestApp(tester, size: const Size(390, 844));
 
+    await tester.tap(find.byKey(const ValueKey('home-quick-expand')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('home-quick-step-1')));
     await tester.pumpAndSettle();
 
@@ -43,6 +45,8 @@ void main() {
     tester,
   ) async {
     await pumpTestApp(tester, size: const Size(390, 844));
+    await tester.tap(find.byKey(const ValueKey('home-quick-expand')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('home-quick-step-1')));
     await tester.pumpAndSettle();
 

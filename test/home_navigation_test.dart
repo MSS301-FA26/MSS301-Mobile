@@ -21,7 +21,7 @@ void main() {
 
       await pumpTestApp(tester);
 
-      expect(find.text('MUA VÉ NHANH'), findsNWidgets(2));
+      expect(find.text('MUA VÉ NHANH'), findsOneWidget);
       expect(find.text('Khám phá phim'), findsOneWidget);
       expect(find.byKey(const ValueKey('home-tab-ai')), findsOneWidget);
       expect(

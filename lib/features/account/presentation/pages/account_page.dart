@@ -62,11 +62,6 @@ class AccountPage extends ConsumerWidget {
                   label: 'Thông tin rạp',
                   onTap: () => context.push(AppRoutes.cinemas),
                 ),
-                AccountMenuItemData(
-                  icon: Icons.support_agent_rounded,
-                  label: 'Trung tâm trợ giúp & CSKH',
-                  onTap: () => context.go(AppRoutes.support),
-                ),
               ],
             ),
           ],
@@ -143,11 +138,6 @@ class AccountPage extends ConsumerWidget {
                 label: 'Hồ sơ cá nhân',
                 onTap: () => context.go(AppRoutes.profile),
               ),
-              AccountMenuItemData(
-                icon: Icons.lock_outline_rounded,
-                label: 'Bảo mật & mật khẩu',
-                onTap: () => context.go(AppRoutes.security),
-              ),
               if (FeatureFlags.popBotPreview)
                 AccountMenuItemData(
                   icon: Icons.smart_toy_outlined,
@@ -189,12 +179,6 @@ class AccountPage extends ConsumerWidget {
                 label: 'Thông tin rạp',
                 iconColor: AppColors.textMuted,
                 onTap: () => context.push(AppRoutes.cinemas),
-              ),
-              AccountMenuItemData(
-                icon: Icons.support_agent_rounded,
-                label: 'Trung tâm trợ giúp & CSKH',
-                iconColor: AppColors.textMuted,
-                onTap: () => context.go(AppRoutes.support),
               ),
               AccountMenuItemData(
                 icon: Icons.logout_rounded,

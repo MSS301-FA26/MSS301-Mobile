@@ -15,7 +15,10 @@ import '../../application/profile_controller.dart';
 import '../../../auth/application/auth_session.dart';
 import '../widgets/profile_avatar.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
+import '../../../movie/presentation/providers/movie_engagement_provider.dart';
 import '../../../../core/time/vietnam_time.dart';
+import '../../../orders/data/models/booking_enums.dart';
+import '../../../orders/presentation/providers/orders_provider.dart';
 
 class ProfileEditPage extends ConsumerStatefulWidget {
   const ProfileEditPage({super.key});
@@ -33,6 +36,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   String? _loadError;
   bool _requested = false;
   int? _editingUser;
+  bool _purgingAiData = false;
 
   @override
   void dispose() {
@@ -129,12 +133,65 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     if (saved && mounted) await _load();
   }
 
+  Future<void> _purgeAiData() async {
+    final userId = ref.read(authSessionProvider).session?.user.id;
+    if (userId == null || _purgingAiData) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa dữ liệu đề xuất AI?'),
+        content: const Text(
+          'Toàn bộ lịch sử đề xuất và sở thích AI của bạn sẽ bị xóa. '
+          'Các đề xuất sau đó sẽ trở về trạng thái mặc định theo quyền được lãng quên của GDPR.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xóa dữ liệu'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _purgingAiData = true);
+    try {
+      await ref
+          .read(movieEngagementRepositoryProvider)
+          .purgeUserRecommendationData(userId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã xóa toàn bộ dữ liệu đề xuất AI của bạn.'),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể xóa dữ liệu AI: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _purgingAiData = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userId = ref.watch(
       authSessionProvider.select((auth) => auth.session?.user.id),
     );
     ref.watch(currentProfileProvider);
+    final account = ref.watch(accountSummaryProvider).value;
+    final watchedMovies = ref
+        .watch(ordersProvider)
+        .value
+        ?.where((order) => order.status == BookingStatus.used)
+        .length;
     final mutation = ref.watch(profileMutationProvider);
     if (_editingUser != userId) {
       _editingUser = userId;
@@ -170,81 +227,636 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 children: [
-                  Center(
-                    child: ProfileAvatar(url: _profile!.avatarUrl, radius: 42),
-                  ),
-                  TextButton(
-                    key: const ValueKey('profile-avatar'),
-                    onPressed: mutation.busy ? null : _avatar,
-                    child: const Text('Đổi ảnh đại diện'),
-                  ),
-                  Text(
-                    _profile!.email,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.caption,
+                  _ProfileHero(
+                    profile: _profile!,
+                    memberSince: account?.joinYear ?? _profile!.createdAt.year,
+                    onAvatar: mutation.busy ? null : _avatar,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  TextFormField(
-                    key: const ValueKey('profile-name'),
-                    controller: _name,
-                    readOnly: mutation.busy,
-                    decoration: const InputDecoration(
-                      errorMaxLines: 3,
-                      labelText: 'Họ và tên',
-                    ),
-                    validator: (v) => profileNameError(v ?? ''),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextFormField(
-                    key: const ValueKey('profile-phone'),
-                    controller: _phone,
-                    readOnly: mutation.busy,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      errorMaxLines: 3,
-                      labelText: 'Số điện thoại',
-                    ),
-                    validator: (v) => profilePhoneError(v ?? ''),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextFormField(
-                    key: const ValueKey('profile-birth-year'),
-                    controller: _birthYear,
-                    readOnly: mutation.busy,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      errorMaxLines: 3,
-                      labelText: 'Năm sinh',
-                    ),
-                    validator: (v) => profileBirthYearError(
-                      v ?? '',
-                      vietnamCalendar(ref.read(appClockProvider).now()).year,
-                    ),
-                  ),
-                  if (_loadError != null)
-                    Text(_loadError!, style: AppTextStyles.caption),
-                  if (mutation.message != null &&
-                      mutation.operation != 'password')
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.sm,
+                  _ProfileInformationGrid(profile: _profile!),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ProfileMetric(
+                          icon: Icons.local_fire_department_outlined,
+                          label: 'CinePoints',
+                          value: account?.points?.toString() ?? '—',
+                          color: AppColors.gold,
+                          onTap: () => context.go(AppRoutes.points),
+                        ),
                       ),
-                      child: Text(
-                        mutation.message!,
-                        key: const ValueKey('profile-message'),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _ProfileMetric(
+                          icon: Icons.movie_outlined,
+                          label: 'Phim đã xem',
+                          value: watchedMovies?.toString() ?? '—',
+                          color: AppColors.textSecondary,
+                          onTap: () => context.go(AppRoutes.orders),
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
                   const SizedBox(height: AppSpacing.lg),
-                  AppButton(
-                    key: const ValueKey('profile-save'),
-                    label: mutation.busy ? 'Đang cập nhật…' : 'Lưu thay đổi',
-                    onPressed: mutation.busy ? null : _save,
+                  const _ControlCenterHeader(),
+                  const SizedBox(height: AppSpacing.sm),
+                  _ProfileControlTile(
+                    key: const ValueKey('profile-edit-section'),
+                    icon: Icons.person_outline_rounded,
+                    title: 'Chỉnh sửa hồ sơ VIP',
+                    initiallyExpanded: true,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          key: const ValueKey('profile-name'),
+                          controller: _name,
+                          maxLength: 100,
+                          readOnly: mutation.busy,
+                          decoration: const InputDecoration(
+                            errorMaxLines: 3,
+                            labelText: 'Họ và tên',
+                          ),
+                          validator: (v) => profileNameError(v ?? ''),
+                        ),
+                        TextFormField(
+                          initialValue: _profile!.email,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Địa chỉ email liên hệ',
+                            suffixIcon: Icon(Icons.lock_outline_rounded),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextFormField(
+                          key: const ValueKey('profile-phone'),
+                          controller: _phone,
+                          readOnly: mutation.busy,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            errorMaxLines: 3,
+                            labelText: 'Số điện thoại',
+                          ),
+                          validator: (v) => profilePhoneError(v ?? ''),
+                        ),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '10 số, bắt đầu 03/05/08/09',
+                            style: AppTextStyles.caption,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextFormField(
+                          key: const ValueKey('profile-birth-year'),
+                          controller: _birthYear,
+                          readOnly: mutation.busy,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            errorMaxLines: 3,
+                            labelText: 'Năm sinh',
+                          ),
+                          validator: (v) => profileBirthYearError(
+                            v ?? '',
+                            vietnamCalendar(ref.read(appClockProvider).now())
+                                .year,
+                          ),
+                        ),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Dùng để xác minh độ tuổi xem phim',
+                            style: AppTextStyles.caption,
+                          ),
+                        ),
+                        if (_loadError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppSpacing.sm),
+                            child: Text(
+                              _loadError!,
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
+                        if (mutation.message != null &&
+                            mutation.operation != 'password')
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.sm,
+                            ),
+                            child: Text(
+                              mutation.message!,
+                              key: const ValueKey('profile-message'),
+                            ),
+                          ),
+                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            key: const ValueKey('profile-save'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              minimumSize: const Size.fromHeight(48),
+                            ),
+                            icon: const Icon(Icons.save_outlined, size: 18),
+                            label: Text(
+                              mutation.busy
+                                  ? 'Đang cập nhật…'
+                                  : 'LƯU THAY ĐỔI HỒ SƠ',
+                            ),
+                            onPressed: mutation.busy ? null : _save,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _ProfileNavigationTile(
+                    icon: Icons.account_balance_outlined,
+                    title: 'Tài khoản ngân hàng (Rút ví)',
+                    onTap: () => context.go(AppRoutes.wallet),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _ProfileNavigationTile(
+                    icon: Icons.lock_outline_rounded,
+                    title: 'Mật khẩu & bảo an',
+                    onTap: () => context.go(AppRoutes.security),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _ProfileControlTile(
+                    icon: Icons.auto_awesome_outlined,
+                    title: 'Cá nhân hóa CineAI & quyền riêng tư',
+                    child: _AiPrivacyPanel(
+                      userId: userId,
+                      purging: _purgingAiData,
+                      onPurge: _purgeAiData,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  OutlinedButton.icon(
+                    key: const ValueKey('profile-sign-out'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.adultBadge,
+                      side: BorderSide(
+                        color: AppColors.adultBadge.withValues(alpha: .35),
+                      ),
+                      minimumSize: const Size.fromHeight(52),
+                    ),
+                    onPressed: _confirmSignOut,
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('ĐĂNG XUẤT'),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
                 ],
               ),
             ),
     );
   }
+
+  Future<void> _confirmSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất?'),
+        content: const Text('Bạn có chắc muốn đăng xuất khỏi CinePremier?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Ở lại'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      ref.read(authSessionProvider.notifier).signOut();
+      context.go(AppRoutes.login);
+    }
+  }
+}
+
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({
+    required this.profile,
+    required this.memberSince,
+    required this.onAvatar,
+  });
+
+  final UserProfileDto profile;
+  final int memberSince;
+  final VoidCallback? onAvatar;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(AppSpacing.lg),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border.all(color: AppColors.goldBorder),
+      gradient: LinearGradient(
+        colors: [
+          AppColors.gold.withValues(alpha: .09),
+          AppColors.surface,
+          AppColors.surface,
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            ProfileAvatar(url: profile.avatarUrl, radius: 42),
+            Positioned(
+              right: -5,
+              bottom: -5,
+              child: Material(
+                color: AppColors.surfaceHigh,
+                shape: const CircleBorder(
+                  side: BorderSide(color: AppColors.goldBorder),
+                ),
+                child: IconButton(
+                  key: const ValueKey('profile-avatar'),
+                  tooltip: 'Đổi ảnh đại diện',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onAvatar,
+                  icon: const Icon(
+                    Icons.photo_camera_outlined,
+                    color: AppColors.gold,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: AppSpacing.lg),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(profile.fullName, style: AppTextStyles.sectionTitle),
+              const SizedBox(height: 5),
+              Text(
+                'THÀNH VIÊN TỪ $memberSince • ${profile.status.name.toUpperCase()}',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.gold,
+                  letterSpacing: .7,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                profile.email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProfileInformationGrid extends StatelessWidget {
+  const _ProfileInformationGrid({required this.profile});
+
+  final UserProfileDto profile;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = (constraints.maxWidth - AppSpacing.sm) / 2;
+      return Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: [
+          _ProfileInfoCell(
+            width: width,
+            icon: Icons.email_outlined,
+            label: 'Email tài khoản',
+            value: profile.email,
+          ),
+          _ProfileInfoCell(
+            width: width,
+            icon: Icons.phone_outlined,
+            label: 'Số điện thoại',
+            value: profile.phone?.trim().isNotEmpty == true
+                ? profile.phone!
+                : 'Chưa cập nhật',
+          ),
+          _ProfileInfoCell(
+            width: width,
+            icon: Icons.cake_outlined,
+            label: 'Năm sinh',
+            value: profile.birthYear?.toString() ?? 'Chưa cập nhật',
+          ),
+          _ProfileInfoCell(
+            width: width,
+            icon: Icons.verified_user_outlined,
+            label: 'Xác thực',
+            value: profile.emailVerified
+                ? 'Email đã xác thực'
+                : 'Email chưa xác thực',
+            positive: profile.emailVerified,
+          ),
+        ],
+      );
+    },
+  );
+}
+
+class _ProfileInfoCell extends StatelessWidget {
+  const _ProfileInfoCell({
+    required this.width,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.positive = false,
+  });
+
+  final double width;
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool positive;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    constraints: const BoxConstraints(minHeight: 96),
+    padding: const EdgeInsets.all(AppSpacing.md),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 17, color: AppColors.gold),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                label.toUpperCase(),
+                style: AppTextStyles.caption.copyWith(fontSize: 10),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.body.copyWith(
+            color: positive ? AppColors.success : AppColors.text,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProfileMetric extends StatelessWidget {
+  const _ProfileMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  style: AppTextStyles.caption.copyWith(fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(value, style: AppTextStyles.sectionTitle.copyWith(fontSize: 25)),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ControlCenterHeader extends StatelessWidget {
+  const _ControlCenterHeader();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.md,
+      vertical: AppSpacing.sm,
+    ),
+    decoration: BoxDecoration(
+      border: Border.all(color: AppColors.goldBorder),
+      color: AppColors.gold.withValues(alpha: .05),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.settings_outlined, color: AppColors.gold, size: 19),
+        SizedBox(width: AppSpacing.sm),
+        Text('TRUNG TÂM KIỂM SOÁT VIP', style: AppTextStyles.label),
+      ],
+    ),
+  );
+}
+
+class _ProfileControlTile extends StatelessWidget {
+  const _ProfileControlTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.initiallyExpanded = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+  final bool initiallyExpanded;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border.all(color: AppColors.border),
+    ),
+    child: ExpansionTile(
+      initiallyExpanded: initiallyExpanded,
+      leading: Icon(icon, color: AppColors.gold),
+      title: Text(title.toUpperCase(), style: AppTextStyles.label),
+      childrenPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      children: [child],
+    ),
+  );
+}
+
+class _AiPrivacyPanel extends StatelessWidget {
+  const _AiPrivacyPanel({
+    required this.userId,
+    required this.purging,
+    required this.onPurge,
+  });
+
+  final int? userId;
+  final bool purging;
+  final VoidCallback onPurge;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Text(
+        'CineAI phân tích lịch sử xem phim, đánh giá và tương tác để đưa ra '
+        'đề xuất phù hợp. Dữ liệu được bảo vệ theo quyền riêng tư người dùng GDPR.',
+        style: AppTextStyles.caption,
+      ),
+      const SizedBox(height: AppSpacing.md),
+      Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            const _PrivacyStatusLine(
+              label: 'Trạng thái mô hình',
+              value: 'Đang hoạt động',
+              valueColor: AppColors.success,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _PrivacyStatusLine(
+              label: 'Mã người dùng',
+              value: userId == null ? 'GUEST' : '#$userId',
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const _PrivacyStatusLine(
+              label: 'Quyền được lãng quên',
+              value: 'GDPR Article 17',
+              valueColor: AppColors.lavender,
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      OutlinedButton.icon(
+        key: const ValueKey('profile-purge-ai-data'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.adultBadge,
+          side: BorderSide(color: AppColors.adultBadge.withValues(alpha: .4)),
+          minimumSize: const Size.fromHeight(48),
+        ),
+        onPressed: purging || userId == null ? null : onPurge,
+        icon: purging
+            ? const SizedBox.square(
+                dimension: 17,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.delete_outline_rounded),
+        label: Text(
+          purging ? 'ĐANG XÓA DỮ LIỆU…' : 'XÓA TOÀN BỘ DỮ LIỆU ĐỀ XUẤT AI',
+        ),
+      ),
+    ],
+  );
+}
+
+class _PrivacyStatusLine extends StatelessWidget {
+  const _PrivacyStatusLine({
+    required this.label,
+    required this.value,
+    this.valueColor = AppColors.text,
+  });
+
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(child: Text(label, style: AppTextStyles.caption)),
+      const SizedBox(width: AppSpacing.sm),
+      Flexible(
+        child: Text(
+          value,
+          textAlign: TextAlign.right,
+          style: AppTextStyles.caption.copyWith(
+            color: valueColor,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _ProfileNavigationTile extends StatelessWidget {
+  const _ProfileNavigationTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      side: BorderSide(color: AppColors.border),
+    ),
+    child: ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: AppColors.textMuted),
+      title: Text(title.toUpperCase(), style: AppTextStyles.label),
+      trailing: const Icon(Icons.chevron_right_rounded),
+    ),
+  );
 }
 
 @Deprecated('Use PointsPage.')

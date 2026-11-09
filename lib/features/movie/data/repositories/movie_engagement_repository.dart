@@ -67,6 +67,15 @@ class MovieEngagementRepository {
   Future<List<RecommendationDto>> getTrendingRecommendations() =>
       _getRecommendationSet('/api/v1/recommendations/trending');
 
+  Future<void> purgeUserRecommendationData(int userId) async {
+    try {
+      await _dio.delete('/api/v1/recommendations/users/$userId/data');
+    } on DioException catch (error) {
+      if (error.error is ApiException) throw error.error! as ApiException;
+      rethrow;
+    }
+  }
+
   Future<List<RecommendationDto>> _getRecommendationSet(String path) async {
     final response = await _get(path, query: {'limit': 12});
     final body = response.data;

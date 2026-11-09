@@ -25,6 +25,7 @@ class HomeQuickBooking extends ConsumerStatefulWidget {
 }
 
 class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
+  bool _expanded = false;
   int? _movieId;
   int? _cinemaId;
   DateTime? _date;
@@ -32,6 +33,71 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_expanded) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Material(
+          key: const ValueKey('home-quick-card'),
+          color: AppColors.surface,
+          shape: const RoundedRectangleBorder(
+            side: BorderSide(color: AppColors.goldBorder),
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            key: const ValueKey('home-quick-expand'),
+            onTap: () => setState(() => _expanded = true),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: AppColors.goldSurface,
+                      borderRadius: AppRadii.small,
+                    ),
+                    child: const Icon(
+                      Icons.confirmation_number_outlined,
+                      color: AppColors.gold,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'MUA VÉ NHANH',
+                          style: AppTextStyles.label.copyWith(
+                            color: AppColors.gold,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: .5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Chọn phim, rạp và suất chiếu',
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.gold,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     final movie = widget.movies.where((m) => m.id == _movieId).firstOrNull;
     final cinemasState = ref.watch(homeCinemasProvider);
     final query = ShowtimeQuery(movieId: movie?.id);
@@ -139,11 +205,14 @@ class _HomeQuickBookingState extends ConsumerState<HomeQuickBooking> {
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        '4 BƯỚC',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w700,
+                      IconButton(
+                        key: const ValueKey('home-quick-collapse'),
+                        tooltip: 'Thu gọn',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => setState(() => _expanded = false),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_up_rounded,
+                          color: AppColors.gold,
                         ),
                       ),
                     ],

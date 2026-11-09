@@ -260,6 +260,8 @@ void main() {
       await pumpTestApp(tester, size: const Size(390, 1000));
       final quickState = tester.state(find.byType(HomeQuickBooking));
       final cinemasState = tester.state(find.byType(HomeCinemasSection));
+      await tester.tap(find.byKey(const ValueKey('home-quick-expand')));
+      await tester.pumpAndSettle();
       final first = find.byKey(const ValueKey('home-quick-step-1'));
       await tester.ensureVisible(first);
       await tester.tap(first);
