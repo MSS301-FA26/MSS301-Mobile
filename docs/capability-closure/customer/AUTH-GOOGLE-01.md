@@ -129,3 +129,15 @@ Gateway `GET http://localhost:8080/actuator/health` returned HTTP 200/UP. This p
 Inherited Backend security concern for the Backend owner: `AuthServiceImpl.java:254` derives a new Google user's password hash from Google `sub`. This is existing team-owned business logic and was not modified. It requires a separate Backend security review; this integration must not be interpreted as production security approval for that logic.
 
 No git add, commit, or push. Existing Home working-tree changes are preserved and are not part of AUTH-GOOGLE-01.
+
+## Runtime follow-up — 01/11/2026
+
+The Android emulator now has a Google account and the app receives its Web OAuth client ID through `GOOGLE_SERVER_CLIENT_ID`. A real sign-in attempt still fails inside Google Play Services **before** any request reaches `/api/v1/auth/google`. Logcat reports: `This android application is not registered to use OAuth2.0, please confirm the package name and SHA-1 certificate fingerprint match what you registered in Google Developer Console`.
+
+The installed debug APK was verified with `apksigner`:
+
+- Android package: `com.example.mss301_mobile`
+- SHA-1: `27:52:0E:5E:E4:08:B7:1A:F1:10:40:41:E0:B6:14:7E:22:05:A5:91`
+- SHA-256: `00:35:BB:BB:67:30:15:9E:D6:5E:FE:E4:DE:63:34:68:4D:FE:2E:5B:11:26:95:3A:02:0A:D8:2B:E3:09:13:E5`
+
+Required external change: In the Google Cloud project containing the Backend Web OAuth client, create or correct an **Android OAuth client** with that exact package and SHA-1. Keep `GOOGLE_SERVER_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_ID` set to the existing Web client ID; the new Android client ID is not a replacement for the Backend audience. Once registered, retry sign-in and verify that Mobile posts an ID token to the Gateway and receives an app session. No Google Cloud administration connection is available in this workspace, so this registration remains pending.

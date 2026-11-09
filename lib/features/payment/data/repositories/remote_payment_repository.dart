@@ -26,6 +26,7 @@ class RemotePaymentRepository implements PaymentRepository {
         data: {
           if (request.bookingId != null) 'bookingId': request.bookingId,
           if (request.foodOrderId != null) 'foodOrderId': request.foodOrderId,
+          'clientType': 'MOBILE',
         },
       ),
     );

@@ -54,6 +54,25 @@ final loyaltyOverviewProvider =
       return (points, configuration);
     });
 
+final checkoutLoyaltyOverviewProvider = FutureProvider.autoDispose
+    .family<(LoyaltyDto, LoyaltyConfigurationDto), int?>((ref, cinemaId) async {
+      final repository = ref.watch(loyaltyRepositoryProvider);
+      final userId = ref.watch(
+        authSessionProvider.select((auth) => auth.session?.user.id),
+      );
+      if (userId == null) {
+        throw const ApiException(
+          type: ApiErrorType.unauthorized,
+          message: 'Vui lòng đăng nhập.',
+        );
+      }
+      final results = await Future.wait([
+        repository.getLoyalty(userId),
+        repository.getConfiguration(cinemaId: cinemaId),
+      ]);
+      return (results[0] as LoyaltyDto, results[1] as LoyaltyConfigurationDto);
+    });
+
 final accountWalletProvider = FutureProvider<WalletDto>((ref) async {
   final userId = ref.watch(
     authSessionProvider.select((auth) => auth.session?.user.id),

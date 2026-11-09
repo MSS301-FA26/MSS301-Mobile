@@ -1,94 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../models/account_summary.dart';
-
-class WalletTile extends StatelessWidget {
-  const WalletTile({
-    super.key,
-    required this.user,
-    required this.onManage,
-    this.onRetry,
-    this.refreshing = false,
-  });
-
-  final AccountSummary user;
-  final VoidCallback? onManage;
-  final VoidCallback? onRetry;
-  final bool refreshing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: AppRadii.card,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.account_balance_wallet_outlined,
-                color: AppColors.gold,
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text('CineWallet', style: AppTextStyles.cardTitle),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            user.walletBalance?.format() ??
-                (refreshing ? 'Đang tải số dư…' : 'Chưa tải được số dư'),
-            key: const ValueKey('account-wallet-value'),
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            children: [
-              TextButton(
-                onPressed: onManage,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.text,
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppRadii.control,
-                  ),
-                ),
-                child: Text(
-                  onManage == null ? 'Sắp có' : 'Quản lý ví',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                ),
-              ),
-              if (user.walletBalance == null && !refreshing)
-                TextButton.icon(
-                  key: const ValueKey('account-wallet-retry'),
-                  onPressed: onRetry,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.textMuted,
-                    minimumSize: const Size(48, 48),
-                  ),
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Thử lại số dư'),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class AccountMenu extends StatelessWidget {
   const AccountMenu({super.key, required this.items});
@@ -127,6 +39,7 @@ class AccountMenuItemData {
     this.iconColor = AppColors.gold,
     this.trailing,
     this.status,
+    this.detailLabel,
   });
 
   final IconData icon;
@@ -135,6 +48,7 @@ class AccountMenuItemData {
   final Color iconColor;
   final String? trailing;
   final String? status;
+  final String? detailLabel;
 }
 
 class AccountMenuRow extends StatelessWidget {
@@ -181,6 +95,16 @@ class AccountMenuRow extends StatelessWidget {
                 ],
               ),
             ),
+            if (item.detailLabel != null) ...[
+              Text(
+                item.detailLabel!,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
             const Icon(
               Icons.chevron_right_rounded,
               size: 18,

@@ -81,17 +81,25 @@ class MockAccountStore
   }
 
   @override
-  Future<List<WalletTransactionDto>> getTransactions(int userId) async {
+  Future<List<WalletTransactionDto>> getTransactions(
+    int userId, {
+    int page = 0,
+    int size = 30,
+  }) async {
     await _wait();
     _requireUser(userId);
-    return List.unmodifiable(_transactions);
+    return List.unmodifiable(_transactions.skip(page * size).take(size));
   }
 
   @override
-  Future<List<WithdrawalDto>> getWithdrawals(int userId) async {
+  Future<List<WithdrawalDto>> getWithdrawals(
+    int userId, {
+    int page = 0,
+    int size = 30,
+  }) async {
     await _wait();
     _requireUser(userId);
-    return List.unmodifiable(_withdrawals);
+    return List.unmodifiable(_withdrawals.skip(page * size).take(size));
   }
 
   @override
@@ -133,7 +141,7 @@ class MockAccountStore
         walletId: _wallet.id,
         userId: userId,
         type: WalletTransactionType.withdrawalHold,
-        amount: request.amount,
+        amount: -request.amount.amount,
         balanceAfter: nextBalance,
         referenceCode: 'WD-${withdrawal.id}',
         description: 'Tạm giữ tiền rút ví',
@@ -151,7 +159,7 @@ class MockAccountStore
   }
 
   @override
-  Future<LoyaltyConfigurationDto> getConfiguration() async {
+  Future<LoyaltyConfigurationDto> getConfiguration({int? cinemaId}) async {
     await _wait();
     return const LoyaltyConfigurationDto(
       id: 1,

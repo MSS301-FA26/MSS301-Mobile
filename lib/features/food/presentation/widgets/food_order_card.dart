@@ -42,12 +42,52 @@ class FoodOrderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          StatusBadge(label: order.status.label, color: color, icon: icon),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              StatusBadge(label: order.status.label, color: color, icon: icon),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: order.bookingId == null
+                      ? AppColors.goldSurface
+                      : AppColors.surface,
+                  borderRadius: AppRadii.pill,
+                  border: Border.all(
+                    color: order.bookingId == null
+                        ? AppColors.goldBorder
+                        : AppColors.borderStrong,
+                  ),
+                ),
+                child: Text(
+                  order.bookingId == null ? 'MUA RIÊNG' : 'MUA THEO VÉ',
+                  style: AppTextStyles.meta.copyWith(
+                    color: order.bookingId == null
+                        ? AppColors.gold
+                        : AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           Text(
             order.orderCode.isEmpty ? '#${order.id}' : order.orderCode,
             style: AppTextStyles.cardTitle,
           ),
+          if (order.bookingId != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Đi kèm vé: ${order.bookingCode?.trim().isNotEmpty == true ? order.bookingCode : '#${order.bookingId}'}',
+              style: AppTextStyles.caption.copyWith(color: AppColors.gold),
+            ),
+          ],
           const SizedBox(height: AppSpacing.xs),
           Text(created, style: AppTextStyles.caption),
           const SizedBox(height: AppSpacing.sm),

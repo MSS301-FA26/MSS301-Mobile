@@ -10,12 +10,15 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/checkout_summary.dart';
+import '../../../../shared/widgets/checkout_outcome_header.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../auth/application/auth_session.dart';
 import '../../../booking/presentation/widgets/checkout_order_summary.dart';
 import '../widgets/checkout_food_images_provider.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
 import '../../../payment/application/payment_launcher.dart';
+import '../../../payment/application/payment_return_checkpoint.dart';
+import '../../../payment/presentation/pages/payment_handoff_page.dart';
 import '../../data/models/food_order_dto.dart';
 import '../../data/repositories/standalone_food_repository.dart';
 import '../../data/repositories/food_order_providers.dart';
@@ -76,6 +79,10 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
               .now()
               .toUtc()
               .isBefore(_order!.expiresAt!));
+
+  bool get _successful =>
+      _order?.status == FoodOrderStatus.paid ||
+      _order?.status == FoodOrderStatus.pickedUp;
   Future<void> _refresh({bool sync = false}) async {
     if (_busy || !mounted) return;
     final generation = _generation;
@@ -102,6 +109,17 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
               : 'Trạng thái mới nhất: ${order.status.label}.';
         }
       });
+      if (order.status != FoodOrderStatus.pendingPayment) {
+        final userId = ref.read(authSessionProvider).session?.user.id;
+        if (userId != null) {
+          final store = ref.read(paymentReturnCheckpointStoreProvider);
+          final pending = await store.read(userId);
+          if (pending?.kind == PendingPaymentKind.foodOrder &&
+              pending?.orderId == widget.orderId) {
+            await store.clear(userId, paymentId: pending!.paymentId);
+          }
+        }
+      }
       ref.invalidate(myFoodOrdersProvider);
     } catch (error) {
       if (mounted && generation == _generation) {
@@ -139,9 +157,29 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
         setState(() => _message = 'Thời gian thanh toán đơn đã hết.');
         return;
       }
-      final result = await ref.read(paymentLauncherProvider).open(payment);
-      if (!mounted || generation != _generation) return;
-      setState(() => _message = result.message);
+      if (payment.paymentUrl?.startsWith('mock://') == true) {
+        final result = await ref.read(paymentLauncherProvider).open(payment);
+        if (!mounted || generation != _generation) return;
+        setState(() => _message = result.message);
+      } else if (payment.paymentUrl != null) {
+        await ref
+            .read(paymentReturnCheckpointStoreProvider)
+            .save(
+              PendingPaymentReturn(
+                userId: user.id,
+                paymentId: payment.id,
+                orderId: widget.orderId,
+                kind: PendingPaymentKind.foodOrder,
+              ),
+            );
+        if (!mounted || generation != _generation) return;
+        await PaymentHandoffPage.open(context, payment);
+        if (!mounted || generation != _generation) return;
+        setState(() => _busy = false);
+        await _refresh(sync: true);
+      } else {
+        setState(() => _error = 'Giao dịch chưa có đường dẫn VNPay.');
+      }
     } catch (error) {
       if (mounted && generation == _generation) {
         setState(() => _error = foodActionError(error));
@@ -164,9 +202,14 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Quay lại'),
           ),
-          TextButton(
+          FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Hủy đơn'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.delete_outline_rounded, size: 18),
+            label: const Text('Hủy đơn'),
           ),
         ],
       ),
@@ -292,6 +335,35 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
+                      CheckoutOutcomeHeader(
+                        icon: switch (order.status) {
+                          FoodOrderStatus.paid || FoodOrderStatus.pickedUp =>
+                            Icons.check_circle_outline_rounded,
+                          FoodOrderStatus.cancelled ||
+                          FoodOrderStatus.expired => Icons.event_busy_rounded,
+                          _ => Icons.receipt_long_outlined,
+                        },
+                        color: switch (order.status) {
+                          FoodOrderStatus.paid ||
+                          FoodOrderStatus.pickedUp => Colors.greenAccent,
+                          FoodOrderStatus.cancelled ||
+                          FoodOrderStatus.expired => AppColors.adultBadge,
+                          _ => AppColors.gold,
+                        },
+                        title: 'Trạng thái: ${order.status.label}',
+                        description: order.status == FoodOrderStatus.paid
+                            ? 'Đơn đã thanh toán. Dùng mã nhận hàng bên dưới tại rạp.'
+                            : order.status == FoodOrderStatus.pendingPayment
+                            ? 'Đơn đang chờ VNPay. Nếu đã trả tiền, hãy kiểm tra lại kết quả.'
+                            : order.status == FoodOrderStatus.unknown
+                            ? 'Chưa xác định được kết quả. Hãy kiểm tra lại với hệ thống.'
+                            : 'Thông tin đơn được xác nhận theo trạng thái từ hệ thống.',
+                        reference: order.orderCode.isEmpty
+                            ? 'Đơn #${order.id}'
+                            : 'Mã đơn: ${order.orderCode}',
+                        amount: order.totalAmount.format(),
+                      ),
+                      const SizedBox(height: 16),
                       CheckoutSection(
                         title: 'Thông tin đơn',
                         children: [
@@ -359,32 +431,137 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                       const SizedBox(height: 16),
                       if (order.status == FoodOrderStatus.paid &&
                           order.qrCode?.isNotEmpty == true)
-                        Center(
-                          child: Container(
-                            color: Colors.white,
-                            padding: const EdgeInsets.all(12),
-                            child: QrImageView(data: order.qrCode!, size: 200),
-                          ),
+                        Column(
+                          children: [
+                            const Text(
+                              'Mã nhận bắp nước',
+                              style: AppTextStyles.cardTitle,
+                            ),
+                            const SizedBox(height: 8),
+                            Center(
+                              child: Container(
+                                color: Colors.white,
+                                padding: const EdgeInsets.all(12),
+                                child: QrImageView(
+                                  data: order.qrCode!,
+                                  size: 200,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      if (_pending)
-                        TextButton(
-                          onPressed: _busy ? null : _cancelOrder,
-                          child: const Text('Hủy đơn'),
-                        ),
-                      TextButton(
-                        onPressed: () => context.push(AppRoutes.foodOrders),
-                        child: const Text('Lịch sử đơn bắp nước'),
+                      const SizedBox(height: 8),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final cancelButton = OutlinedButton.icon(
+                            key: const ValueKey('food-order-cancel'),
+                            onPressed: _pending && !_busy ? _cancelOrder : null,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.error,
+                              side: const BorderSide(color: AppColors.error),
+                              minimumSize: const Size(0, 50),
+                            ),
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 19,
+                            ),
+                            label: const Text('Hủy đơn'),
+                          );
+                          final historyButton = OutlinedButton.icon(
+                            key: const ValueKey('food-order-history'),
+                            onPressed: () =>
+                                context.push(AppRoutes.foodOrders),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.text,
+                              backgroundColor: AppColors.surfaceRaised,
+                              minimumSize: const Size(0, 50),
+                            ),
+                            icon: const Icon(
+                              Icons.receipt_long_outlined,
+                              size: 19,
+                            ),
+                            label: const Text('Lịch sử đơn'),
+                          );
+                          final homeButton = OutlinedButton.icon(
+                            key: const ValueKey('food-order-home'),
+                            onPressed: () => context.go(AppRoutes.home),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.text,
+                              backgroundColor: AppColors.surfaceRaised,
+                              minimumSize: const Size(0, 50),
+                            ),
+                            icon: const Icon(Icons.home_outlined, size: 19),
+                            label: const Text('Về trang chủ'),
+                          );
+                          final stack = constraints.maxWidth < 350 ||
+                              MediaQuery.textScalerOf(context).scale(14) > 18;
+                          if (!_pending) {
+                            if (!_successful) {
+                              return SizedBox(
+                                width: double.infinity,
+                                child: historyButton,
+                              );
+                            }
+                            if (stack) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  homeButton,
+                                  const SizedBox(height: 10),
+                                  historyButton,
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(child: homeButton),
+                                const SizedBox(width: 10),
+                                Expanded(child: historyButton),
+                              ],
+                            );
+                          }
+                          if (stack) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                historyButton,
+                                const SizedBox(height: 10),
+                                cancelButton,
+                              ],
+                            );
+                          }
+                          return Row(
+                            children: [
+                              Expanded(child: historyButton),
+                              const SizedBox(width: 10),
+                              Expanded(child: cancelButton),
+                            ],
+                          );
+                        },
                       ),
+                      const SizedBox(height: 8),
                     ],
                   ),
           ),
           if (order != null)
             PaymentActionBar(
               total: order.totalAmount,
-              buttonKey: ValueKey(_pending ? 'food-pay' : 'food-refresh'),
-              icon: _pending ? Icons.lock_outline : Icons.refresh,
+              buttonKey: ValueKey(
+                _pending
+                    ? 'food-pay'
+                    : _successful
+                    ? 'food-order-again'
+                    : 'food-refresh',
+              ),
+              icon: _pending
+                  ? Icons.lock_outline
+                  : _successful
+                  ? Icons.add_shopping_cart_rounded
+                  : Icons.refresh,
               label: _busy
                   ? 'Đang xử lý…'
+                  : _successful
+                  ? 'Đặt thêm bắp nước'
                   : !_pending
                   ? 'Kiểm tra kết quả đơn'
                   : changed
@@ -401,6 +578,8 @@ class _FoodCheckoutPageState extends ConsumerState<FoodCheckoutPage>
                   ? null
                   : _pending
                   ? _pay
+                  : _successful
+                  ? () => context.go(AppRoutes.foodShop)
                   : () => _refresh(sync: true),
             ),
         ],

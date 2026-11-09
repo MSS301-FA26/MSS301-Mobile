@@ -39,16 +39,55 @@ class MovieEngagementRepository {
   }
 
   Future<List<RecommendationDto>> getRecommendations(int movieId) async {
-    final response = await _get('/api/v1/recommendation/content/$movieId');
+    final response = await _get(
+      '/api/v1/recommendations/movies/$movieId/similar',
+      query: {'limit': 12},
+    );
     final body = response.data;
-    final value = body is Map ? body['data'] : body;
-    if (value is! List) {
+    final data = body is Map ? body['data'] : null;
+    final items = data is Map ? data['recommendations'] : null;
+    if (body is! Map || body['success'] != true || items is! List) {
       throw const ApiException(
         type: ApiErrorType.unknown,
         message: 'Invalid recommendation response.',
       );
     }
-    return value
+    return items
+        .map(
+          (item) => RecommendationDto.fromJson(
+            Map<String, Object?>.from(item as Map),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<List<RecommendationDto>> getUserRecommendations(int userId) =>
+      _getRecommendationSet('/api/v1/recommendations/users/$userId');
+
+  Future<List<RecommendationDto>> getTrendingRecommendations() =>
+      _getRecommendationSet('/api/v1/recommendations/trending');
+
+  Future<void> purgeUserRecommendationData(int userId) async {
+    try {
+      await _dio.delete('/api/v1/recommendations/users/$userId/data');
+    } on DioException catch (error) {
+      if (error.error is ApiException) throw error.error! as ApiException;
+      rethrow;
+    }
+  }
+
+  Future<List<RecommendationDto>> _getRecommendationSet(String path) async {
+    final response = await _get(path, query: {'limit': 12});
+    final body = response.data;
+    final data = body is Map ? body['data'] : null;
+    final items = data is Map ? data['recommendations'] : null;
+    if (body is! Map || body['success'] != true || items is! List) {
+      throw const ApiException(
+        type: ApiErrorType.unknown,
+        message: 'Invalid AI recommendation response.',
+      );
+    }
+    return items
         .map(
           (item) => RecommendationDto.fromJson(
             Map<String, Object?>.from(item as Map),

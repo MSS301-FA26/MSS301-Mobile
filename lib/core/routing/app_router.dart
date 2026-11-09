@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/account/presentation/pages/account_page.dart';
 import '../../features/account/presentation/pages/account_detail_pages.dart';
+import '../../features/account/presentation/pages/wallet_page.dart';
 import '../../features/account/presentation/pages/information_pages.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/auth/presentation/widgets/auth_guard.dart';
@@ -10,9 +11,12 @@ import '../../features/booking/presentation/pages/concessions_page.dart';
 import '../../features/booking/presentation/pages/payment_result_page.dart';
 import '../../features/booking/presentation/pages/ticket_page.dart';
 import '../../features/discover/presentation/pages/discover_page.dart';
+import '../../features/cinema/presentation/pages/cinema_directory_page.dart';
+import '../../features/cinema/presentation/pages/cinema_detail_page.dart';
 import '../../features/food/presentation/pages/food_orders_history_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/movie/presentation/pages/movie_detail_page.dart';
+import '../../features/movie/presentation/pages/watchlist_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
 import '../../features/preview/data/provisional_preview_repository.dart';
 import '../../features/preview/presentation/pages/preview_feature_page.dart';
@@ -26,6 +30,19 @@ import '../../features/popbot/presentation/chat_page.dart';
 final appRouter = GoRouter(
   initialLocation: AppRoutes.home,
   routes: [
+    GoRoute(
+      path: AppRoutes.paymentCallback,
+      redirect: (context, state) {
+        final transactionReference =
+            state.uri.queryParameters['vnp_TxnRef'] ?? '';
+        final paymentId = int.tryParse(
+          RegExp(r'^\d+').firstMatch(transactionReference)?.group(0) ?? '',
+        );
+        return paymentId == null
+            ? AppRoutes.orders
+            : AppRoutes.payment(paymentId);
+      },
+    ),
     GoRoute(
       path: AppRoutes.foodShop,
       builder: (context, state) => const AuthGuard(child: StandaloneFoodPage()),
@@ -59,6 +76,18 @@ final appRouter = GoRouter(
       name: 'showtimes',
       builder: (context, state) => ShowtimesPage(
         movieId: int.tryParse(state.uri.queryParameters['movieId'] ?? ''),
+        cinemaId: int.tryParse(state.uri.queryParameters['cinemaId'] ?? ''),
+        date: state.uri.queryParameters['date'],
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.cinemas,
+      builder: (context, state) => const CinemaDirectoryPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.cinemaDetailPattern,
+      builder: (context, state) => CinemaDetailPage(
+        cinemaId: int.tryParse(state.pathParameters['cinemaId'] ?? '') ?? -1,
       ),
     ),
     GoRoute(
@@ -122,9 +151,12 @@ final appRouter = GoRouter(
           const AuthGuard(child: FoodOrdersHistoryPage()),
     ),
     GoRoute(
+      path: AppRoutes.watchlist,
+      builder: (context, state) => const AuthGuard(child: WatchlistPage()),
+    ),
+    GoRoute(
       path: AppRoutes.cinemaInfo,
-      builder: (context, state) =>
-          const InformationPage(type: InformationPageType.cinema),
+      redirect: (context, state) => AppRoutes.cinemas,
     ),
     GoRoute(
       path: AppRoutes.policies,

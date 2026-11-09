@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/constants/cinema_info.dart';
+import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_theme.dart';
-import 'cinema_info_sheet.dart';
+import '../../features/cinema/application/cinema_preferences.dart';
+import '../../features/home/presentation/providers/home_providers.dart';
 
-class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
+class CinemaHeader extends ConsumerWidget implements PreferredSizeWidget {
   const CinemaHeader({
     super.key,
     required this.onHome,
@@ -25,7 +28,12 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
       Size.fromHeight(compact ? 56 : AppSpacing.headerHeight);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preferredId = ref.watch(preferredCinemaProvider).value;
+    final cinemas = ref.watch(homeCinemasProvider).value ?? [];
+    final selected = cinemas
+        .where((cinema) => cinema.id == preferredId)
+        .firstOrNull;
     return AppBar(
       toolbarHeight: compact ? 56 : AppSpacing.headerHeight,
       automaticallyImplyLeading: false,
@@ -80,14 +88,7 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
           else
             Expanded(
               child: InkWell(
-                onTap: () => showModalBottomSheet<void>(
-                  context: context,
-                  backgroundColor: AppColors.surface,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppRadii.card,
-                  ),
-                  builder: (context) => const CinemaInfoSheet(),
-                ),
+                onTap: () => context.push(AppRoutes.cinemas),
                 borderRadius: AppRadii.control,
                 child: Container(
                   height: 44,
@@ -109,7 +110,7 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
                       SizedBox(width: 5),
                       Expanded(
                         child: Text(
-                          CinemaInfo.name,
+                          selected?.name ?? 'Chọn rạp',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.meta.copyWith(

@@ -26,6 +26,7 @@ void main() {
       final movies = await repository.getMovies(keyword: 'Dune');
       final movie = await repository.getMovie(7);
       final cinemas = await repository.getCinemas();
+      final cinema = await repository.getCinema(3);
       final showtimes = await repository.getShowtimes(
         movieId: 7,
         date: DateTime(2026, 10, 7),
@@ -35,12 +36,44 @@ void main() {
       expect(movies.single.posterUrl, isNull);
       expect(movie?.id, 7);
       expect(cinemas.single.name, 'Cine Central');
+      expect(cinema?.id, 3);
       expect(showtimes.single.status.wireValue, 'OPEN');
       expect(adapter.showtimeQuery['movieId'], '7');
       expect(adapter.showtimeQuery['date'], '2026-10-07');
       expect(adapter.movieQuery['keyword'], 'Dune');
     },
   );
+
+  test(
+    'passes cinemaId to showtime API and retains only matching cinema',
+    () async {
+      final adapter = _CatalogAdapter();
+      final repository = RemoteCatalogRepository(
+        Dio()..httpClientAdapter = adapter,
+      );
+      final matching = await repository.getShowtimes(cinemaId: 3);
+      expect(adapter.showtimeQuery['cinemaId'], '3');
+      expect(matching.single.cinemaId, 3);
+      final other = await repository.getShowtimes(cinemaId: 4);
+      expect(adapter.showtimeQuery['cinemaId'], '4');
+      expect(other, isEmpty);
+    },
+  );
+
+  test('movie picker reads every catalog page', () async {
+    final adapter = _CatalogAdapter(pagedMovies: true);
+    final repository = RemoteCatalogRepository(
+      Dio()..httpClientAdapter = adapter,
+    );
+    final movies = await repository.getMovies();
+    expect(movies.map((movie) => movie.id), [7, 8]);
+    expect(
+      adapter.requests
+          .where((request) => request.path == '/api/v1/movies')
+          .length,
+      2,
+    );
+  });
 
   test(
     'maps supported Discover filters and pagination to the catalog contract',
@@ -167,10 +200,15 @@ void main() {
 }
 
 class _CatalogAdapter implements HttpClientAdapter {
-  _CatalogAdapter({this.emptyMovies = false, this.missingMovie = false});
+  _CatalogAdapter({
+    this.emptyMovies = false,
+    this.missingMovie = false,
+    this.pagedMovies = false,
+  });
 
   final bool emptyMovies;
   final bool missingMovie;
+  final bool pagedMovies;
   Map<String, String> showtimeQuery = const {};
   Map<String, String> movieQuery = const {};
   String? method;
@@ -255,18 +293,32 @@ class _CatalogAdapter implements HttpClientAdapter {
         'data': [_cinema],
       });
     }
+    if (options.path == '/api/v1/cinemas/3') {
+      return _json({'success': true, 'data': _cinema});
+    }
     if (options.path == '/api/v1/movies/7') {
       return _json({'success': true, 'data': _movie});
     }
     movieQuery = options.uri.queryParameters;
+    final moviePage = int.tryParse(movieQuery['page'] ?? '') ?? 0;
     return _json({
       'success': true,
       'data': {
-        'items': emptyMovies ? const [] : [_movie],
+        'items': emptyMovies
+            ? const []
+            : pagedMovies && moviePage == 1
+            ? [
+                {..._movie, 'id': 8},
+              ]
+            : [_movie],
         'page': 2,
         'size': 20,
         'totalItems': 41,
-        'totalPages': 3,
+        'totalPages': pagedMovies
+            ? 2
+            : options.uri.queryParameters['size'] == '100'
+            ? 1
+            : 3,
         'first': false,
         'last': false,
       },

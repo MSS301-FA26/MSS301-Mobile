@@ -4,6 +4,8 @@ Ngày lập: **14/10/2026**. Người yêu cầu: **Tzee314**.
 Trạng thái: **UI-01–10 đã triển khai/QA và được người dùng xác nhận UI ổn ngày 16/10. UI-11/UI-12 đã triển khai, lần lượt 40/59 test cùng analyzer/build Android đạt, chờ review. Các ca tích hợp còn mở được giữ riêng: iOS, chat/ví/recommendation và E2E payment/QR.**
 Baseline: Mobile `3a67680` và các thay đổi local banner/poster; BE `9921498`.
 
+> Kiểm toán mới nhất ngày **01/11/2026**: [BE–FE–Mobile gap audit và kế hoạch đóng gap](MOBILE-GAP-AUDIT-2026-11-01.md). Tài liệu này dùng code/Gateway hiện hành làm nguồn sự thật và thay thế các kết luận capability đã lỗi thời trong audit ngày 09/10.
+
 ## Mục tiêu và phạm vi
 
 Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiện ích trên Home. Cải thiện độ dễ đọc, mật độ thông tin, trạng thái tải/lỗi/trống và sự nhất quán giữa các màn hình.
@@ -53,7 +55,24 @@ Giữ phong cách đen–vàng, tím cho PopBot và bố cục bốn thẻ tiệ
 | 4 | [UI-14](14-ADD-COMBO-IN-CHECKOUT.md) | Đã triển khai: thêm/giảm combo ở checkout, sheet toàn bộ món, cập nhật quote và khóa tổng cũ | 55 test liên quan; chờ review/iOS/sandbox E2E; xem UI14-RESULTS |
 | 5 | [UI-15](15-HOME-3D-MOVIE-CAROUSEL.md) | Đã triển khai hai tab phim và coverflow 3D; giữ mua vé nhanh/rạp/hero | 42 test/analyzer/build đạt; emulator/API thật đã kiểm tra, chờ review/iOS/TalkBack |
 
-### Cách dùng ảnh tham khảo
+## Bổ sung theo phản hồi ngày 17/10 — Plan 16–23
+
+Trạng thái: **UI-16 và UI-17 đã triển khai phía Mobile ngày 19/10; UI-18 và UI-19 đã triển khai ngày 23/10, Android/API thật đã kiểm tra, còn QA iOS/thiết bị thật. UI-20–23 đã triển khai code Mobile ngày 01/11/2026; UI-22 là local MVP, UI-23 còn phụ thuộc enforcement BE. QA thiết bị/iOS và E2E còn mở.** Nhận xét, bằng chứng FE/BE và dependencies: [REVIEW-2026-10-17.md](REVIEW-2026-10-17.md).
+
+| Plan | Ưu tiên | Nội dung |
+| --- | --- | --- |
+| [UI-16](16-REALTIME-SEAT-AVAILABILITY.md) | P0 | Mobile đã làm mới/chặn ghế, preflight và conflict; [kết quả](UI16-RESULTS.md), còn QA hai khách và BE occupancy |
+| [UI-17](17-PAYMENT-RETURN-TO-APP.md) | P0 | WebView VNPay quay lại app cho vé và food; [kết quả](UI17-RESULTS.md), còn QA sandbox/iOS và browser landing |
+| [UI-18](18-CINEMA-DIRECTORY.md) | P1 | Đã triển khai danh sách, chi tiết, rạp ưu tiên và lịch theo `cinemaId`; [kết quả](UI18-RESULTS.md) |
+| [UI-19](19-UNIFIED-SHOWTIME-FILTERS.md) | P1 | Đã triển khai lọc phim/rạp/ngày theo route, xóa riêng và xóa tất cả; [kết quả](UI19-RESULTS.md) |
+| [UI-20](20-PAYMENT-AND-SUCCESS-REDESIGN.md) | P1 | Đã triển khai Mobile; [kết quả](UI20-RESULTS.md), còn QA thiết bị/E2E |
+| [UI-21](21-MOVIE-DETAIL-REFINEMENT.md) | P2 | Đã triển khai Mobile; [kết quả](UI21-RESULTS.md), còn review thẩm mỹ |
+| [UI-22](22-WATCHLIST.md) | P2 | Đã triển khai local MVP; [kết quả](UI22-RESULTS.md), remote sync cần BE |
+| [UI-23](23-SINGLE-SEAT-GAP-RULE.md) | P1 | Đã triển khai Mobile UX; [kết quả](UI23-RESULTS.md), enforcement BE còn mở |
+
+Thứ tự đề xuất: **16 → 17 → 18 → 19 → 23 → 20 → 22 → 21**. Các plan chức năng gốc đã được gom vào [functional-completion-2026-10-11](../functional-completion-2026-10-11/00-MOBILE-COMPLETION-ROADMAP.md), giữ nguyên nội dung lịch sử.
+
+### Cách dùng ảnh tham khảo UI-11–14
 
 - Ảnh 4, chi tiết phim Shaun the Sheep: tham khảo banner/trailer, poster, metadata, mô tả và nút đặt vé cố định cho UI-11. Phim liên quan dùng API gợi ý đã có; ưu đãi chỉ thêm nếu có nguồn và trang đích thật.
 - Ảnh 3, danh sách combo: tham khảo cách đặt ảnh, mô tả thành phần, giá và bộ chọn số lượng cho UI-12.
@@ -73,6 +92,13 @@ Kết quả UI-12: [UI12-RESULTS.md](UI12-RESULTS.md).
 Kết quả UI-13: [UI13-RESULTS.md](UI13-RESULTS.md).
 Kết quả UI-14: [UI14-RESULTS.md](UI14-RESULTS.md).
 Kết quả UI-15: [UI15-RESULTS.md](UI15-RESULTS.md).
+Kết quả UI-16: [UI16-RESULTS.md](UI16-RESULTS.md).
+Kết quả UI-17: [UI17-RESULTS.md](UI17-RESULTS.md).
+Kết quả UI-18: [UI18-RESULTS.md](UI18-RESULTS.md).
+Kết quả UI-19: [UI19-RESULTS.md](UI19-RESULTS.md).
+Kết quả UI-20–23: [UI20-RESULTS.md](UI20-RESULTS.md), [UI21-RESULTS.md](UI21-RESULTS.md), [UI22-RESULTS.md](UI22-RESULTS.md), [UI23-RESULTS.md](UI23-RESULTS.md).
+
+Kiểm chứng code UI-20–23 ngày 01/11: analyzer sạch, build APK debug thành công, nhóm UI-06/UI-11/UI-22/UI-23 đạt 31/31 test. UI-13 đạt 19/21; hai test food checkout timeout ở `pumpAndSettle` kể cả khi tạm bỏ status card mới. Chưa có thiết bị Android kết nối để chụp ảnh và QA iOS/E2E.
 
 - Kiểm tra chiều rộng 320, 360, 390, 430 logical px và tăng cỡ chữ: không overflow, không che CTA, không mất thông tin quan trọng.
 - Vùng chạm tối thiểu 48 logical px; thân nút có thể gọn hơn nếu vùng chạm đủ lớn.

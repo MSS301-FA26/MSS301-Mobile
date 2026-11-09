@@ -11,6 +11,7 @@ import '../../orders/data/models/booking_dto.dart';
 import '../../orders/data/models/booking_enums.dart';
 import '../../orders/data/repositories/booking_providers.dart';
 import '../../payment/application/payment_launcher.dart';
+import '../../payment/application/payment_return_checkpoint.dart';
 import '../../payment/data/models/payment_dto.dart';
 import '../../payment/data/models/payment_enums.dart';
 import '../../payment/data/repositories/payment_providers.dart';
@@ -44,6 +45,7 @@ class BookingCompletionState {
     this.quantities = const {},
     this.message,
     this.quoteNeedsRefresh = false,
+    this.loyaltyPointsToRedeem = 0,
   });
 
   final BookingCompletionPhase phase;
@@ -54,6 +56,7 @@ class BookingCompletionState {
   final Map<String, int> quantities;
   final String? message;
   final bool quoteNeedsRefresh;
+  final int loyaltyPointsToRedeem;
 
   bool get isBusy => switch (phase) {
     BookingCompletionPhase.loading ||
@@ -73,6 +76,7 @@ class BookingCompletionState {
     String? message,
     bool clearMessage = false,
     bool? quoteNeedsRefresh,
+    int? loyaltyPointsToRedeem,
   }) => BookingCompletionState(
     phase: phase ?? this.phase,
     booking: booking ?? this.booking,
@@ -82,6 +86,7 @@ class BookingCompletionState {
     quantities: quantities ?? this.quantities,
     message: clearMessage ? null : message ?? this.message,
     quoteNeedsRefresh: quoteNeedsRefresh ?? this.quoteNeedsRefresh,
+    loyaltyPointsToRedeem: loyaltyPointsToRedeem ?? this.loyaltyPointsToRedeem,
   );
 }
 
@@ -181,6 +186,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             '${food.isCombo ? 'combo' : 'item'}:${food.productId}':
                 food.quantity,
         },
+        loyaltyPointsToRedeem: booking.loyaltyPointsRedeemed,
       );
     } catch (error) {
       if (!ref.mounted || generation != _generation) return;
@@ -279,6 +285,22 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     }
   }
 
+  Future<void> applyLoyaltyPoints(int points) async {
+    if (state.phase != BookingCompletionPhase.checkout ||
+        state.isBusy ||
+        state.payment != null) {
+      return;
+    }
+    final normalized = points < 0 ? 0 : points;
+    if (normalized == state.loyaltyPointsToRedeem) return;
+    state = state.copyWith(
+      loyaltyPointsToRedeem: normalized,
+      quoteNeedsRefresh: true,
+      clearMessage: true,
+    );
+    await refreshCheckoutCart();
+  }
+
   List<FoodSelectionDto> get _foodSelections => state.products
       .where((product) => (state.quantities[product.selectionKey] ?? 0) > 0)
       .map(
@@ -342,6 +364,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             UpdateHoldingBookingRequestDto(
               tickets: _ticketSelections,
               foods: _foodSelections,
+              loyaltyPointsToRedeem: state.loyaltyPointsToRedeem,
             ),
           );
       if (!ref.mounted || generation != _generation) return false;
@@ -383,6 +406,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
                     ),
                   )
                   .toList(growable: false),
+              cinePointsToUse: state.loyaltyPointsToRedeem,
               bookingSessionId: updated.id,
             ),
           );
@@ -453,6 +477,7 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
             UpdateHoldingBookingRequestDto(
               tickets: _ticketSelections,
               foods: _foodSelections,
+              loyaltyPointsToRedeem: state.loyaltyPointsToRedeem,
             ),
           );
       if (!ref.mounted || generation != _generation) return null;
@@ -515,11 +540,18 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
     if (payment.bookingId == null) {
       throw StateError('Giao dịch không thuộc đơn vé.');
     }
+    final currentUserId = ref.read(authSessionProvider).session?.user.id;
+    if (currentUserId == null || payment.userId != currentUserId) {
+      throw StateError('Giao dịch không thuộc tài khoản hiện tại.');
+    }
     final booking = await ref
         .read(bookingRepositoryProvider)
         .getBooking(payment.bookingId!);
     if (!ref.mounted || generation != _generation) return false;
     if (booking == null) throw StateError('Không tìm thấy đơn vé.');
+    if (booking.userId != currentUserId) {
+      throw StateError('Đơn vé không thuộc tài khoản hiện tại.');
+    }
     final ready =
         payment.status == PaymentStatus.success &&
         (booking.status == BookingStatus.paid ||
@@ -571,6 +603,11 @@ class BookingCompletionController extends Notifier<BookingCompletionState> {
         );
       }
       ref.invalidate(resumableBookingProvider);
+    }
+    if (ready || expired || payment.status == PaymentStatus.failed) {
+      await ref
+          .read(paymentReturnCheckpointStoreProvider)
+          .clear(currentUserId, paymentId: payment.id);
     }
     return ready;
   }

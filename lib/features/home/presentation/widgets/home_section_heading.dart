@@ -21,8 +21,24 @@ class HomeSectionHeading extends StatelessWidget {
   final VoidCallback? onAction;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(top: 24),
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          accent.withValues(alpha: 0.12),
+          AppColors.surfaceRaised.withValues(alpha: 0.72),
+          AppColors.background,
+        ],
+      ),
+      border: Border(
+        left: BorderSide(color: accent, width: 3),
+        bottom: const BorderSide(color: AppColors.border),
+      ),
+    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -46,13 +62,15 @@ class HomeSectionHeading extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Builder(
           builder: (context) {
             final heading = Text(
               title,
               style: AppTextStyles.sectionTitle.copyWith(
+                fontSize: 20,
                 fontWeight: FontWeight.w900,
+                letterSpacing: -0.2,
               ),
             );
             if (action == null || onAction == null) return heading;
@@ -86,7 +104,7 @@ class HomeSectionHeading extends StatelessWidget {
           },
         ),
         if (subtitle.isNotEmpty) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             subtitle,
             style: AppTextStyles.body.copyWith(color: AppColors.textMuted),

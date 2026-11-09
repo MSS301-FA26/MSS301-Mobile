@@ -16,8 +16,10 @@ class TicketOrder {
     required this.cinemaLocation,
     required this.roomName,
     required this.showtimeAt,
+    this.showtimeEnd,
     required this.seats,
     required this.seatsTypeLabel,
+    this.foods = const [],
     required this.concessionsSummary,
     required this.totalPrice,
     required this.status,
@@ -33,16 +35,27 @@ class TicketOrder {
   final String cinemaLocation;
   final String roomName;
   final DateTime? showtimeAt;
+  final DateTime? showtimeEnd;
   final List<String> seats;
   final String seatsTypeLabel;
+  final List<BookingFoodDto> foods;
   final String concessionsSummary;
   final VndMoney totalPrice;
   final BookingStatus status;
 
+  DateTime? get effectiveShowtimeEnd {
+    if (showtimeEnd != null) return showtimeEnd;
+    return showtimeAt?.add(const Duration(minutes: 120));
+  }
+
+  bool get hasShowtimeEnded {
+    final end = effectiveShowtimeEnd;
+    return end != null && !DateTime.now().isBefore(end);
+  }
+
   bool get isUpcoming => switch (status) {
-    BookingStatus.holding ||
-    BookingStatus.pendingPayment ||
-    BookingStatus.paid => true,
+    BookingStatus.holding || BookingStatus.pendingPayment => true,
+    BookingStatus.paid => !hasShowtimeEnded,
     _ => false,
   };
 
@@ -84,7 +97,7 @@ TicketOrder mapBookingToOrder(
         '${booking.tickets.where((ticket) => ticket.ticketType == type).length} ${_ticketLabel(type)}',
   ].join(', ');
   final foods = booking.foods
-      .map((food) => '${food.quantity}x ${food.productName}')
+      .map((food) => '${food.productName} × ${food.quantity}')
       .join(', ');
   final room = booking.roomNameSnapshot ?? booking.roomName ?? 'Phòng chiếu';
   final cinema =
@@ -101,10 +114,12 @@ TicketOrder mapBookingToOrder(
     cinemaLocation: '$cinema • $room',
     roomName: room,
     showtimeAt: booking.showtimeStartSnapshot ?? booking.showtimeStart,
+    showtimeEnd: booking.showtimeEnd,
     seats: booking.seats.map((seat) => seat.seatLabel).toList(growable: false),
     seatsTypeLabel: ticketSummary.isNotEmpty
         ? ticketSummary
         : '${booking.seats.length} vé${seatTypes.isEmpty ? '' : ' (${seatTypes.join(', ')})'}',
+    foods: booking.foods,
     concessionsSummary: foods.isEmpty ? 'Không kèm F&B' : foods,
     totalPrice: booking.totalAmount,
     status: booking.status,

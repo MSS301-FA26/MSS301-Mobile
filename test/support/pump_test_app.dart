@@ -6,8 +6,11 @@ import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/auth/application/auth_session.dart';
 import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
+import 'package:mss301_mobile/features/movie/data/models/catalog_enums.dart';
 import 'package:mss301_mobile/features/home/data/home_banner_repository.dart';
 import 'package:mss301_mobile/features/home/presentation/providers/poster_ambient_color.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/home_preview_provider.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/home_recommendations_provider.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_providers.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/booking_repository.dart';
 import 'package:mss301_mobile/features/orders/data/repositories/mock_booking_repository.dart';
@@ -42,6 +45,15 @@ Future<ProviderContainer> pumpTestApp(
     ProviderScope(
       overrides: [
         homeBannersProvider.overrideWith((ref) async => const []),
+        homeRecommendationsProvider.overrideWith((ref) async {
+          final showing = await ref.watch(
+            homeCategoryMoviesProvider(MovieStatus.nowShowing).future,
+          );
+          return [
+            for (final movie in showing.take(3))
+              HomeRecommendation(movie: movie, reason: 'Gợi ý cho bạn'),
+          ];
+        }),
         posterAmbientLoaderProvider.overrideWithValue(
           (_) async => const Color(0xFF232631),
         ),

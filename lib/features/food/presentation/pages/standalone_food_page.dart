@@ -193,20 +193,86 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
       showBottomNavigation: false,
       body: Column(
         children: [
-          ListTile(
-            leading: IconButton(
-              tooltip: 'Về Trang chủ',
-              onPressed: () => context.go(AppRoutes.home),
-              icon: const Icon(Icons.arrow_back),
+          Container(
+            padding: const EdgeInsets.fromLTRB(8, 9, 12, 11),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.border)),
             ),
-            title: const Text(
-              'Đặt bắp nước',
-              style: AppTextStyles.sectionTitle,
-            ),
-            trailing: IconButton(
-              tooltip: 'Lịch sử đơn bắp nước',
-              onPressed: () => context.push(AppRoutes.foodOrders),
-              icon: const Icon(Icons.receipt_long),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Về Trang chủ',
+                  onPressed: () => context.go(AppRoutes.home),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.goldSurface,
+                              borderRadius: AppRadii.small,
+                              border: Border.all(color: AppColors.goldBorder),
+                            ),
+                            child: Text(
+                              'F&B',
+                              style: AppTextStyles.meta.copyWith(
+                                color: AppColors.gold,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .8,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'ĐẶT BẮP NƯỚC',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.sectionTitle.copyWith(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Chọn món yêu thích • Nhận nhanh tại rạp',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Material(
+                  color: AppColors.goldSurface,
+                  borderRadius: AppRadii.medium,
+                  child: IconButton(
+                    key: const ValueKey('food-order-history-header'),
+                    tooltip: 'Lịch sử đơn bắp nước',
+                    onPressed: () => context.push(AppRoutes.foodOrders),
+                    icon: const Icon(
+                      Icons.receipt_long_outlined,
+                      color: AppColors.gold,
+                      size: 21,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -233,17 +299,12 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                 );
                 return Column(
                   children: [
-                    FoodCatalogGroups(
-                      products: products,
-                      selected: _group,
-                      onSelected: _busy
-                          ? null
-                          : (group) => setState(() => _group = group),
-                    ),
                     Expanded(
                       child: ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
+                          const _FoodShopHero(),
+                          const SizedBox(height: 16),
                           if (catalog.hasError)
                             RepositoryStatePane.error(
                               compact: true,
@@ -251,48 +312,153 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
                               onRetry: () =>
                                   ref.invalidate(standaloneFoodCatalogProvider),
                             ),
-                          DropdownButtonFormField<int>(
-                            key: ValueKey(
-                              'food-cinema-${ref.watch(authSessionProvider).session?.user.id}-${_cinema?.id}',
-                            ),
-                            initialValue: _cinema?.id,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Rạp nhận bắp nước',
-                            ),
-                            items: data.cinemas
-                                .map(
-                                  (cinema) => DropdownMenuItem(
-                                    value: cinema.id,
-                                    child: Text(
-                                      cinema.name,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: _busy || _uncertain
-                                ? null
-                                : (id) => setState(
-                                    () => _cinema = data.cinemas.firstWhere(
-                                      (cinema) => cinema.id == id,
-                                    ),
-                                  ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (_cinema != null)
-                            Text(
-                              '${_cinema!.name}\n${_cinema!.address}',
-                              style: AppTextStyles.caption.copyWith(
-                                fontSize: 13,
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceRaised,
+                              borderRadius: AppRadii.card,
+                              border: Border.all(
+                                color: _cinema == null
+                                    ? AppColors.goldBorder
+                                    : AppColors.border,
                               ),
                             ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Mua riêng, không cần đặt vé • Tối đa 8 mỗi loại',
-                            style: AppTextStyles.caption,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.goldSurface,
+                                        borderRadius: AppRadii.small,
+                                      ),
+                                      child: const Icon(
+                                        Icons.storefront_outlined,
+                                        color: AppColors.gold,
+                                        size: 21,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'NHẬN MÓN TẠI RẠP',
+                                            style: AppTextStyles.label,
+                                          ),
+                                          Text(
+                                            'Chọn địa điểm thuận tiện với bạn',
+                                            style: AppTextStyles.caption,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<int>(
+                                  key: ValueKey(
+                                    'food-cinema-${ref.watch(authSessionProvider).session?.user.id}-${_cinema?.id}',
+                                  ),
+                                  initialValue: _cinema?.id,
+                                  isExpanded: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Rạp nhận bắp nước',
+                                    prefixIcon: Icon(
+                                      Icons.location_on_outlined,
+                                    ),
+                                  ),
+                                  items: data.cinemas
+                                      .map(
+                                        (cinema) => DropdownMenuItem(
+                                          value: cinema.id,
+                                          child: Text(
+                                            cinema.name,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: _busy || _uncertain
+                                      ? null
+                                      : (id) => setState(
+                                          () => _cinema = data.cinemas
+                                              .firstWhere(
+                                                (cinema) => cinema.id == id,
+                                              ),
+                                        ),
+                                ),
+                                if (_cinema != null) ...[
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    _cinema!.address,
+                                    style: AppTextStyles.caption,
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'THỰC ĐƠN HÔM NAY',
+                                      style: TextStyle(
+                                        color: AppColors.gold,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.1,
+                                      ),
+                                    ),
+                                    SizedBox(height: 3),
+                                    Text(
+                                      'Chọn món bạn yêu thích',
+                                      style: AppTextStyles.sectionTitle,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 5,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.goldSurface,
+                                  borderRadius: AppRadii.pill,
+                                ),
+                                child: Text(
+                                  '${visibleProducts.length} món',
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.gold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          FoodCatalogGroups(
+                            products: products,
+                            selected: _group,
+                            onSelected: _busy
+                                ? null
+                                : (group) => setState(() => _group = group),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              'Mua riêng, không cần đặt vé • Tối đa 8 mỗi loại',
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
                           if (products.isEmpty)
                             const RepositoryStatePane.empty(
                               compact: true,
@@ -377,4 +543,78 @@ class _StandaloneFoodPageState extends ConsumerState<StandaloneFoodPage> {
       ),
     );
   }
+}
+
+class _FoodShopHero extends StatelessWidget {
+  const _FoodShopHero();
+
+  static const _image =
+      'https://images.unsplash.com/photo-1586899028174-e7098604235b?auto=format&fit=crop&w=1200&q=82';
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 190,
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      color: AppColors.goldSurface,
+      borderRadius: AppRadii.card,
+      border: Border.all(color: AppColors.goldBorder),
+    ),
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          _image,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const Center(
+            child: Icon(
+              Icons.fastfood_rounded,
+              color: AppColors.gold,
+              size: 56,
+            ),
+          ),
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [Color(0xF2000000), Color(0xB3000000), Color(0x30000000)],
+            ),
+          ),
+        ),
+        const Positioned(
+          left: 18,
+          top: 18,
+          right: 100,
+          bottom: 18,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'CINEPREMIER F&B',
+                style: TextStyle(
+                  color: AppColors.gold,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              SizedBox(height: 7),
+              Text(
+                'Hương vị làm nên\ntrọn vẹn bộ phim',
+                style: AppTextStyles.screenTitle,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Đặt trước, nhận nhanh tại quầy.',
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }

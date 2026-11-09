@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/checkout_summary.dart';
 import '../../../movie/data/models/movie_dto.dart';
 import '../../../movie/data/repositories/catalog_providers.dart';
+import '../../../account/presentation/providers/account_summary_provider.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_hold_countdown.dart';
 import '../widgets/booking_progress.dart';
@@ -97,14 +98,49 @@ class CheckoutPage extends ConsumerWidget {
                     metadata: metadata,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  CheckoutTicketSummary(quote: quote),
+                  Material(
+                    color: Colors.transparent,
+                    child: ExpansionTile(
+                      key: const ValueKey('checkout-ticket-details'),
+                      initiallyExpanded: true,
+                      title: Text('Chi tiết ${quote.seats.length} vé'),
+                      children: [CheckoutTicketSummary(quote: quote)],
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   CheckoutComboPicker(bookingId: bookingId),
+                  const SizedBox(height: AppSpacing.sm),
                   CheckoutSection(
-                    title: 'Bắp nước',
+                    key: const ValueKey('checkout-food-details'),
+                    title: foods.isEmpty
+                        ? 'Bắp nước'
+                        : 'Bắp nước • ${foods.length} loại',
                     children: [
                       if (foods.isEmpty)
-                        const CheckoutLine('Sản phẩm', 'Không chọn'),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceHigh,
+                            borderRadius: AppRadii.control,
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.fastfood_outlined,
+                                color: AppColors.textMuted,
+                              ),
+                              SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  'Bạn chưa chọn bắp nước cho đơn này.',
+                                  style: AppTextStyles.body,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       for (final food in foods)
                         CheckoutFoodSummaryLine(
                           key: ValueKey(
@@ -118,18 +154,40 @@ class CheckoutPage extends ConsumerWidget {
                           imageUrl:
                               productImages['${food.isCombo ? 'combo' : 'item'}:${food.productId}'],
                         ),
-                      TextButton.icon(
-                        key: const ValueKey('checkout-edit-food'),
-                        onPressed: state.isBusy || state.payment != null
-                            ? null
-                            : () =>
-                                  context.go(AppRoutes.concessions(bookingId)),
-                        icon: const Icon(Icons.edit_outlined),
-                        label: Text(
-                          foods.isEmpty
-                              ? 'Quay lại chọn bắp nước'
-                              : 'Sửa bắp nước',
+                      const SizedBox(height: AppSpacing.sm),
+                      const Divider(),
+                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          key: const ValueKey('checkout-edit-food'),
+                          onPressed: state.isBusy || state.payment != null
+                              ? null
+                              : () => context.go(
+                                  AppRoutes.concessions(bookingId),
+                                ),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: Text(
+                            foods.isEmpty
+                                ? 'Chọn bắp nước'
+                                : 'Chỉnh sửa bắp nước',
+                          ),
                         ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  CheckoutSection(
+                    title: 'CinePoint',
+                    children: [
+                      CinePointRedemption(
+                        selectedPoints: state.loyaltyPointsToRedeem,
+                        ticketSubtotal: quote.ticketSubtotal.amount,
+                        cinemaId: quote.cinema?.id,
+                        enabled: !state.isBusy && state.payment == null,
+                        onApply: (points) => ref
+                            .read(bookingCompletionProvider.notifier)
+                            .applyLoyaltyPoints(points),
                       ),
                     ],
                   ),
@@ -168,7 +226,9 @@ class CheckoutPage extends ConsumerWidget {
             ),
             PaymentActionBar(
               total: quote.total,
-              notice: state.message,
+              notice: state.quoteNeedsRefresh
+                  ? 'Giá hoặc sản phẩm đã đổi. Vui lòng chờ báo giá mới trước khi thanh toán.'
+                  : state.message,
               label: state.phase == BookingCompletionPhase.preparingCheckout
                   ? 'Đang cập nhật báo giá…'
                   : state.isBusy
@@ -197,6 +257,144 @@ class CheckoutPage extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class CinePointRedemption extends ConsumerStatefulWidget {
+  const CinePointRedemption({
+    super.key,
+    required this.selectedPoints,
+    required this.ticketSubtotal,
+    required this.cinemaId,
+    required this.enabled,
+    required this.onApply,
+  });
+
+  final int selectedPoints;
+  final int ticketSubtotal;
+  final int? cinemaId;
+  final bool enabled;
+  final Future<void> Function(int points) onApply;
+
+  @override
+  ConsumerState<CinePointRedemption> createState() =>
+      _CinePointRedemptionState();
+}
+
+class _CinePointRedemptionState extends ConsumerState<CinePointRedemption> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.selectedPoints == 0 ? '' : '${widget.selectedPoints}',
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant CinePointRedemption oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedPoints != widget.selectedPoints) {
+      _controller.text = widget.selectedPoints == 0
+          ? ''
+          : '${widget.selectedPoints}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loyalty = ref.watch(checkoutLoyaltyOverviewProvider(widget.cinemaId));
+    return loyalty.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (_, _) => const Text(
+        'Không thể tải số dư CinePoint.',
+        style: AppTextStyles.caption,
+      ),
+      data: (data) {
+        final points = data.$1.points;
+        final config = data.$2;
+        final pointValue = config.redemptionPoints <= 0
+            ? 0.0
+            : config.redemptionValueVnd.amount /
+                  config.redemptionPoints *
+                  (config.redemptionRatePercent / 100);
+        final maxFromBalance = (points * config.maxRedemptionPercent / 100)
+            .floor();
+        final maxDiscount =
+            (widget.ticketSubtotal * config.maxRedemptionPercent / 100).floor();
+        final maxFromPrice = pointValue <= 0
+            ? 0
+            : (maxDiscount / pointValue).floor();
+        final maxPoints = maxFromBalance < maxFromPrice
+            ? maxFromBalance
+            : maxFromPrice;
+
+        Future<void> apply(int value) async {
+          final safe = value.clamp(0, maxPoints);
+          _controller.text = safe == 0 ? '' : '$safe';
+          await widget.onApply(safe);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Khả dụng: $points điểm • Tối đa: $maxPoints điểm',
+              style: AppTextStyles.body,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    key: const ValueKey('checkout-cinepoint-input'),
+                    controller: _controller,
+                    enabled: widget.enabled && maxPoints > 0,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Điểm muốn sử dụng',
+                      hintText: 'Nhập CinePoint',
+                    ),
+                    onSubmitted: (value) =>
+                        apply(int.tryParse(value.trim()) ?? 0),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                FilledButton(
+                  key: const ValueKey('checkout-cinepoint-max'),
+                  onPressed: widget.enabled && maxPoints > 0
+                      ? () => apply(maxPoints)
+                      : null,
+                  child: const Text('Tối đa'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: const ValueKey('checkout-cinepoint-apply'),
+                onPressed: widget.enabled
+                    ? () => apply(int.tryParse(_controller.text.trim()) ?? 0)
+                    : null,
+                child: Text(
+                  widget.selectedPoints > 0
+                      ? 'Cập nhật điểm'
+                      : 'Áp dụng CinePoint',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

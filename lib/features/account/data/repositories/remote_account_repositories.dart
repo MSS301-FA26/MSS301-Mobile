@@ -14,12 +14,16 @@ class RemoteWalletRepository implements WalletRepository {
   );
 
   @override
-  Future<List<WalletTransactionDto>> getTransactions(int userId) async {
+  Future<List<WalletTransactionDto>> getTransactions(
+    int userId, {
+    int page = 0,
+    int size = 30,
+  }) async {
     final data = _data(
       await _request(
         () => _dio.get(
           '/api/v1/wallet/transactions',
-          queryParameters: {'page': 0, 'size': 20},
+          queryParameters: {'page': page, 'size': size},
         ),
       ),
     );
@@ -35,12 +39,16 @@ class RemoteWalletRepository implements WalletRepository {
   }
 
   @override
-  Future<List<WithdrawalDto>> getWithdrawals(int userId) async {
+  Future<List<WithdrawalDto>> getWithdrawals(
+    int userId, {
+    int page = 0,
+    int size = 30,
+  }) async {
     final data = _data(
       await _request(
         () => _dio.get(
           '/api/v1/wallet/withdrawals',
-          queryParameters: {'page': 0, 'size': 20},
+          queryParameters: {'page': page, 'size': size},
         ),
       ),
     );
@@ -58,10 +66,12 @@ class RemoteWalletRepository implements WalletRepository {
   Future<WithdrawalDto> createWithdrawal(
     int userId,
     WithdrawalCreateRequestDto request,
-  ) => _unsupported('Wallet withdrawals are outside B13 scope.');
-
-  Future<T> _unsupported<T>(String message) => Future<T>.error(
-    ApiException(type: ApiErrorType.unknown, message: message),
+  ) async => WithdrawalDto.fromJson(
+    _data(
+      await _request(
+        () => _dio.post('/api/v1/wallet/withdrawals', data: request.toJson()),
+      ),
+    ),
   );
   Future<Response<dynamic>> _request(
     Future<Response<dynamic>> Function() call,
@@ -96,9 +106,16 @@ class RemoteLoyaltyRepository implements LoyaltyRepository {
   );
 
   @override
-  Future<LoyaltyConfigurationDto> getConfiguration() async =>
+  Future<LoyaltyConfigurationDto> getConfiguration({int? cinemaId}) async =>
       LoyaltyConfigurationDto.fromJson(
-        _data(await _request(() => _dio.get('/api/v1/loyalty/config'))),
+        _data(
+          await _request(
+            () => _dio.get(
+              '/api/v1/loyalty/config',
+              queryParameters: cinemaId == null ? null : {'cinemaId': cinemaId},
+            ),
+          ),
+        ),
       );
 
   @override

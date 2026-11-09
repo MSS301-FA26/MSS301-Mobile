@@ -163,6 +163,7 @@ class PaymentActionBar extends StatelessWidget {
             key: buttonKey,
             label: label,
             loading: loading,
+            fullWidth: true,
             onPressed: onPressed,
             icon: icon,
           ),

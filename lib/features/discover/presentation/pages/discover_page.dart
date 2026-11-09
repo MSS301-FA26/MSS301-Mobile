@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/routing/app_routes.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
@@ -170,6 +171,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
           RepositoryStatePane.error(
             onRetry: () => ref.invalidate(discoverPageProvider(_request)),
             title: 'Chưa tải được danh sách phim',
+            message: userFacingErrorMessage(error),
           ),
         ),
         data: (page) {
@@ -196,7 +198,8 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                     if (state.hasError)
                       RepositoryStatePane.error(
                         compact: true,
-                        message: 'Chưa cập nhật được phim. Bạn vẫn có thể xem danh sách đã tải.',
+                        message:
+                            'Chưa cập nhật được phim: ${userFacingErrorMessage(state.error!)} Bạn vẫn có thể xem danh sách đã tải.',
                         onRetry: () =>
                             ref.invalidate(discoverPageProvider(_request)),
                       ),

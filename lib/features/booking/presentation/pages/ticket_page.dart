@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
 import '../../../../shared/widgets/repository_state_pane.dart';
 import '../../../../shared/widgets/checkout_summary.dart';
+import '../../../../shared/widgets/cinema_ticket_surface.dart';
 import '../../../orders/presentation/widgets/booking_status_badge.dart';
 import '../../../movie/data/models/catalog_enums.dart';
 import '../../../orders/data/models/booking_enums.dart';
@@ -122,6 +123,29 @@ class _TicketPageState extends ConsumerState<TicketPage> {
               ),
             );
           }
+          final showtimeStart =
+              booking.showtimeStartSnapshot ?? booking.showtimeStart;
+          final showtimeEnd =
+              booking.showtimeEnd ??
+              showtimeStart?.add(const Duration(minutes: 120));
+          final showtimeEnded =
+              showtimeEnd != null && !DateTime.now().isBefore(showtimeEnd);
+          final refunded =
+              booking.status == BookingStatus.refunded ||
+              booking.refundedAt != null;
+          final cancelled = booking.status == BookingStatus.cancelled;
+          final checkedIn =
+              booking.status == BookingStatus.used ||
+              booking.checkedInAt != null ||
+              booking.seats.any(
+                (seat) => seat.status == BookingSeatStatus.checkedIn,
+              );
+          final canShowQr =
+              !refunded &&
+              !cancelled &&
+              !showtimeEnded &&
+              (booking.status == BookingStatus.paid || checkedIn) &&
+              booking.qrCode?.trim().isNotEmpty == true;
           return SafeArea(
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -147,156 +171,223 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceRaised,
-                    borderRadius: AppRadii.card,
-                    border: Border.all(color: AppColors.goldBorder),
-                  ),
-                  child: Column(
-                    children: [
-                      BookingStatusBadge(status: booking.status),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        booking.movieTitleSnapshot ??
-                            booking.movieTitle ??
-                            'Phim',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      if (booking.status == BookingStatus.paid &&
-                          booking.qrCode?.trim().isNotEmpty == true)
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final size = constraints.maxWidth.clamp(0.0, 240.0);
-                            final code = QrValidator.validate(
-                              data: booking.qrCode!,
-                              version: QrVersions.auto,
-                              errorCorrectionLevel: QrErrorCorrectLevel.L,
-                            ).qrCode;
-                            // Reserve four modules of white quiet zone on each side.
-                            final quietZone =
-                                size * 4 / ((code?.moduleCount ?? 25) + 8);
-                            return QrImageView(
-                              key: const ValueKey('ticket-qr'),
-                              data: booking.qrCode!,
-                              size: size,
-                              padding: EdgeInsets.all(quietZone),
-                              backgroundColor: Colors.white,
-                              semanticsLabel: 'Mã QR vé ${booking.bookingCode}',
-                            );
-                          },
-                        )
-                      else
+                CinemaTicketSurface(
+                  key: const ValueKey('ticket-shaped-pass'),
+                  borderColor: AppColors.goldBorder,
+                  details: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
+                    child: Column(
+                      children: [
+                        BookingStatusBadge(status: booking.status),
+                        const SizedBox(height: AppSpacing.sm),
                         Text(
-                          booking.status == BookingStatus.used
-                              ? 'Vé đã được sử dụng'
-                              : booking.status == BookingStatus.paid
-                              ? 'Đã thanh toán. Mã QR chưa được cập nhật; vui lòng tải lại đơn.'
-                              : 'Đơn chưa có vé có thể sử dụng.',
+                          booking.movieTitleSnapshot ??
+                              booking.movieTitle ??
+                              'Phim',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      const SizedBox(height: AppSpacing.sm),
-                      const Text('Mã đơn', style: AppTextStyles.caption),
-                      Text(
-                        booking.bookingCode,
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CheckoutLine(
-                  'Rạp',
-                  booking.cinemaNameSnapshot ?? booking.cinemaName ?? '—',
-                ),
-                CheckoutLine(
-                  'Phòng',
-                  booking.roomNameSnapshot ?? booking.roomName ?? '—',
-                ),
-                CheckoutLine(
-                  'Ghế',
-                  booking.seats.map((seat) => seat.seatLabel).join(', '),
-                ),
-                for (final type in const [
-                  TicketType.adult,
-                  TicketType.student,
-                  TicketType.child,
-                ])
-                  if (booking.tickets.any(
-                    (ticket) => ticket.ticketType == type,
-                  ))
-                    CheckoutLine(
-                      _ticketLabel(type),
-                      booking.tickets
-                          .where((ticket) => ticket.ticketType == type)
-                          .map(
-                            (ticket) =>
-                                booking.seats
-                                    .where(
-                                      (seat) => seat.seatId == ticket.seatId,
-                                    )
-                                    .firstOrNull
-                                    ?.seatLabel ??
-                                'Ghế ${ticket.seatId}',
+                        const SizedBox(height: AppSpacing.sm),
+                        if (canShowQr)
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final size = constraints.maxWidth.clamp(
+                                0.0,
+                                240.0,
+                              );
+                              final code = QrValidator.validate(
+                                data: booking.qrCode!,
+                                version: QrVersions.auto,
+                                errorCorrectionLevel: QrErrorCorrectLevel.L,
+                              ).qrCode;
+                              // Reserve four modules of white quiet zone on each side.
+                              final quietZone =
+                                  size * 4 / ((code?.moduleCount ?? 25) + 8);
+                              return QrImageView(
+                                key: const ValueKey('ticket-qr'),
+                                data: booking.qrCode!,
+                                size: size,
+                                padding: EdgeInsets.all(quietZone),
+                                backgroundColor: Colors.white,
+                                semanticsLabel:
+                                    'Mã QR vé ${booking.bookingCode}',
+                              );
+                            },
                           )
-                          .join(', '),
-                    ),
-                CheckoutLine(
-                  'Suất chiếu',
-                  booking.showtimeStartSnapshot == null &&
-                          booking.showtimeStart == null
-                      ? '—'
-                      : _dateTime(
-                          booking.showtimeStartSnapshot ??
-                              booking.showtimeStart!,
+                        else
+                          Text(
+                            refunded
+                                ? 'Vé đã được hoàn tiền và mã QR không còn hiệu lực.'
+                                : cancelled
+                                ? 'Suất chiếu đã hủy và mã QR không còn hiệu lực.'
+                                : showtimeEnded
+                                ? 'Suất chiếu đã kết thúc. Mã QR không còn hiệu lực.'
+                                : booking.status == BookingStatus.paid ||
+                                      checkedIn
+                                ? 'Đã thanh toán. Mã QR chưa được cập nhật; vui lòng tải lại đơn.'
+                                : 'Đơn chưa có vé có thể sử dụng.',
+                          ),
+                        const SizedBox(height: AppSpacing.sm),
+                        const Text('Mã đơn', style: AppTextStyles.caption),
+                        Text(
+                          booking.bookingCode,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                ),
-                for (final food in booking.foods)
-                  CheckoutLine(
-                    '${food.productName} × ${food.quantity}',
-                    food.lineTotal.format(),
+                      ],
+                    ),
                   ),
-                CheckoutLine('Tổng tiền', booking.totalAmount.format()),
-                CheckoutLine('Trạng thái', _statusLabel(booking.status)),
+                  stub: Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.local_movies_outlined,
+                              size: 17,
+                              color: AppColors.gold,
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'THÔNG TIN VÉ',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.gold,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .6,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        CheckoutLine(
+                          'Rạp',
+                          booking.cinemaNameSnapshot ??
+                              booking.cinemaName ??
+                              '—',
+                        ),
+                        CheckoutLine(
+                          'Phòng',
+                          booking.roomNameSnapshot ?? booking.roomName ?? '—',
+                        ),
+                        if (booking.tickets.isEmpty)
+                          CheckoutLine(
+                            'Ghế',
+                            booking.seats
+                                .map((seat) => seat.seatLabel)
+                                .join(', '),
+                          ),
+                        for (final type in const [
+                          TicketType.adult,
+                          TicketType.student,
+                          TicketType.child,
+                        ])
+                          if (booking.tickets.any(
+                            (ticket) => ticket.ticketType == type,
+                          ))
+                            CheckoutLine(
+                              _ticketLabel(type),
+                              booking.tickets
+                                  .where((ticket) => ticket.ticketType == type)
+                                  .map(
+                                    (ticket) =>
+                                        booking.seats
+                                            .where(
+                                              (seat) =>
+                                                  seat.seatId == ticket.seatId,
+                                            )
+                                            .firstOrNull
+                                            ?.seatLabel ??
+                                        'Ghế ${ticket.seatId}',
+                                  )
+                                  .join(', '),
+                            ),
+                        CheckoutLine(
+                          'Suất chiếu',
+                          booking.showtimeStartSnapshot == null &&
+                                  booking.showtimeStart == null
+                              ? '—'
+                              : _dateTime(
+                                  booking.showtimeStartSnapshot ??
+                                      booking.showtimeStart!,
+                                ),
+                        ),
+                        if (booking.foods.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          const Divider(color: AppColors.borderStrong),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.fastfood_outlined,
+                                size: 17,
+                                color: AppColors.gold,
+                              ),
+                              const SizedBox(width: 7),
+                              Text(
+                                'BẮP NƯỚC',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.gold,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: .6,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          for (final food in booking.foods)
+                            CheckoutLine(
+                              '${food.productName} × ${food.quantity}',
+                              food.lineTotal.format(),
+                            ),
+                        ],
+                        const Divider(color: AppColors.borderStrong),
+                        const SizedBox(height: 6),
+                        CheckoutLine(
+                          'Tổng tiền',
+                          booking.totalAmount.format(),
+                          emphasized: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
                 if (booking.status == BookingStatus.holding ||
                     booking.status == BookingStatus.pendingPayment)
                   AppButton(
                     label: 'Tiếp tục đặt vé',
                     onPressed: () => resumeBooking(context, ref, booking.id),
                   ),
-                if (booking.status == BookingStatus.used ||
-                    (booking.status == BookingStatus.paid &&
-                        booking.qrCode?.trim().isNotEmpty == true)) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      AppButton(
+                if ((booking.status == BookingStatus.used || canShowQr) &&
+                    !showtimeEnded) ...[
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final stackActions =
+                          constraints.maxWidth < 330 ||
+                          MediaQuery.textScalerOf(context).scale(14) > 18;
+                      final save = _TicketActionButton(
                         key: const ValueKey('ticket-save'),
                         label: _exporting ? 'Đang xử lý…' : 'Lưu vé PDF',
                         icon: Icons.download_rounded,
-                        variant: AppButtonVariant.secondary,
+                        primary: true,
                         onPressed: _exporting
                             ? null
                             : () => _export(false, Rect.zero),
-                      ),
-                      Builder(
-                        builder: (context) => AppButton(
+                      );
+                      final share = Builder(
+                        builder: (context) => _TicketActionButton(
                           key: const ValueKey('ticket-share'),
                           label: 'Chia sẻ vé',
                           icon: Icons.share_rounded,
-                          variant: AppButtonVariant.secondary,
                           onPressed: _exporting
                               ? null
                               : () {
@@ -308,30 +399,60 @@ class _TicketPageState extends ConsumerState<TicketPage> {
                                   );
                                 },
                         ),
-                      ),
-                    ],
+                      );
+                      if (stackActions) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [save, const SizedBox(height: 10), share],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: save),
+                          const SizedBox(width: 10),
+                          Expanded(child: share),
+                        ],
+                      );
+                    },
                   ),
                 ],
+                const SizedBox(height: 10),
+                const Divider(color: AppColors.border),
+                const SizedBox(height: 2),
                 if (booking.status == BookingStatus.used)
-                  TextButton(
+                  TextButton.icon(
                     onPressed: () =>
                         context.push(AppRoutes.movieReviews(booking.movieId)),
-                    child: const Text('Xem đánh giá phim'),
+                    icon: const Icon(Icons.rate_review_outlined, size: 18),
+                    label: const Text('Xem đánh giá phim'),
                   ),
-                AppButton(
-                  label: 'Tải lại đơn',
-                  variant: AppButtonVariant.secondary,
-                  onPressed: _exporting
-                      ? null
-                      : () {
-                          ref.invalidate(ticketBookingProvider(bookingId));
-                          ref.invalidate(ordersProvider);
-                        },
+                Center(
+                  child: TextButton.icon(
+                    key: const ValueKey('ticket-refresh'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      minimumSize: const Size(0, 44),
+                    ),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Tải lại đơn'),
+                    onPressed: _exporting
+                        ? null
+                        : () {
+                            ref.invalidate(ticketBookingProvider(bookingId));
+                            ref.invalidate(ordersProvider);
+                          },
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  booking.status == BookingStatus.used
-                      ? 'Vé đã được soát và không thể sử dụng lại.'
+                  refunded
+                      ? 'Vé đã được hoàn tiền vào CineWallet.'
+                      : cancelled
+                      ? 'Suất chiếu đã bị hủy. Mã QR không còn hiệu lực.'
+                      : showtimeEnded
+                      ? 'Suất chiếu đã kết thúc. Mã QR không còn hiệu lực.'
+                      : checkedIn
+                      ? 'Vé đã check-in. Mã QR sẽ ngừng hiển thị khi suất chiếu kết thúc.'
                       : booking.status == BookingStatus.paid
                       ? booking.qrCode?.trim().isNotEmpty == true
                             ? 'Đưa mã QR này tại cổng soát vé. Chỉ chia sẻ với người sử dụng vé.'
@@ -349,6 +470,53 @@ class _TicketPageState extends ConsumerState<TicketPage> {
   }
 }
 
+class _TicketActionButton extends StatelessWidget {
+  const _TicketActionButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.primary = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 52,
+    child: FilledButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: ButtonStyle(
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 10),
+        ),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: AppRadii.control),
+        ),
+        textStyle: const WidgetStatePropertyAll(
+          TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return AppColors.disabled;
+          return primary ? AppColors.gold : AppColors.surfaceRaised;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return AppColors.textMuted;
+          return primary ? AppColors.background : AppColors.text;
+        }),
+        side: WidgetStatePropertyAll(
+          BorderSide(color: primary ? AppColors.gold : AppColors.goldBorder),
+        ),
+      ),
+    ),
+  );
+}
+
 String _ticketLabel(TicketType type) => switch (type) {
   TicketType.child => 'Vé trẻ em',
   TicketType.student => 'Vé sinh viên',
@@ -356,14 +524,3 @@ String _ticketLabel(TicketType type) => switch (type) {
 };
 
 String _dateTime(DateTime value) => formatVietnamDateTime(value);
-
-String _statusLabel(BookingStatus status) => switch (status) {
-  BookingStatus.holding => 'Đang giữ ghế',
-  BookingStatus.pendingPayment => 'Chờ thanh toán',
-  BookingStatus.paid => 'Đã thanh toán',
-  BookingStatus.used => 'Đã sử dụng',
-  BookingStatus.cancelled => 'Đã hủy',
-  BookingStatus.expired => 'Đã hết hạn',
-  BookingStatus.refunded => 'Đã hoàn tiền',
-  BookingStatus.unknown => 'Chưa xác định',
-};

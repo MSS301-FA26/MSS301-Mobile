@@ -100,12 +100,28 @@ class DiscoverMovieCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text(movie.duration, style: AppTextStyles.caption),
-            Text(
-              movie.genre,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption,
+            SizedBox(
+              // Leave a small rounding allowance for three caption lines.
+              // Without it, some devices render a ~1 px Flex overflow.
+              height:
+                  MediaQuery.textScalerOf(context).scale(12) * 1.3 * 3 + 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    movie.duration,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption,
+                  ),
+                  Text(
+                    movie.genre,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             SizedBox(

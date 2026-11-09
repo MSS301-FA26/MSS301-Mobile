@@ -60,17 +60,7 @@ class AccountPage extends ConsumerWidget {
                 AccountMenuItemData(
                   icon: Icons.apartment_rounded,
                   label: 'Thông tin rạp',
-                  onTap: () => context.go(AppRoutes.cinemaInfo),
-                ),
-                AccountMenuItemData(
-                  icon: Icons.policy_outlined,
-                  label: 'Chính sách',
-                  onTap: () => context.go(AppRoutes.policies),
-                ),
-                AccountMenuItemData(
-                  icon: Icons.support_agent_rounded,
-                  label: 'Trung tâm trợ giúp & CSKH',
-                  onTap: () => context.go(AppRoutes.support),
+                  onTap: () => context.push(AppRoutes.cinemas),
                 ),
               ],
             ),
@@ -128,41 +118,20 @@ class AccountPage extends ConsumerWidget {
                 : () => ref.invalidate(accountSummaryProvider),
           ),
           const SizedBox(height: AppSpacing.md),
-          WalletTile(
-            user: user,
-            onManage: () => context.go(AppRoutes.wallet),
-            refreshing: accountState.isLoading,
-            onRetry: accountState.isLoading
-                ? null
-                : () => ref.invalidate(accountSummaryProvider),
-          ),
-          const SizedBox(height: AppSpacing.md),
           AccountMenu(
             items: [
               AccountMenuItemData(
-                icon: Icons.confirmation_number_outlined,
-                label: 'Vé xem phim của tôi',
-                onTap: () => context.go(AppRoutes.orders),
-              ),
-              AccountMenuItemData(
-                icon: Icons.fastfood_outlined,
-                label: 'Lịch sử đơn bắp nước',
-                onTap: () => context.go(AppRoutes.foodOrders),
-              ),
-              AccountMenuItemData(
-                icon: Icons.stars_rounded,
-                label: 'CinePoints',
-                onTap: () => context.go(AppRoutes.points),
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'CineWallet',
+                status:
+                    'Số dư: ${user.walletBalance?.format() ?? (accountState.isLoading ? 'Đang tải…' : 'Chưa tải được')}',
+                detailLabel: 'Chi tiết',
+                onTap: () => context.go(AppRoutes.wallet),
               ),
               AccountMenuItemData(
                 icon: Icons.person_outline_rounded,
                 label: 'Hồ sơ cá nhân',
                 onTap: () => context.go(AppRoutes.profile),
-              ),
-              AccountMenuItemData(
-                icon: Icons.lock_outline_rounded,
-                label: 'Bảo mật & mật khẩu',
-                onTap: () => context.go(AppRoutes.security),
               ),
               if (FeatureFlags.popBotPreview)
                 AccountMenuItemData(
@@ -188,13 +157,6 @@ class AccountPage extends ConsumerWidget {
                 ),
               if (FeatureFlags.socialMoviePreview)
                 AccountMenuItemData(
-                  icon: Icons.favorite_outline_rounded,
-                  label: 'Yêu thích',
-                  status: 'Preview',
-                  onTap: () => context.go(AppRoutes.favorites),
-                ),
-              if (FeatureFlags.socialMoviePreview)
-                AccountMenuItemData(
                   icon: Icons.notifications_none_rounded,
                   label: 'Thông báo',
                   status: 'Preview',
@@ -211,19 +173,7 @@ class AccountPage extends ConsumerWidget {
                 icon: Icons.apartment_rounded,
                 label: 'Thông tin rạp',
                 iconColor: AppColors.textMuted,
-                onTap: () => context.go(AppRoutes.cinemaInfo),
-              ),
-              AccountMenuItemData(
-                icon: Icons.policy_outlined,
-                label: 'Chính sách',
-                iconColor: AppColors.textMuted,
-                onTap: () => context.go(AppRoutes.policies),
-              ),
-              AccountMenuItemData(
-                icon: Icons.support_agent_rounded,
-                label: 'Trung tâm trợ giúp & CSKH',
-                iconColor: AppColors.textMuted,
-                onTap: () => context.go(AppRoutes.support),
+                onTap: () => context.push(AppRoutes.cinemas),
               ),
               AccountMenuItemData(
                 icon: Icons.logout_rounded,

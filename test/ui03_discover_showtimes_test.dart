@@ -178,6 +178,7 @@ void main() {
         ],
       );
       expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('showtime-slot-5')), findsNothing);
       final open = find.byKey(const ValueKey('showtime-slot-1'));
       await tester.ensureVisible(open);
       await tester.pumpAndSettle();
@@ -188,8 +189,41 @@ void main() {
     },
   );
 
+  testWidgets('today hides movies when all of their showtimes have passed', (
+    tester,
+  ) async {
+    final pastRoom = ShowtimeRoom(
+      id: 9,
+      name: 'Phòng đã hết suất',
+      formatBadge: '2D',
+      screenDetail: '',
+      cinemaId: 1,
+      cinemaName: 'CinemaAI Central',
+      slots: [slot(5, ShowtimeStatus.open, past: true)],
+    );
+    await pumpTestApp(
+      tester,
+      initialLocation: AppRoutes.showtimes,
+      size: const Size(390, 950),
+      providerOverrides: [
+        appClockProvider.overrideWithValue(FakeAppClock(now)),
+        moviesProvider.overrideWith((ref) async => [film]),
+        showtimesProvider.overrideWith(
+          (ref, query) async => [
+            MovieShowtime(movieId: film.id, rooms: [pastRoom]),
+          ],
+        ),
+      ],
+    );
+
+    expect(find.byKey(const ValueKey('showtime-slot-5')), findsNothing);
+    expect(find.text('Hôm nay đã hết suất'), findsOneWidget);
+    expect(find.text('Phòng đã hết suất'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'changing day clears selection and expired selection cannot continue',
+    'expired selection cannot continue and disappears from today',
     (tester) async {
       final clock = FakeAppClock(now);
       await pumpTestApp(
@@ -214,14 +248,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('không còn mở bán'), findsOneWidget);
       expect(find.byKey(const ValueKey('showtime-continue')), findsNothing);
-      clock.set(now);
-      await tester.ensureVisible(open);
-      await tester.tap(open);
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('HÔM NAY'));
-      await tester.tap(find.text('HÔM NAY'));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('showtime-continue')), findsNothing);
+      expect(find.byKey(const ValueKey('showtime-slot-1')), findsNothing);
     },
   );
 }

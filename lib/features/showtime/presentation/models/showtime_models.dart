@@ -65,9 +65,11 @@ MovieShowtime mapShowtimesToPresentation(
   int movieId,
   List<ShowtimeDto> showtimes,
 ) {
-  final byRoom = <int, List<ShowtimeDto>>{};
+  final byRoom = <(int, int), List<ShowtimeDto>>{};
   for (final showtime in showtimes) {
-    byRoom.putIfAbsent(showtime.roomId, () => []).add(showtime);
+    byRoom
+        .putIfAbsent((showtime.cinemaId, showtime.roomId), () => [])
+        .add(showtime);
   }
   return MovieShowtime(
     movieId: movieId,
@@ -75,23 +77,25 @@ MovieShowtime mapShowtimesToPresentation(
         .map((entry) {
           final first = entry.value.first;
           return ShowtimeRoom(
-            id: entry.key,
-            name: first.roomName ?? 'Phòng ${entry.key}',
+            id: first.roomId,
+            name: first.roomName ?? 'Phòng ${first.roomId}',
             formatBadge: '',
             screenDetail: '',
             cinemaId: first.cinemaId,
             cinemaName: first.cinemaName,
-            slots: entry.value
-                .map(
-                  (item) => ShowtimeSlot(
-                    id: item.id,
-                    startAt: item.startTime,
-                    endAt: item.endTime,
-                    price: item.basePrice ?? VndMoney.zero,
-                    status: item.status,
-                  ),
-                )
-                .toList(growable: false),
+            slots:
+                (entry.value.toList()
+                      ..sort((a, b) => a.startTime.compareTo(b.startTime)))
+                    .map(
+                      (item) => ShowtimeSlot(
+                        id: item.id,
+                        startAt: item.startTime,
+                        endAt: item.endTime,
+                        price: item.basePrice ?? VndMoney.zero,
+                        status: item.status,
+                      ),
+                    )
+                    .toList(growable: false),
           );
         })
         .toList(growable: false),

@@ -174,15 +174,25 @@ class BookingFoodDto {
   final VndMoney unitPrice;
   final VndMoney lineTotal;
 
-  factory BookingFoodDto.fromJson(Map<String, Object?> json) => BookingFoodDto(
-    id: intFromJson(json['id']),
-    productId: intFromJson(json['productId']),
-    isCombo: boolFromJson(json['isCombo']),
-    productName: json['productName']?.toString() ?? '',
-    quantity: intFromJson(json['quantity'] ?? 0),
-    unitPrice: VndMoney.fromJson(json['unitPrice']),
-    lineTotal: VndMoney.fromJson(json['lineTotal']),
-  );
+  factory BookingFoodDto.fromJson(Map<String, Object?> json) {
+    final productId = intFromJson(json['productId']);
+    final parsedName = (json['productName'] ??
+            json['name'] ??
+            json['productNameSnapshot'])
+        ?.toString()
+        .trim();
+    return BookingFoodDto(
+      id: intFromJson(json['id']),
+      productId: productId,
+      isCombo: boolFromJson(json['isCombo']),
+      productName: parsedName?.isNotEmpty == true
+          ? parsedName!
+          : 'Món bắp nước #$productId',
+      quantity: intFromJson(json['quantity'] ?? 0),
+      unitPrice: VndMoney.fromJson(json['unitPrice']),
+      lineTotal: VndMoney.fromJson(json['lineTotal']),
+    );
+  }
 }
 
 class BookingDto {
@@ -211,6 +221,7 @@ class BookingDto {
     this.roomNameSnapshot,
     this.showtimeStart,
     this.showtimeStartSnapshot,
+    this.showtimeEnd,
     this.holdExpiresAt,
     this.paidAt,
     this.checkedInAt,
@@ -234,6 +245,7 @@ class BookingDto {
   final String? roomNameSnapshot;
   final DateTime? showtimeStart;
   final DateTime? showtimeStartSnapshot;
+  final DateTime? showtimeEnd;
   final VndMoney subtotal;
   final VndMoney discountAmount;
   final int loyaltyPointsRedeemed;
@@ -268,6 +280,7 @@ class BookingDto {
     showtimeStartSnapshot: nullableCinemaTimeFromJson(
       json['showtimeStartSnapshot'],
     ),
+    showtimeEnd: nullableCinemaTimeFromJson(json['showtimeEnd']),
     subtotal: VndMoney.fromJson(json['subtotal']),
     discountAmount: VndMoney.fromJson(json['discountAmount']),
     loyaltyPointsRedeemed: intFromJson(json['loyaltyPointsRedeemed'] ?? 0),
@@ -313,6 +326,7 @@ class BookingDto {
     roomNameSnapshot: roomNameSnapshot,
     showtimeStart: showtimeStart,
     showtimeStartSnapshot: showtimeStartSnapshot,
+    showtimeEnd: showtimeEnd,
     subtotal: subtotal ?? this.subtotal,
     discountAmount: discountAmount,
     loyaltyPointsRedeemed: loyaltyPointsRedeemed ?? this.loyaltyPointsRedeemed,

@@ -9,8 +9,9 @@ import '../../../auth/application/auth_session.dart';
 import '../../../movie/presentation/models/movie.dart';
 import '../../../movie/presentation/providers/movies_provider.dart';
 import '../widgets/home_cinemas_section.dart';
+import '../widgets/home_food_section.dart';
 import '../widgets/home_hero_carousel.dart';
-import '../widgets/home_movie_section.dart';
+import '../widgets/home_personalized_movies.dart';
 import '../widgets/home_quick_booking.dart';
 import '../providers/home_providers.dart';
 
@@ -39,7 +40,6 @@ class HomePage extends ConsumerWidget {
     final quickBookingMovies = ref.watch(quickBookingMoviesProvider);
     return AppShell(
       currentIndex: 0,
-      compactHeader: true,
       body: SingleChildScrollView(
         key: const ValueKey('home-scroll'),
         child: Column(
@@ -70,12 +70,12 @@ class HomePage extends ConsumerWidget {
                         .toList(growable: false),
               onBook: (id) => _openSeats(context, ref, id),
             ),
-            HomeMovieSection(
+            HomePersonalizedMovies(
               onOpen: (movie) => _openMovie(context, movie),
               onBook: (movie) => _bookMovie(context, movie),
             ),
-            HomeCinemasSection(onBook: (id) => _openSeats(context, ref, id)),
-            // F&B stays hidden until a production catalog is integrated.
+            const HomeCinemasSection(),
+            const HomeFoodSection(),
             const SizedBox(height: 32),
           ],
         ),

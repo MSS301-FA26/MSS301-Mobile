@@ -111,9 +111,7 @@ class AuthSessionController extends Notifier<AuthState> {
           .verifyEmail(email: email, otp: otp);
       return true;
     } catch (error) {
-      state = state.copyWith(
-        message: error is ApiException ? error.message : _message(error),
-      );
+      state = state.copyWith(message: _message(error));
       return false;
     }
   }
@@ -124,9 +122,7 @@ class AuthSessionController extends Notifier<AuthState> {
       state = state.copyWith(clearMessage: true);
       return true;
     } catch (error) {
-      state = state.copyWith(
-        message: error is ApiException ? error.message : _message(error),
-      );
+      state = state.copyWith(message: _message(error));
       return false;
     }
   }
@@ -278,6 +274,5 @@ class AuthSessionController extends Notifier<AuthState> {
     return 'Không thể đăng nhập Google lúc này. Vui lòng thử lại.';
   }
 
-  String _message(Object error) =>
-      error.toString().replaceFirst('ApiException(', '');
+  String _message(Object error) => userFacingErrorMessage(error);
 }

@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
-enum OrdersTab { upcoming, completed }
+enum OrdersTab { tickets, foodOrders }
 
 class OrdersSegmentedTabs extends StatelessWidget {
   const OrdersSegmentedTabs({
     super.key,
     required this.selected,
-    required this.upcomingCount,
-    required this.completedCount,
+    required this.ticketsCount,
+    required this.foodOrdersCount,
     required this.onSelected,
   });
 
   final OrdersTab selected;
-  final int? upcomingCount;
-  final int? completedCount;
+  final int? ticketsCount;
+  final int? foodOrdersCount;
   final ValueChanged<OrdersTab> onSelected;
 
   @override
@@ -30,16 +30,18 @@ class OrdersSegmentedTabs extends StatelessWidget {
       child: Row(
         children: [
           _TabButton(
-            label: 'Sắp chiếu',
-            count: upcomingCount,
-            selected: selected == OrdersTab.upcoming,
-            onTap: () => onSelected(OrdersTab.upcoming),
+            key: const ValueKey('orders-tab-tickets'),
+            label: 'Lịch sử vé',
+            count: ticketsCount,
+            selected: selected == OrdersTab.tickets,
+            onTap: () => onSelected(OrdersTab.tickets),
           ),
           _TabButton(
-            label: 'Lịch sử đơn',
-            count: completedCount,
-            selected: selected == OrdersTab.completed,
-            onTap: () => onSelected(OrdersTab.completed),
+            key: const ValueKey('orders-tab-food'),
+            label: 'Đơn bắp nước',
+            count: foodOrdersCount,
+            selected: selected == OrdersTab.foodOrders,
+            onTap: () => onSelected(OrdersTab.foodOrders),
           ),
         ],
       ),
@@ -49,6 +51,7 @@ class OrdersSegmentedTabs extends StatelessWidget {
 
 class _TabButton extends StatelessWidget {
   const _TabButton({
+    super.key,
     required this.label,
     required this.count,
     required this.selected,

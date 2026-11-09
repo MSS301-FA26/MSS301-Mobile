@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,8 +9,13 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_shell.dart';
+import '../../../../shared/widgets/checkout_outcome_header.dart';
+import '../widgets/payment_booking_summary.dart';
 import '../../../orders/presentation/providers/orders_provider.dart';
+import '../../../auth/application/auth_session.dart';
 import '../../../payment/application/payment_launcher.dart';
+import '../../../payment/application/payment_return_checkpoint.dart';
+import '../../../payment/presentation/pages/payment_handoff_page.dart';
 import '../../application/booking_completion_controller.dart';
 import '../widgets/booking_hold_countdown.dart';
 
@@ -27,6 +33,34 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
   var _attached = false;
   Timer? _pollTimer;
   var _pollCount = 0;
+
+  Future<void> _openRealPayment() async {
+    final payment = ref.read(bookingCompletionProvider).payment;
+    final userId = ref.read(authSessionProvider).session?.user.id;
+    if (payment == null ||
+        userId == null ||
+        payment.userId != userId ||
+        payment.bookingId == null ||
+        payment.id != widget.paymentId ||
+        payment.paymentUrl == null) {
+      return;
+    }
+    await ref
+        .read(paymentReturnCheckpointStoreProvider)
+        .save(
+          PendingPaymentReturn(
+            userId: userId,
+            paymentId: payment.id,
+            orderId: payment.bookingId!,
+            kind: PendingPaymentKind.booking,
+          ),
+        );
+    if (!mounted) return;
+    await PaymentHandoffPage.open(context, payment);
+    if (!mounted) return;
+    await ref.read(bookingCompletionProvider.notifier).refreshPaymentStatus();
+    if (mounted) _startPolling();
+  }
 
   @override
   void initState() {
@@ -177,16 +211,19 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Column(
                       children: [
-                        Icon(icon, size: 76, color: color),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          title,
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.sectionTitle,
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          state.message ??
+                        CheckoutOutcomeHeader(
+                          icon: icon,
+                          color: color,
+                          title: title,
+                          reference:
+                              state.booking?.bookingCode.isNotEmpty == true
+                              ? 'Mã đặt vé: ${state.booking!.bookingCode}'
+                              : 'Giao dịch #${widget.paymentId}',
+                          amount:
+                              state.payment?.amount.format() ??
+                              'Đang tải số tiền…',
+                          description:
+                              state.message ??
                               (ready
                                   ? 'Thanh toán thành công. Vé của bạn đã sẵn sàng.'
                                   : failed
@@ -197,18 +234,50 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                                         BookingCompletionPhase.verifyingBooking
                                   ? 'Đã nhận kết quả thanh toán, đang chờ hệ thống xác nhận vé.'
                                   : 'Mở VNPay để thanh toán. Khi quay lại, ứng dụng sẽ kiểm tra kết quả. Không cần tạo giao dịch mới khi kết quả chưa rõ.'),
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.caption,
                         ),
                         const SizedBox(height: AppSpacing.lg),
-                        if (state.payment != null) ...[
-                          Text(
-                            state.payment!.amount.format(),
-                            style: AppTextStyles.sectionTitle.copyWith(
-                              color: AppColors.gold,
+                        if (state.booking != null) ...[
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceRaised,
+                              borderRadius: AppRadii.card,
+                              border: Border.all(color: AppColors.borderStrong),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Theme(
+                              data: Theme.of(context)
+                                  .copyWith(dividerColor: Colors.transparent),
+                              child: ExpansionTile(
+                                initiallyExpanded: true,
+                                tilePadding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                  vertical: AppSpacing.xs,
+                                ),
+                                childrenPadding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.sm,
+                                  0,
+                                  AppSpacing.sm,
+                                  AppSpacing.sm,
+                                ),
+                                leading: const Icon(
+                                  Icons.confirmation_number_outlined,
+                                  color: AppColors.gold,
+                                ),
+                                title: const Text(
+                                  'Chi tiết vé và giao dịch',
+                                  style: AppTextStyles.cardTitle,
+                                ),
+                                children: [
+                                  PaymentBookingSummary(
+                                    payment: state.payment,
+                                    booking: state.booking,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(height: AppSpacing.md),
+                          const SizedBox(height: AppSpacing.lg),
                         ],
                         if (!realPayment &&
                             state.payment?.paymentUrl != null &&
@@ -248,16 +317,8 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                             width: double.infinity,
                             child: AppButton(
                               key: const ValueKey('payment-launch'),
-                              label: 'Mở cổng thanh toán',
-                              onPressed: busy
-                                  ? null
-                                  : () => ref
-                                        .read(
-                                          bookingCompletionProvider.notifier,
-                                        )
-                                        .openPaymentGateway(
-                                          mode: PaymentLaunchMode.deepLink,
-                                        ),
+                              label: kIsWeb ? 'Mở VNPay' : 'Mở VNPay trong app',
+                              onPressed: busy ? null : _openRealPayment,
                             ),
                           ),
                           const SizedBox(height: AppSpacing.sm),
@@ -385,6 +446,15 @@ class _PaymentResultPageState extends ConsumerState<PaymentResultPage>
                               onPressed: () => context.go(
                                 AppRoutes.ticket(state.booking!.id),
                               ),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppButton(
+                              label: 'Đơn của tôi',
+                              variant: AppButtonVariant.secondary,
+                              onPressed: () => context.go(AppRoutes.orders),
                             ),
                           ),
                         ],

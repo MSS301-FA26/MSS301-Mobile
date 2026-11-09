@@ -29,8 +29,9 @@ void main() {
     overrides: [
       seatHoldRepositoryProvider.overrideWithValue(repository),
       if (clock != null) appClockProvider.overrideWithValue(clock),
-      if (seatMap != null)
-        seatMapProvider(_showtimeId).overrideWith((ref) => seatMap()),
+      seatMapProvider(_showtimeId).overrideWith(
+        (ref) => seatMap?.call() ?? _seatMap(availableIds: const {441, 442}),
+      ),
     ],
   );
 
@@ -160,6 +161,7 @@ void main() {
       final first = controller.holdSelectedSeats();
       final second = controller.holdSelectedSeats();
 
+      await Future<void>.delayed(Duration.zero);
       expect(repository.holdCallCount, 1);
       expect(await second, isNull);
       pending.complete(_booking(expiry: now.add(const Duration(minutes: 3))));
@@ -170,6 +172,7 @@ void main() {
 
   test('conflict refresh reconciles against the fresh seat map only', () async {
     final maps = _SeatMapSequence([
+      _seatMap(availableIds: const {441, 442}),
       _seatMap(availableIds: const {441, 442}),
       _seatMap(availableIds: const {442}),
     ]);
@@ -194,12 +197,113 @@ void main() {
     final state = container.read(bookingEntryProvider);
 
     expect(result, isNull);
-    expect(maps.calls, 2);
+    expect(maps.calls, 3);
     expect(state.hasActiveHold, isFalse);
     expect(state.message, isNotNull);
     expect(state.selectedSeatIds, {442});
     expect(state.unavailableSeatIds, contains(441));
   });
+
+  test(
+    'a taken half of a couple removes both assignments, keeping two tickets',
+    () {
+      final container = containerFor(_FakeSeatHoldRepository());
+      addTearDown(container.dispose);
+      final controller = container.read(bookingEntryProvider.notifier);
+      controller.begin(
+        movieId: _movieId,
+        showtimeId: _showtimeId,
+        couplePairs: const {441: 442, 442: 441},
+      );
+      controller.setTicketQuantity(TicketType.adult, 2);
+      controller.toggleSeatIds({441});
+      expect(container.read(bookingEntryProvider).assignmentComplete, isTrue);
+
+      controller.reconcileSeatMap(_seatMap(availableIds: const {442}));
+      final lost = container.read(bookingEntryProvider);
+      expect(lost.selectedSeatIds, isEmpty);
+      expect(lost.ticketCount, 2);
+      expect(lost.message, contains('A1, A2'));
+      expect(lost.unavailableSeatIds, {441});
+
+      controller.reconcileSeatMap(_seatMap(availableIds: const {441, 442}));
+      expect(container.read(bookingEntryProvider).unavailableSeatIds, isEmpty);
+    },
+  );
+
+  test(
+    'fresh preflight blocks a newly occupied seat before POST hold',
+    () async {
+      final maps = _SeatMapSequence([
+        _seatMap(availableIds: const {442}),
+      ]);
+      final repository = _FakeSeatHoldRepository(
+        holdResult: _booking(expiry: now.add(const Duration(minutes: 3))),
+      );
+      final container = containerFor(repository, seatMap: maps.next);
+      addTearDown(container.dispose);
+      selectSeats(container, const [441]);
+
+      final booking = await container
+          .read(bookingEntryProvider.notifier)
+          .holdSelectedSeats();
+
+      expect(booking, isNull);
+      expect(repository.holdCallCount, 0);
+      expect(container.read(bookingEntryProvider).selectedSeatIds, isEmpty);
+      expect(container.read(bookingEntryProvider).ticketCount, 1);
+      expect(container.read(bookingEntryProvider).message, contains('A1'));
+    },
+  );
+
+  test(
+    'failed preflight blocks POST hold and keeps selection for retry',
+    () async {
+      final repository = _FakeSeatHoldRepository();
+      final container = containerFor(
+        repository,
+        seatMap: () async => throw StateError('offline'),
+      );
+      addTearDown(container.dispose);
+      selectSeats(container, const [441]);
+
+      final result = await container
+          .read(bookingEntryProvider.notifier)
+          .holdSelectedSeats();
+
+      expect(result, isNull);
+      expect(repository.holdCallCount, 0);
+      expect(container.read(bookingEntryProvider).selectedSeatIds, {441});
+      expect(
+        container.read(bookingEntryProvider).phase,
+        BookingEntryPhase.selectingSeats,
+      );
+      expect(
+        container.read(bookingEntryProvider).message,
+        contains('kiểm tra'),
+      );
+    },
+  );
+
+  test(
+    'old preflight response cannot submit a hold for a replaced showtime',
+    () async {
+      final pending = Completer<ShowtimeSeatMapDto>();
+      final repository = _FakeSeatHoldRepository();
+      final container = containerFor(repository, seatMap: () => pending.future);
+      addTearDown(container.dispose);
+      selectSeats(container, const [441]);
+      final controller = container.read(bookingEntryProvider.notifier);
+      final hold = controller.holdSelectedSeats();
+      await Future<void>.delayed(Duration.zero);
+      controller.begin(movieId: _movieId, showtimeId: _showtimeId + 1);
+      pending.complete(_seatMap(availableIds: const {441, 442}));
+
+      expect(await hold, isNull);
+      expect(repository.holdCallCount, 0);
+      expect(container.read(bookingEntryProvider).showtimeId, _showtimeId + 1);
+    },
+  );
 
   for (final scenario in [
     (

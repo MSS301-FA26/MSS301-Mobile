@@ -6,6 +6,8 @@ abstract final class AppRoutes {
   static String foodOrderDetail(int id) => '/food-order/$id';
   static const discover = '/discover';
   static const showtimes = '/showtimes';
+  static const cinemas = '/cinemas';
+  static const cinemaDetailPattern = '/cinemas/:cinemaId';
   static const orders = '/orders';
   static const account = '/account';
   static const login = '/auth/login';
@@ -24,12 +26,14 @@ abstract final class AppRoutes {
   static const vouchers = '/preview/vouchers';
   static const vip = '/preview/vip';
   static const favorites = '/preview/favorites';
+  static const watchlist = '/account/watchlist';
   static const notifications = '/preview/notifications';
   static const popBot = '/preview/popbot';
   static const seatSelectionPattern = '/seat-selection/:showtimeId';
   static const concessionsPattern = '/booking/:bookingId/concessions';
   static const checkoutPattern = '/booking/:bookingId/checkout';
   static const paymentPattern = '/payment/:paymentId';
+  static const paymentCallback = '/payment-callback';
   static const ticketPattern = '/ticket/:bookingId';
 
   static String movieReviews(int movieId) => Uri(
@@ -39,8 +43,30 @@ abstract final class AppRoutes {
 
   static String movieDetail(int movieId) => '/movie/$movieId';
 
+  static String showtimesWithFilters({
+    int? movieId,
+    int? cinemaId,
+    DateTime? date,
+  }) => Uri(
+    path: showtimes,
+    queryParameters: {
+      if (movieId != null) 'movieId': '$movieId',
+      if (cinemaId != null) 'cinemaId': '$cinemaId',
+      if (date != null)
+        'date':
+            '${date.year.toString().padLeft(4, '0')}-'
+            '${date.month.toString().padLeft(2, '0')}-'
+            '${date.day.toString().padLeft(2, '0')}',
+    },
+  ).toString();
+
   static String showtimesForMovie(int movieId) =>
-      Uri(path: showtimes, queryParameters: {'movieId': '$movieId'}).toString();
+      showtimesWithFilters(movieId: movieId);
+
+  static String showtimesForCinema(int cinemaId) =>
+      showtimesWithFilters(cinemaId: cinemaId);
+
+  static String cinemaDetail(int cinemaId) => '/cinemas/$cinemaId';
 
   static String seatSelection(int showtimeId) => '/seat-selection/$showtimeId';
 

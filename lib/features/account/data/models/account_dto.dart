@@ -116,7 +116,9 @@ class WalletTransactionDto {
   final int userId;
   final int? bookingId;
   final WalletTransactionType type;
-  final VndMoney amount;
+
+  /// BE sends credits as positive values and debits as negative values.
+  final int amount;
   final VndMoney balanceAfter;
   final String? referenceCode;
   final String? description;
@@ -129,7 +131,7 @@ class WalletTransactionDto {
         userId: intFromJson(json['userId']),
         bookingId: nullableIntFromJson(json['bookingId']),
         type: WalletTransactionType.parse(json['type']),
-        amount: VndMoney.fromJson(json['amount']),
+        amount: intFromJson(json['amount'], field: 'amount'),
         balanceAfter: VndMoney.fromJson(json['balanceAfter']),
         referenceCode: json['referenceCode']?.toString(),
         description: json['description']?.toString(),
@@ -151,6 +153,15 @@ class WithdrawalCreateRequestDto {
   final String accountNumber;
   final String accountHolder;
   final String? walletPhone;
+
+  Map<String, Object?> toJson() => {
+    'amount': amount.amount,
+    'bankName': bankName,
+    'accountNumber': accountNumber,
+    'accountHolder': accountHolder,
+    if (walletPhone != null && walletPhone!.trim().isNotEmpty)
+      'walletPhone': walletPhone!.trim(),
+  };
 }
 
 class WithdrawalDto {
@@ -237,6 +248,8 @@ class LoyaltyConfigurationDto {
     required this.expiryMonth,
     required this.expiryDay,
     required this.expiryTime,
+    this.redemptionRatePercent = 100,
+    this.maxRedemptionPercent = 100,
     this.lastExpiredAt,
     this.lastResetAt,
     this.lastResetSource,
@@ -249,21 +262,26 @@ class LoyaltyConfigurationDto {
   final int expiryMonth;
   final int expiryDay;
   final String expiryTime;
+  final double redemptionRatePercent;
+  final double maxRedemptionPercent;
   final DateTime? lastExpiredAt;
   final DateTime? lastResetAt;
   final String? lastResetSource;
 
-  factory LoyaltyConfigurationDto.fromJson(Map<String, Object?> json) =>
-      LoyaltyConfigurationDto(
-        id: intFromJson(json['id']),
-        earningRatePercent: doubleFromJson(json['earningRatePercent'] ?? 0),
-        redemptionPoints: intFromJson(json['redemptionPoints'] ?? 0),
-        redemptionValueVnd: VndMoney.fromJson(json['redemptionValueVnd']),
-        expiryMonth: intFromJson(json['expiryMonth'] ?? 0),
-        expiryDay: intFromJson(json['expiryDay'] ?? 0),
-        expiryTime: json['expiryTime']?.toString() ?? '',
-        lastExpiredAt: nullableDateTimeFromJson(json['lastExpiredAt']),
-        lastResetAt: nullableDateTimeFromJson(json['lastResetAt']),
-        lastResetSource: json['lastResetSource']?.toString(),
-      );
+  factory LoyaltyConfigurationDto.fromJson(
+    Map<String, Object?> json,
+  ) => LoyaltyConfigurationDto(
+    id: intFromJson(json['id']),
+    earningRatePercent: doubleFromJson(json['earningRatePercent'] ?? 0),
+    redemptionPoints: intFromJson(json['redemptionPoints'] ?? 0),
+    redemptionValueVnd: VndMoney.fromJson(json['redemptionValueVnd']),
+    expiryMonth: intFromJson(json['expiryMonth'] ?? 0),
+    expiryDay: intFromJson(json['expiryDay'] ?? 0),
+    expiryTime: json['expiryTime']?.toString() ?? '',
+    redemptionRatePercent: doubleFromJson(json['redemptionRatePercent'] ?? 100),
+    maxRedemptionPercent: doubleFromJson(json['maxRedemptionPercent'] ?? 100),
+    lastExpiredAt: nullableDateTimeFromJson(json['lastExpiredAt']),
+    lastResetAt: nullableDateTimeFromJson(json['lastResetAt']),
+    lastResetSource: json['lastResetSource']?.toString(),
+  );
 }

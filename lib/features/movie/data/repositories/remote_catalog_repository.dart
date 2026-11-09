@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/time/vietnam_time.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../models/catalog_enums.dart';
 import '../models/cinema_dto.dart';
@@ -17,11 +18,21 @@ class RemoteCatalogRepository implements CatalogRepository {
     MovieStatus? status,
     String? keyword,
   }) async {
-    return (await getMoviePage(
-      status: status,
-      keyword: keyword,
-      size: 100,
-    )).items;
+    final movies = <MovieDto>[];
+    var page = 0;
+    while (true) {
+      final result = await getMoviePage(
+        status: status,
+        keyword: keyword,
+        page: page,
+        size: 100,
+      );
+      movies.addAll(result.items);
+      if (result.items.isEmpty || page + 1 >= result.totalPages) {
+        return movies;
+      }
+      page++;
+    }
   }
 
   @override
@@ -74,15 +85,48 @@ class RemoteCatalogRepository implements CatalogRepository {
       _list(_data(await _get('/api/v1/cinemas'))['items'], CinemaDto.fromJson);
 
   @override
-  Future<List<ShowtimeDto>> getShowtimes({int? movieId, DateTime? date}) async {
+  Future<CinemaDto?> getCinema(int cinemaId) async {
+    try {
+      return CinemaDto.fromJson(_data(await _get('/api/v1/cinemas/$cinemaId')));
+    } on ApiException catch (error) {
+      if (error.type == ApiErrorType.notFound) return null;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<ShowtimeDto>> getShowtimes({
+    int? movieId,
+    int? cinemaId,
+    DateTime? date,
+  }) async {
     final queryParameters = <String, Object>{'page': 0, 'size': 100};
     if (movieId != null) queryParameters['movieId'] = movieId;
+    if (cinemaId != null) queryParameters['cinemaId'] = cinemaId;
     if (date != null) queryParameters['date'] = _date(date);
-    final response = await _get(
-      '/api/v1/showtimes',
-      queryParameters: queryParameters,
-    );
-    return _list(_data(response)['items'], ShowtimeDto.fromJson);
+    final values = <ShowtimeDto>[];
+    var page = 0;
+    while (true) {
+      queryParameters['page'] = page;
+      final data = _data(
+        await _get('/api/v1/showtimes', queryParameters: queryParameters),
+      );
+      final items = _list(data['items'], ShowtimeDto.fromJson);
+      values.addAll(
+        items.where(
+          (item) =>
+              (cinemaId == null || item.cinemaId == cinemaId) &&
+              (movieId == null || item.movieId == movieId) &&
+              (date == null || isVietnamDate(item.startTime, date)),
+        ),
+      );
+      final totalPages = data['totalPages'];
+      if (items.isEmpty ||
+          (totalPages is num ? page + 1 >= totalPages : items.length < 100)) {
+        return values;
+      }
+      page++;
+    }
   }
 
   @override
@@ -178,10 +222,7 @@ class RemoteCatalogRepository implements CatalogRepository {
         path,
         queryParameters: queryParameters,
         options: Options(
-          extra: const {
-            'skipAuthorization': true,
-            'skipAuthRefresh': true,
-          },
+          extra: const {'skipAuthorization': true, 'skipAuthRefresh': true},
         ),
       );
     } on DioException catch (error) {

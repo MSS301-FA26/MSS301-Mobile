@@ -7,6 +7,8 @@ import 'package:mss301_mobile/core/routing/app_router.dart';
 import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/concessions_page.dart';
 import 'package:mss301_mobile/features/booking/presentation/pages/ticket_page.dart';
+import 'package:mss301_mobile/features/account/presentation/widgets/account_menu.dart';
+import 'package:mss301_mobile/features/account/presentation/pages/wallet_page.dart';
 import 'package:mss301_mobile/features/orders/presentation/widgets/booking_status_badge.dart';
 
 import 'support/pump_test_app.dart';
@@ -20,11 +22,16 @@ void main() {
   }
 
   Future<void> openPayment(WidgetTester tester) async {
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-tab-now-showing')),
+    );
+    await tester.tap(find.byKey(const ValueKey('home-tab-now-showing')));
+    await tester.pumpAndSettle();
     final carousel = find.byKey(const ValueKey('movie-coverflow'));
     await tester.ensureVisible(carousel);
     await tester.drag(carousel, const Offset(-110, 0));
     await tester.pumpAndSettle();
-    final bookAvengers = find.byKey(const ValueKey('home-3d-book-2'));
+    final bookAvengers = find.byKey(const ValueKey('home-now-book-2'));
     await tester.ensureVisible(bookAvengers);
     await tester.tap(bookAvengers);
     await tester.pumpAndSettle();
@@ -128,7 +135,38 @@ void main() {
     appRouter.go(AppRoutes.account);
     await tester.pumpAndSettle();
     expect(find.text('Hồ sơ cá nhân'), findsOneWidget);
-    expect(find.text('CinePoints'), findsOneWidget);
+    final accountMenu = find.byType(AccountMenu);
+    expect(
+      find.descendant(of: accountMenu, matching: find.text('CineWallet')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: accountMenu, matching: find.text('Chi tiết')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: accountMenu,
+        matching: find.text('Lịch sử đơn bắp nước'),
+      ),
+      findsNothing,
+    );
+    for (final removedItem in [
+      'Vé xem phim của tôi',
+      'CinePoints',
+      'Danh sách muốn xem',
+      'Chính sách',
+    ]) {
+      expect(
+        find.descendant(of: accountMenu, matching: find.text(removedItem)),
+        findsNothing,
+        reason: '$removedItem should not appear in the account menu',
+      );
+    }
+    await tester.tap(find.text('Chi tiết'));
+    await tester.pumpAndSettle();
+    expect(find.byType(WalletPage), findsOneWidget);
+    expect(find.byKey(const ValueKey('booking-header')), findsOneWidget);
   });
 
   testWidgets('R7 release-like build hides preview account actions', (

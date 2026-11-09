@@ -21,7 +21,13 @@ abstract interface class CatalogRepository {
 
   Future<List<CinemaDto>> getCinemas();
 
-  Future<List<ShowtimeDto>> getShowtimes({int? movieId, DateTime? date});
+  Future<CinemaDto?> getCinema(int cinemaId);
+
+  Future<List<ShowtimeDto>> getShowtimes({
+    int? movieId,
+    int? cinemaId,
+    DateTime? date,
+  });
 
   Future<ShowtimeDto?> getShowtime(int showtimeId);
 

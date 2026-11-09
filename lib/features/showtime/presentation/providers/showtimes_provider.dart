@@ -5,21 +5,24 @@ import '../../data/models/showtime_dto.dart';
 import '../models/showtime_models.dart';
 
 class ShowtimeQuery {
-  const ShowtimeQuery({this.movieId, this.date});
+  const ShowtimeQuery({this.movieId, this.cinemaId, this.date});
 
   final int? movieId;
+  final int? cinemaId;
   final DateTime? date;
 
   @override
   bool operator ==(Object other) =>
       other is ShowtimeQuery &&
       other.movieId == movieId &&
+      other.cinemaId == cinemaId &&
       other.date?.year == date?.year &&
       other.date?.month == date?.month &&
       other.date?.day == date?.day;
 
   @override
-  int get hashCode => Object.hash(movieId, date?.year, date?.month, date?.day);
+  int get hashCode =>
+      Object.hash(movieId, cinemaId, date?.year, date?.month, date?.day);
 }
 
 final showtimesProvider =
@@ -30,6 +33,7 @@ final showtimesProvider =
       final repository = ref.watch(catalogRepositoryProvider);
       final values = await repository.getShowtimes(
         movieId: query.movieId,
+        cinemaId: query.cinemaId,
         date: query.date,
       );
       final byMovie = <int, List<ShowtimeDto>>{};

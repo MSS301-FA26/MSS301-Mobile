@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/age_badge.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_image.dart';
+import '../../../../shared/widgets/cinema_ticket_surface.dart';
 import '../models/ticket_order.dart';
 import '../../data/models/booking_enums.dart';
 import 'booking_status_badge.dart';
@@ -79,111 +80,187 @@ class _OrderCard extends StatelessWidget {
   final List<Widget> actions;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceRaised,
-      borderRadius: AppRadii.card,
-      border: Border.all(color: AppColors.border),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: BookingStatusBadge(status: order.status),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Mã đơn: ${order.ticketCode}',
-          style: AppTextStyles.caption.copyWith(fontSize: 13),
-        ),
-        const SizedBox(height: 14),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final details = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  order.movieTitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.cardTitle.copyWith(fontSize: 17),
-                ),
-                const SizedBox(height: 8),
-                if (order.ageRating.isNotEmpty || order.format.isNotEmpty)
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (order.ageRating.isNotEmpty)
-                        AgeBadge(rating: order.ageRating),
-                      if (order.format.isNotEmpty)
-                        Text(order.format, style: AppTextStyles.caption),
-                    ],
-                  ),
-                Text(
-                  order.cinemaLocation,
-                  style: AppTextStyles.body.copyWith(fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  order.dateTime,
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.gold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            );
-            final poster = SizedBox(
-              width: 72,
-              height: 104,
-              child: AppImage(asset: order.moviePoster, fit: BoxFit.contain),
-            );
-            if (constraints.maxWidth < 280 &&
-                MediaQuery.textScalerOf(context).scale(14) > 18) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [poster, const SizedBox(height: 10), details],
-              );
-            }
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                poster,
-                const SizedBox(width: 12),
-                Expanded(child: details),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Ghế: ${order.seats.join(', ')}',
-          style: AppTextStyles.body.copyWith(fontSize: 14),
-        ),
-        Text(order.seatsTypeLabel, style: AppTextStyles.caption),
-        if (order.concessionsSummary != 'Không kèm F&B') ...[
+  Widget build(BuildContext context) => CinemaTicketSurface(
+    key: ValueKey('order-ticket-${order.id}'),
+    details: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: BookingStatusBadge(status: order.status),
+          ),
           const SizedBox(height: 8),
           Text(
-            'Bắp nước: ${order.concessionsSummary}',
-            style: AppTextStyles.caption,
+            'Mã đơn: ${order.ticketCode}',
+            style: AppTextStyles.caption.copyWith(fontSize: 13),
           ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final details = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    order.movieTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.cardTitle.copyWith(fontSize: 17),
+                  ),
+                  const SizedBox(height: 8),
+                  if (order.ageRating.isNotEmpty || order.format.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (order.ageRating.isNotEmpty)
+                          AgeBadge(rating: order.ageRating),
+                        if (order.format.isNotEmpty)
+                          Text(order.format, style: AppTextStyles.caption),
+                      ],
+                    ),
+                  Text(
+                    order.cinemaLocation,
+                    style: AppTextStyles.body.copyWith(fontSize: 14),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    order.dateTime,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.gold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              );
+              final poster = SizedBox(
+                width: 72,
+                height: 104,
+                child: AppImage(asset: order.moviePoster, fit: BoxFit.contain),
+              );
+              if (constraints.maxWidth < 280 &&
+                  MediaQuery.textScalerOf(context).scale(14) > 18) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [poster, const SizedBox(height: 10), details],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  poster,
+                  const SizedBox(width: 12),
+                  Expanded(child: details),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Ghế: ${order.seats.join(', ')}',
+            style: AppTextStyles.body.copyWith(fontSize: 14),
+          ),
+          Text(order.seatsTypeLabel, style: AppTextStyles.caption),
+          if (order.foods.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceRaised,
+                borderRadius: AppRadii.control,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.fastfood_outlined,
+                        size: 17,
+                        color: AppColors.gold,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        'BẮP NƯỚC',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .7,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  for (var i = 0; i < order.foods.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            order.foods[i].productName,
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.text,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '× ${order.foods[i].quantity}',
+                          style: AppTextStyles.body.copyWith(
+                            color: AppColors.gold,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
-        const Divider(height: 24, color: AppColors.border),
-        Text(
-          order.totalPrice.format(),
-          style: AppTextStyles.sectionTitle.copyWith(color: AppColors.gold),
-        ),
-        const SizedBox(height: 12),
-        // Stacked actions keep long labels usable with system text scaling.
-        for (var i = 0; i < actions.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
-          actions[i],
+      ),
+    ),
+    stub: Container(
+      color: const Color(0xFF080808),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'TỔNG THANH TOÁN',
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  order.totalPrice.format(),
+                  textAlign: TextAlign.right,
+                  style: AppTextStyles.sectionTitle.copyWith(
+                    color: AppColors.gold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < actions.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            actions[i],
+          ],
         ],
-      ],
+      ),
     ),
   );
 }

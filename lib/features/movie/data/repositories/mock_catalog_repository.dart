@@ -1,5 +1,6 @@
 import '../../../../core/demo/demo_scenario.dart';
 import '../../../../core/money/vnd_money.dart';
+import '../../../../core/time/vietnam_time.dart';
 import '../../../showtime/data/models/showtime_dto.dart';
 import '../mock/catalog_fixtures.dart';
 import '../models/catalog_enums.dart';
@@ -106,17 +107,28 @@ class MockCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<ShowtimeDto>> getShowtimes({int? movieId, DateTime? date}) async {
+  Future<CinemaDto?> getCinema(int cinemaId) async {
+    final cinemas = await getCinemas();
+    for (final cinema in cinemas) {
+      if (cinema.id == cinemaId) return cinema;
+    }
+    return null;
+  }
+
+  @override
+  Future<List<ShowtimeDto>> getShowtimes({
+    int? movieId,
+    int? cinemaId,
+    DateTime? date,
+  }) async {
     await _wait();
     return _fixtures
         .showtimes()
         .where((showtime) {
           if (movieId != null && showtime.movieId != movieId) return false;
+          if (cinemaId != null && showtime.cinemaId != cinemaId) return false;
           if (date == null) return true;
-          final start = showtime.startTime;
-          return start.year == date.year &&
-              start.month == date.month &&
-              start.day == date.day;
+          return isVietnamDate(showtime.startTime, date);
         })
         .toList(growable: false);
   }
