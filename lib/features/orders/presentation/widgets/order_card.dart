@@ -4,7 +4,10 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/age_badge.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_image.dart';
+import '../../../../shared/widgets/cinema_ticket_surface.dart';
 import '../models/ticket_order.dart';
+import '../../data/models/booking_enums.dart';
+import 'booking_status_badge.dart';
 
 class UpcomingOrderCard extends StatelessWidget {
   const UpcomingOrderCard({
@@ -13,198 +16,31 @@ class UpcomingOrderCard extends StatelessWidget {
     required this.onCancel,
     required this.onOpenTicket,
   });
-
   final TicketOrder order;
-  final VoidCallback onCancel;
-  final VoidCallback onOpenTicket;
+  final VoidCallback? onCancel, onOpenTicket;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: const BorderRadius.all(Radius.circular(24)),
-        border: Border.all(color: AppColors.border),
+  Widget build(BuildContext context) => _OrderCard(
+    order: order,
+    actions: [
+      if (onCancel != null && order.status == BookingStatus.paid)
+        AppButton(
+          label: 'Hoàn / Đổi vé',
+          icon: Icons.cancel_outlined,
+          variant: AppButtonVariant.secondary,
+          onPressed: onCancel,
+        ),
+      AppButton(
+        label: order.status == BookingStatus.paid
+            ? 'Mở mã vé'
+            : 'Tiếp tục đặt vé',
+        icon: order.status == BookingStatus.paid
+            ? Icons.qr_code_rounded
+            : Icons.arrow_forward,
+        onPressed: order.isUpcoming ? onOpenTicket : null,
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const _PulseDot(),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  order.statusLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.gold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Text(
-                order.ticketCode,
-                style: const TextStyle(
-                  color: AppColors.textDisabled,
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: AppRadii.control,
-                child: SizedBox(
-                  width: 80,
-                  height: 112,
-                  child: AppImage(asset: order.moviePoster),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: SizedBox(
-                  height: 112,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              AgeBadge(
-                                rating: order.ageRating,
-                                variant: AgeBadgeVariant.hero,
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  order.format,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppColors.lavender,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            order.movieTitle.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.text,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            order.cinemaLocation,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption,
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            order.dateTime,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.gold,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            'Ghế: ${order.seats.join(', ')} (${order.seatsTypeLabel})',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (order.concessionsSummary != 'Không kèm F&B') ...[
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceRaised,
-                borderRadius: AppRadii.control,
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.fastfood_rounded,
-                    size: 16,
-                    color: AppColors.gold,
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      'Bắp nước: ${order.concessionsSummary}',
-                      style: AppTextStyles.caption,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.sm),
-          const Divider(height: 1, color: AppColors.border),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: 'Hoàn / Đổi vé',
-                  icon: Icons.cancel_outlined,
-                  variant: AppButtonVariant.secondary,
-                  height: 44,
-                  onPressed: onCancel,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: AppButton(
-                  label: 'Mở mã vé',
-                  icon: Icons.qr_code_rounded,
-                  height: 44,
-                  onPressed: onOpenTicket,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+    ],
+  );
 }
 
 class CompletedOrderCard extends StatelessWidget {
@@ -214,150 +50,217 @@ class CompletedOrderCard extends StatelessWidget {
     required this.onBookAgain,
     required this.onRate,
   });
-
   final TicketOrder order;
-  final VoidCallback onBookAgain;
-  final VoidCallback onRate;
+  final VoidCallback? onBookAgain, onRate;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadii.card,
-        border: Border.all(color: AppColors.border),
+  Widget build(BuildContext context) => _OrderCard(
+    order: order,
+    actions: [
+      AppButton(
+        label: 'Đặt lại vé',
+        icon: Icons.replay_rounded,
+        variant: AppButtonVariant.secondary,
+        onPressed: onBookAgain,
       ),
+      if (onRate != null && order.status == BookingStatus.used)
+        AppButton(
+          label: 'Xem đánh giá',
+          icon: Icons.star_rounded,
+          variant: AppButtonVariant.secondary,
+          onPressed: onRate,
+        ),
+    ],
+  );
+}
+
+class _OrderCard extends StatelessWidget {
+  const _OrderCard({required this.order, required this.actions});
+  final TicketOrder order;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) => CinemaTicketSurface(
+    key: ValueKey('order-ticket-${order.id}'),
+    details: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceRaised,
-                  borderRadius: AppRadii.small,
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Text(order.statusLabel, style: AppTextStyles.caption),
-              ),
-              const Spacer(),
-              Text(
-                order.ticketCode,
-                style: const TextStyle(
-                  color: AppColors.textDisabled,
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: BookingStatusBadge(status: order.status),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: AppRadii.control,
-                child: SizedBox(
-                  width: 56,
-                  height: 80,
-                  child: AppImage(asset: order.moviePoster),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
+          const SizedBox(height: 8),
+          Text(
+            'Mã đơn: ${order.ticketCode}',
+            style: AppTextStyles.caption.copyWith(fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final details = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    order.movieTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.cardTitle.copyWith(fontSize: 17),
+                  ),
+                  const SizedBox(height: 8),
+                  if (order.ageRating.isNotEmpty || order.format.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (order.ageRating.isNotEmpty)
+                          AgeBadge(rating: order.ageRating),
+                        if (order.format.isNotEmpty)
+                          Text(order.format, style: AppTextStyles.caption),
+                      ],
+                    ),
+                  Text(
+                    order.cinemaLocation,
+                    style: AppTextStyles.body.copyWith(fontSize: 14),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    order.dateTime,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.gold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              );
+              final poster = SizedBox(
+                width: 72,
+                height: 104,
+                child: AppImage(asset: order.moviePoster, fit: BoxFit.contain),
+              );
+              if (constraints.maxWidth < 280 &&
+                  MediaQuery.textScalerOf(context).scale(14) > 18) {
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      order.movieTitle.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.cardTitle,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      order.cinemaLocation,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      order.dateTime,
-                      style: const TextStyle(
-                        color: AppColors.textDisabled,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Ghế ${order.seats.join(', ')} • ${_formatCurrency(order.totalPrice)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                  children: [poster, const SizedBox(height: 10), details],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  poster,
+                  const SizedBox(width: 12),
+                  Expanded(child: details),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Ghế: ${order.seats.join(', ')}',
+            style: AppTextStyles.body.copyWith(fontSize: 14),
+          ),
+          Text(order.seatsTypeLabel, style: AppTextStyles.caption),
+          if (order.foods.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceRaised,
+                borderRadius: AppRadii.control,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.fastfood_outlined,
+                        size: 17,
                         color: AppColors.gold,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
                       ),
+                      const SizedBox(width: 7),
+                      Text(
+                        'BẮP NƯỚC',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .7,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  for (var i = 0; i < order.foods.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            order.foods[i].productName,
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.text,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '× ${order.foods[i].quantity}',
+                          style: AppTextStyles.body.copyWith(
+                            color: AppColors.gold,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const Divider(height: 1, color: AppColors.border),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: 'Đặt lại vé',
-                  icon: Icons.replay_rounded,
-                  variant: AppButtonVariant.secondary,
-                  height: 38,
-                  onPressed: onBookAgain,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              AppButton(
-                label: 'Đánh giá',
-                icon: Icons.star_rounded,
-                variant: AppButtonVariant.secondary,
-                height: 38,
-                onPressed: onRate,
-              ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
-    );
-  }
-}
-
-String _formatCurrency(int value) {
-  final text = value.toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < text.length; i++) {
-    final fromEnd = text.length - i;
-    buffer.write(text[i]);
-    if (fromEnd > 1 && fromEnd % 3 == 1) buffer.write('.');
-  }
-  return '$bufferđ';
-}
-
-class _PulseDot extends StatelessWidget {
-  const _PulseDot();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: const BoxDecoration(
-        color: AppColors.gold,
-        shape: BoxShape.circle,
+    ),
+    stub: Container(
+      color: const Color(0xFF080808),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'TỔNG THANH TOÁN',
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  order.totalPrice.format(),
+                  textAlign: TextAlign.right,
+                  style: AppTextStyles.sectionTitle.copyWith(
+                    color: AppColors.gold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < actions.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            actions[i],
+          ],
+        ],
       ),
-    );
-  }
+    ),
+  );
 }

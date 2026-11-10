@@ -1,0 +1,24 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../movie/data/repositories/catalog_providers.dart';
+import 'account_repositories.dart';
+import 'mock_account_repositories.dart';
+import '../../../../core/network/network_providers.dart';
+import 'remote_account_repositories.dart';
+import 'remote_profile_repository.dart';
+
+final mockAccountStoreProvider = Provider<MockAccountStore>(
+  (ref) => MockAccountStore(clock: ref.watch(appClockProvider)),
+);
+
+final profileRepositoryProvider = Provider<ProfileRepository>(
+  (ref) => RemoteProfileRepository(ref.watch(dioProvider)),
+);
+
+final walletRepositoryProvider = Provider<WalletRepository>(
+  (ref) => RemoteWalletRepository(ref.watch(dioProvider)),
+);
+
+final loyaltyRepositoryProvider = Provider<LoyaltyRepository>(
+  (ref) => RemoteLoyaltyRepository(ref.watch(dioProvider)),
+);

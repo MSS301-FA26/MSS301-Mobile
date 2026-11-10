@@ -1,51 +1,89 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mss301_mobile/app/app.dart';
+import 'package:mss301_mobile/core/routing/app_router.dart';
+import 'package:mss301_mobile/core/routing/app_routes.dart';
 import 'package:mss301_mobile/features/account/presentation/pages/account_page.dart';
 import 'package:mss301_mobile/features/discover/presentation/pages/discover_page.dart';
 import 'package:mss301_mobile/features/home/presentation/pages/home_page.dart';
+import 'package:mss301_mobile/features/home/presentation/widgets/movie_coverflow.dart';
 import 'package:mss301_mobile/features/orders/presentation/pages/orders_page.dart';
 import 'package:mss301_mobile/features/showtime/presentation/pages/showtimes_page.dart';
 
+import 'support/pump_test_app.dart';
+
 void main() {
+  setUp(() => appRouter.go(AppRoutes.home));
+
   for (final width in [360.0, 390.0, 412.0]) {
-    testWidgets('home navigation at ${width.toInt()} px', (tester) async {
+    testWidgets('wallet Home renders at ${width.toInt()} px', (tester) async {
       await tester.binding.setSurfaceSize(Size(width, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-      await tester.pumpAndSettle();
+      await pumpTestApp(tester);
 
-      expect(find.text('Phim đang chiếu'), findsOneWidget);
-      await tester.tap(find.text('Đặt vé ngay'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Chi tiết phim'), findsOneWidget);
-      expect(find.textContaining('Thông tin đầy đủ và đặt vé'), findsOneWidget);
-
-      await tester.tap(find.byTooltip('Quay lại'));
-      await tester.pumpAndSettle();
-      expect(find.text('Phim đang chiếu'), findsOneWidget);
+      expect(find.text('MUA VÉ NHANH'), findsOneWidget);
+      expect(find.text('Khám phá phim'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-tab-ai')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-tab-now-showing')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('home-ai-coverflow')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-now-showing-coverflow')),
+        findsNothing,
+      );
+      expect(find.text('RẠP CINEPREMIER'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   }
 
-  testWidgets('home preview and cinema information open', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(360, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('Home switches between AI and now showing in one carousel', (
+    tester,
+  ) async {
+    await pumpTestApp(tester, size: const Size(390, 844));
+    expect(find.byKey(const ValueKey('home-ai-coverflow')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-now-showing-coverflow')),
+      findsNothing,
+    );
+    final aiMovies = tester
+        .widget<MovieCoverflow>(find.byKey(const ValueKey('home-ai-coverflow')))
+        .movies;
+    await tester.ensureVisible(find.byKey(const ValueKey('movie-coverflow')));
+    await tester.drag(
+      find.byKey(const ValueKey('movie-coverflow')),
+      const Offset(-110, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('movie-info-${aiMovies[1].id}')),
+      findsOneWidget,
+    );
 
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-tab-now-showing')),
+    );
+    await tester.tap(find.byKey(const ValueKey('home-tab-now-showing')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('home-ai-coverflow')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('home-now-showing-coverflow')),
+      findsOneWidget,
+    );
 
-    await tester.tap(find.text('Xem trailer'));
+    await tester.tap(find.byKey(const ValueKey('home-tab-ai')));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Trailer sẽ được cập nhật'), findsOneWidget);
-    await tester.tap(find.byTooltip('Đóng'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('CineAI Central'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Nguyễn Huệ'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-ai-coverflow')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-now-showing-coverflow')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(ValueKey('movie-info-${aiMovies[1].id}')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('bottom navigation tabs navigate to destinations', (
@@ -54,9 +92,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const ProviderScope(child: CinePremierApp()));
-    await tester.pumpAndSettle();
-
+    await pumpTestApp(tester);
     final tabPages = [DiscoverPage, ShowtimesPage, OrdersPage, AccountPage];
 
     for (var i = 1; i < 5; i++) {

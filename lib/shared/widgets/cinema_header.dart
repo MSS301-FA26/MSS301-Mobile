@@ -1,107 +1,155 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/constants/cinema_info.dart';
+import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_theme.dart';
-import 'cinema_info_sheet.dart';
+import '../../features/cinema/application/cinema_preferences.dart';
+import '../../features/home/presentation/providers/home_providers.dart';
 
-class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
-  const CinemaHeader({super.key, required this.onUnavailable});
+class CinemaHeader extends ConsumerWidget implements PreferredSizeWidget {
+  const CinemaHeader({
+    super.key,
+    required this.onHome,
+    required this.onSearch,
+    required this.onAccount,
+    this.onNotifications,
+    this.compact = false,
+  });
 
-  final void Function(String feature) onUnavailable;
+  final VoidCallback onHome;
+  final VoidCallback onSearch;
+  final VoidCallback onAccount;
+  final VoidCallback? onNotifications;
+  final bool compact;
 
   @override
-  Size get preferredSize => const Size.fromHeight(64);
+  Size get preferredSize =>
+      Size.fromHeight(compact ? 56 : AppSpacing.headerHeight);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preferredId = ref.watch(preferredCinemaProvider).value;
+    final cinemas = ref.watch(homeCinemasProvider).value ?? [];
+    final selected = cinemas
+        .where((cinema) => cinema.id == preferredId)
+        .firstOrNull;
     return AppBar(
-      toolbarHeight: 64,
+      toolbarHeight: compact ? 56 : AppSpacing.headerHeight,
       automaticallyImplyLeading: false,
-      titleSpacing: 10,
+      titleSpacing: AppSpacing.xs,
+      backgroundColor: AppColors.background,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
       title: Row(
         children: [
-          const _BrandMark(),
-          const SizedBox(width: 6),
-          Expanded(
-            child: InkWell(
-              onTap: () => showModalBottomSheet<void>(
-                context: context,
-                backgroundColor: AppColors.surface,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: AppRadii.card,
-                ),
-                builder: (context) => const CinemaInfoSheet(),
-              ),
-              borderRadius: BorderRadius.circular(24),
+          if (compact)
+            InkWell(
+              key: const ValueKey('header-home-logo'),
+              onTap: onHome,
               child: Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.goldBorder),
+                  ),
+                  child: Text(
+                    'C',
+                    style: AppTextStyles.screenTitle.copyWith(
                       color: AppColors.gold,
-                      size: 17,
-                    ),
-                    SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        CinemaInfo.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Tìm kiếm',
-            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-            padding: EdgeInsets.zero,
-            onPressed: () => onUnavailable('Tìm kiếm'),
-            icon: const Icon(Icons.search, size: 22),
-          ),
-          IconButton(
-            tooltip: 'Thông báo',
-            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-            padding: EdgeInsets.zero,
-            onPressed: () => onUnavailable('Thông báo'),
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.notifications_none, size: 22),
-                Positioned(
-                  top: 1,
-                  right: 0,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: AppColors.gold,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.background),
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-              ],
+              ),
+            )
+          else
+            _BrandMark(onTap: onHome),
+          const SizedBox(width: AppSpacing.xs),
+          if (compact)
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'CINEPREMIER',
+                  style: AppTextStyles.emphasis.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: InkWell(
+                onTap: () => context.push(AppRoutes.cinemas),
+                borderRadius: AppRadii.control,
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceHigh,
+                    borderRadius: AppRadii.control,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        color: AppColors.gold,
+                        size: 17,
+                      ),
+                      SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          selected?.name ?? 'Chọn rạp',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.meta.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
+          IconButton(
+            tooltip: 'Tìm kiếm',
+            constraints: BoxConstraints.tightFor(
+              width: compact ? 48 : 44,
+              height: compact ? 48 : 44,
+            ),
+            padding: EdgeInsets.zero,
+            onPressed: onSearch,
+            icon: const Icon(Icons.search, size: 22),
           ),
+          if (!compact)
+            IconButton(
+              tooltip: 'Thông báo • Sắp có',
+              constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+              padding: EdgeInsets.zero,
+              onPressed: onNotifications,
+              icon: const Icon(Icons.notifications_none, size: 22),
+            ),
           IconButton(
             tooltip: 'Tài khoản',
-            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+            constraints: BoxConstraints.tightFor(
+              width: compact ? 48 : 44,
+              height: compact ? 48 : 44,
+            ),
             padding: EdgeInsets.zero,
-            onPressed: () => onUnavailable('Tài khoản'),
+            onPressed: onAccount,
             icon: Container(
               width: 32,
               height: 32,
@@ -120,43 +168,64 @@ class CinemaHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: AppColors.border),
+        child: const Divider(height: 1, thickness: 1),
       ),
     );
   }
 }
 
 class _BrandMark extends StatelessWidget {
-  const _BrandMark();
+  const _BrandMark({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 40,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      label: 'Về trang chủ',
+      child: Material(
         color: AppColors.surface,
         borderRadius: AppRadii.control,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: 'C',
-              style: TextStyle(color: AppColors.text),
+        child: InkWell(
+          key: const ValueKey('header-home-logo'),
+          onTap: onTap,
+          borderRadius: AppRadii.control,
+          child: Padding(
+            // Keep the 40px visual mark while providing a 44px hit target.
+            padding: const EdgeInsets.all(2),
+            child: Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: AppRadii.control,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'C',
+                        style: TextStyle(color: AppColors.text),
+                      ),
+                      TextSpan(
+                        text: 'P',
+                        style: TextStyle(color: AppColors.gold),
+                      ),
+                    ],
+                  ),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                  ),
+                ),
+              ),
             ),
-            TextSpan(
-              text: 'P',
-              style: TextStyle(color: AppColors.gold),
-            ),
-          ],
-        ),
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -1,
+          ),
         ),
       ),
     );

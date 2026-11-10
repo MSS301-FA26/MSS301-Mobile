@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  /* CinePremier Standardized Brand & Accent Tokens */
+  --color-brand-yellow: #F5B800;
+  --color-primary-yellow: #F5B800;
+  --color-secondary-yellow: #DDAA00;
+  --color-surface-yellow-subtle: #242014;
+  --color-border-yellow: #4D3D0A;
+  --color-border-yellow-active: #F5B800;
+
+  /* Neutral Dark System (~85% UI coverage) */
+  --color-neutral-background: #0E0E0F;
+  --color-neutral-surface: #171719;
+  --color-neutral-surface-hover: #202024;
+  --color-neutral-surface-raised: #1C1C1F;
+  --color-neutral-border: #2B2B30;
+
+  /* Neutral Typography System (~10% UI coverage) */
+  --color-neutral-text-primary: #FFFFFF;
+  --color-neutral-text-secondary: #D4D4D8;
+  --color-neutral-text-tertiary: #A1A1AA;
+  --color-neutral-text-disabled: #71717A;
+
+  /* Theme semantic mappings */
+  --color-surface: #0E0E0F;
+  --color-surface-dim: #0E0E0F;
+  --color-surface-bright: #2B2B30;
+  --color-surface-container-lowest: #0A0A0B;
+  --color-surface-container-low: #141416;
+  --color-surface-container: #171719;
+  --color-surface-container-high: #1C1C1F;
+  --color-surface-container-highest: #202024;
+  --color-surface-variant: #202024;
+  --color-on-surface: #FFFFFF;
+  --color-on-surface-variant: #D4D4D8;
+  --color-primary: #F5B800;
+  --color-on-primary: #0E0E0F;
+  --color-primary-container: #F5B800;
+  --color-on-primary-container: #110E05;
+  --color-primary-fixed: #F5B800;
+  --color-primary-fixed-dim: #DDAA00;
+  --color-secondary: #ddb7ff;
+  --color-on-secondary: #490080;
+  --color-secondary-container: #6f00be;
+  --color-on-secondary-container: #d6a9ff;
+  --color-secondary-fixed: #f0dbff;
+  --color-secondary-fixed-dim: #ddb7ff;
+  --color-tertiary: #ffdfbc;
+  --color-on-tertiary: #472a00;
+  --color-tertiary-container: #ffbb65;
+  --color-on-tertiary-container: #764a00;
+  --color-tertiary-fixed: #ffddb8;
+  --color-tertiary-fixed-dim: #ffb95f;
+  --color-outline: #2B2B30;
+  --color-outline-variant: #3F3F46;
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-background: #0E0E0F;
+  --color-on-background: #FFFFFF;
+}
+
+@layer base {
+  html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #0E0E0F;
+    color: #FFFFFF;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  
+  /* Shared padding-bottom for content above Bottom Navigation:
+     Height of BottomNav (64px / 4rem) + extra buffer (20px / 1.25rem) + safe-area-inset-bottom */
+  .pb-bottom-nav {
+    padding-bottom: calc(4rem + 1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Custom Scrollbar suppression */
+::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Material Symbols fill utility */
+.icon-filled {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.icon-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}

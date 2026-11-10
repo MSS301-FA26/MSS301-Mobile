@@ -1,21 +1,26 @@
 # AI Studio to Flutter feature mapping
 
-The AI Studio export under `docs/ui-reference/ai-studio/` is a visual and interaction reference. Flutter uses native widgets, GoRouter, Riverpod, and structured mock presentation data. This document maps the full export; only Phase 1 and Phase 2 are implemented.
+The AI Studio export under `docs/ui-reference/ai-studio/` is a visual and interaction reference. Flutter uses native widgets, GoRouter, Riverpod, and structured mock data. This document maps the full export; Phase 1/2 and work packages R1–R3 are implemented. Existing screens now consume the backend-aligned mock repositories; no real API is connected.
 
 ## Screens
 
-| AI Studio screen | Flutter feature | Phase 1/2 status |
+| AI Studio screen | Flutter feature | Current status |
 | --- | --- | --- |
-| `HomeScreen.tsx` | `features/home/presentation` | Implemented |
-| `MovieDetailScreen.tsx` | `features/movie/presentation` | Route and visual placeholder |
-| `DiscoverScreen.tsx` | `features/search/presentation` | Deferred |
-| `ShowtimesScreen.tsx` | `features/showtime/presentation` | Deferred; also supplies the calendar tab |
-| `SeatsScreen.tsx` | `features/seat/presentation` | Deferred |
+| `HomeScreen.tsx` | `features/home/presentation` | Repository-backed mock UI; responsive/navigation regression covered |
+| `MovieDetailScreen.tsx` | `features/movie/presentation` | Repository-backed detail content, trailer and booking route active |
+| `DiscoverScreen.tsx` | `features/search/presentation` | Repository-backed mock UI under current `features/discover` alias |
+| `ShowtimesScreen.tsx` / `ai-studio-v2` | `features/showtime/presentation` | V2: one selected slot plus sticky Vé & Ghế CTA; auth gate runs on CTA |
+| `SeatsScreen.tsx` / `ai-studio-v2` | `features/seat/presentation` | V2: Adult/Student/Child counters, max 8, seat assignment, metadata layout, one-tap hold/navigation, conflict/expiry/leave guards |
+| Concessions / Checkout | `features/booking/presentation` | V2: Back returns to held seat mapping, cart persists, quote and VNPay mock preserve ticket-seat assignments |
+| Payment Result / Ticket QR | `features/booking/presentation` | V2: payment state separated from booking verification; QR only for `PAID`; ticket groups seats using `booking.tickets` |
+| Auth flows | `features/auth/presentation` | R6 implemented: login, register/OTP, reset password, guest and pending booking resume |
+| Profile / Wallet / CinePoints / Security | `features/account/presentation` | R6 implemented with backend-aligned repositories and mock mutation |
+| Preview flows | `features/preview` | R7 implemented behind compile-time flags with `Provisional*` repository/model |
 | `ConcessionsScreen.tsx` | `features/food/presentation` | Deferred |
 | `PaymentScreen.tsx` | `features/checkout/presentation` and `features/payment/presentation` | Deferred |
-| `OrdersScreen.tsx` | `features/booking/presentation` | Deferred |
+| `OrdersScreen.tsx` | `features/booking/presentation` | Reads `BookingRepository` under current `features/orders` alias; ticket/refund deferred |
 | `TicketDetailScreen.tsx` | `features/ticket/presentation` | Deferred |
-| `AccountScreen.tsx` | `features/profile/presentation` | Deferred |
+| `AccountScreen.tsx` | `features/profile/presentation` | Composes profile/wallet/loyalty repositories under current `features/account` alias; child routes deferred |
 | `WalletScreen.tsx` | `features/wallet/presentation` | Deferred |
 | `VouchersScreen.tsx` | `features/promotion/presentation` | Deferred |
 | `VoucherDetailScreen.tsx` | `features/promotion/presentation` | Deferred |
@@ -54,8 +59,21 @@ The reference uses Material Symbols. Flutter uses the closest built-in Material 
 
 AI Studio has no bundled image or font assets. Its movie data contains external URLs, some of which resolve to unrelated UI mockups. Flutter bundles mock posters and banners under `assets/mock/movies/`, with provenance and remaining banner TODOs in `assets/mock/README.md`. Inter and its license are under `assets/fonts/`. The Phase 2 Home screen uses eight structured mock movies and one mock cinema.
 
+## Backend-aligned contract foundation
+
+R2 is implemented without connecting to a real API:
+
+- shared response/page parsing, `AppClock`/`FakeAppClock`, integer IDs and integer VND money;
+- backend-shaped catalog, showtime/seat map, checkout quote, booking, payment, profile, wallet, withdrawal and loyalty DTOs;
+- enum parsing with an `unknown` fallback and explicit catalog-seat-to-booking-seat mapping;
+- repository interfaces, in-memory mock implementations and Riverpod provider bindings;
+- deterministic scenario data for Inception, the 20:30 showtime, seats C4/C5, 90.000đ tickets, the 89.000đ combo and a 269.000đ quote;
+- contract and repository lifecycle tests, including hold conflict/expiry and the separate payment `SUCCESS` → booking `PAID` transition.
+
+R3 connects Home, Discover, Movie, Showtimes, Orders and Account to this local repository boundary. Presentation-only metadata stays outside backend DTOs, while IDs, date/time, VND values and contract statuses remain typed through the mapper boundary.
+
 ## Navigation scope
 
-The active Flutter routes are `/home` and `/movie/:id`. Home movie taps open the Movie Detail placeholder; back returns to Home. The five-tab bar matches the reference visually. Other tab destinations and the booking flow are deferred with clear provisional feedback, so Phase 1/2 does not imply completed screens or backend behavior.
+The active Flutter routes are `/home`, `/discover`, `/showtimes`, `/orders`, `/account`, and `/movie/:id`. `/showtimes` accepts an optional `movieId` query. The five-tab bar, movie detail navigation, filtered booking entry, Search/Account header actions, and cinema information sheet are active. Actions without a destination are disabled or hidden according to `MOBILE_CTA_ROUTE_REGISTRY.md`; seat selection, ticket, auth/account child routes, and preview flows remain deferred.
 
-No API client, repository, use case, data source, or backend integration belongs in this phase.
+No API client, remote data source, or backend integration is active. Local repository interfaces and mock implementations are the active data boundary for R3.

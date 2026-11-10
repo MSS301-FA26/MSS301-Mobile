@@ -1,0 +1,652 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/network/api_exception.dart';
+import '../../auth/application/auth_session.dart';
+import '../../booking/application/booking_checkpoint.dart';
+import '../../movie/data/models/catalog_enums.dart';
+import '../../movie/data/repositories/catalog_providers.dart';
+import '../../orders/data/models/booking_dto.dart';
+import '../../orders/data/models/booking_enums.dart';
+import '../../showtime/data/models/showtime_dto.dart';
+import '../data/repositories/seat_hold_providers.dart';
+import '../presentation/providers/seat_map_provider.dart';
+import 'single_seat_gap.dart';
+
+enum BookingEntryPhase {
+  idle,
+  selectingSeats,
+  submittingHold,
+  holding,
+  expired,
+}
+
+abstract final class BookingTicketPolicy {
+  static const maxTickets = 8;
+  static const supportedTypes = [
+    TicketType.adult,
+    TicketType.student,
+    TicketType.child,
+  ];
+
+  static int minimumMovieAge(String? rating) =>
+      switch (rating?.trim().toUpperCase().replaceAll(' ', '')) {
+        'T13' || '13+' => 13,
+        'T16' || '16+' => 16,
+        'T18' || '18+' => 18,
+        _ => 0,
+      };
+
+  static String? restriction(TicketType type, String? rating) {
+    final minimum = minimumMovieAge(rating);
+    if (type == TicketType.child && minimum > 12) {
+      return 'Phim dành cho người từ $minimum tuổi. Vé trẻ em chỉ áp dụng cho người từ 0–12 tuổi nên không thể mua cho phim này.';
+    }
+    return null;
+  }
+
+  static int defaultViewerAge(TicketType type) => switch (type) {
+    TicketType.child => 10,
+    TicketType.student => 20,
+    _ => 30,
+  };
+}
+
+class SeatTicketAssignment {
+  const SeatTicketAssignment({
+    required this.seatId,
+    required this.ticketType,
+    this.viewerAge,
+  });
+  final int seatId;
+  final TicketType ticketType;
+  final int? viewerAge;
+}
+
+class BookingEntryState {
+  const BookingEntryState({
+    required this.phase,
+    this.movieId,
+    this.movieAgeRating,
+    this.showtimeId,
+    this.ticketQuantities = const {},
+    this.activeTicketType,
+    this.assignments = const {},
+    this.couplePairs = const {},
+    this.unavailableSeatIds = const {},
+    this.booking,
+    this.message,
+  });
+
+  const BookingEntryState.idle() : this(phase: BookingEntryPhase.idle);
+
+  final BookingEntryPhase phase;
+  final int? movieId;
+  final String? movieAgeRating;
+  final int? showtimeId;
+  final Map<TicketType, int> ticketQuantities;
+  final TicketType? activeTicketType;
+  final Map<int, SeatTicketAssignment> assignments;
+  final Map<int, int> couplePairs;
+  final Set<int> unavailableSeatIds;
+  final BookingDto? booking;
+  final String? message;
+
+  Set<int> get selectedSeatIds => assignments.keys.toSet();
+  int get ticketCount => ticketQuantities.values.fold(0, (a, b) => a + b);
+  int get assignedCount => assignments.length;
+  bool get assignmentComplete =>
+      ticketCount > 0 &&
+      ticketCount == assignedCount &&
+      assignments.values.every((item) {
+        final partner = couplePairs[item.seatId];
+        return partner == null ||
+            assignments[partner]?.ticketType == item.ticketType;
+      });
+  int quantityFor(TicketType type) => ticketQuantities[type] ?? 0;
+  int assignedFor(TicketType type) =>
+      assignments.values.where((item) => item.ticketType == type).length;
+  bool get hasActiveDraft => phase != BookingEntryPhase.idle;
+  bool get hasActiveHold =>
+      booking?.status == BookingStatus.holding ||
+      booking?.status == BookingStatus.pendingPayment;
+}
+
+class BookingEntryController extends Notifier<BookingEntryState> {
+  @override
+  BookingEntryState build() {
+    _generation++;
+    ref.watch(authSessionProvider.select((auth) => auth.session?.user.id));
+    return const BookingEntryState.idle();
+  }
+
+  bool _leaving = false;
+  int _generation = 0;
+  ShowtimeSeatMapDto? _latestSeatMap;
+
+  String? _gapMessage(Set<int> before, Set<int> after) {
+    final map = _latestSeatMap;
+    if (map == null || map.showtime.id != state.showtimeId) return null;
+    final seat = newlyOrphanedSeat(map.seats, before, after);
+    return seat == null
+        ? null
+        : 'Hàng ${seat.rowLabel}: ghế ${seat.rowLabel}${seat.seatNumber} sẽ bị bỏ trống đơn lẻ. Hãy chọn liền ghế hoặc đổi nhóm.';
+  }
+
+  void restoreBooking(
+    BookingDto booking, {
+    Map<int, int> viewerAges = const {},
+  }) {
+    final quantities = <TicketType, int>{};
+    for (final ticket in booking.tickets) {
+      quantities.update(
+        ticket.ticketType,
+        (value) => value + ticket.quantity,
+        ifAbsent: () => ticket.quantity,
+      );
+    }
+    state = BookingEntryState(
+      phase: BookingEntryPhase.holding,
+      movieId: booking.movieId,
+      movieAgeRating: state.showtimeId == booking.showtimeId
+          ? state.movieAgeRating
+          : null,
+      showtimeId: booking.showtimeId,
+      booking: booking,
+      couplePairs: state.showtimeId == booking.showtimeId
+          ? state.couplePairs
+          : const {},
+      ticketQuantities: quantities,
+      activeTicketType: quantities.keys.firstOrNull,
+      assignments: {
+        for (final ticket in booking.tickets)
+          ticket.seatId: SeatTicketAssignment(
+            seatId: ticket.seatId,
+            ticketType: ticket.ticketType,
+            viewerAge:
+                viewerAges[ticket.seatId] ??
+                BookingTicketPolicy.defaultViewerAge(ticket.ticketType),
+          ),
+      },
+    );
+  }
+
+  void begin({
+    required int movieId,
+    required int showtimeId,
+    String? movieAgeRating,
+    Map<int, int> couplePairs = const {},
+  }) {
+    if (state.showtimeId == showtimeId && state.hasActiveDraft) {
+      state = _copy(movieAgeRating: movieAgeRating, couplePairs: couplePairs);
+      return;
+    }
+    _generation++;
+    _latestSeatMap = null;
+    state = BookingEntryState(
+      phase: BookingEntryPhase.selectingSeats,
+      movieId: movieId,
+      movieAgeRating: movieAgeRating,
+      couplePairs: couplePairs,
+      showtimeId: showtimeId,
+    );
+  }
+
+  /// Applies a server seat map without changing ticket quantities or choosing
+  /// replacement seats on the customer's behalf.
+  void reconcileSeatMap(
+    ShowtimeSeatMapDto map, {
+    bool duringHoldCheck = false,
+  }) {
+    if (map.showtime.id != state.showtimeId ||
+        (state.phase != BookingEntryPhase.selectingSeats &&
+            !(duringHoldCheck &&
+                state.phase == BookingEntryPhase.submittingHold))) {
+      return;
+    }
+    _latestSeatMap = map;
+    final unavailable = map.seats
+        .where((seat) => !seat.selectable)
+        .map((seat) => seat.seatId)
+        .toSet();
+    final present = map.seats.map((seat) => seat.seatId).toSet();
+    final lost = state.selectedSeatIds
+        .where((id) => unavailable.contains(id) || !present.contains(id))
+        .toSet();
+    final removed = <int>{...lost};
+    for (final id in lost) {
+      final partner = state.couplePairs[id];
+      if (partner != null) removed.add(partner);
+    }
+    final nextAssignments = Map<int, SeatTicketAssignment>.from(
+      state.assignments,
+    )..removeWhere((id, _) => removed.contains(id));
+    if (removed.isEmpty &&
+        unavailable.length == state.unavailableSeatIds.length &&
+        unavailable.containsAll(state.unavailableSeatIds)) {
+      return;
+    }
+    final labels = map.seats
+        .where((seat) => removed.contains(seat.seatId))
+        .map((seat) => '${seat.rowLabel}${seat.seatNumber}')
+        .toList(growable: false);
+    state = _copy(
+      assignments: nextAssignments,
+      unavailableSeatIds: unavailable,
+      message: removed.isEmpty
+          ? state.message
+          : 'Ghế ${labels.join(', ')} không còn trống. Vui lòng chọn lại ghế.',
+    );
+  }
+
+  bool setTicketQuantity(
+    TicketType type,
+    int quantity, {
+    bool removeExcessAssignments = false,
+  }) {
+    if (state.phase != BookingEntryPhase.selectingSeats ||
+        !BookingTicketPolicy.supportedTypes.contains(type)) {
+      return false;
+    }
+    final restriction = BookingTicketPolicy.restriction(
+      type,
+      state.movieAgeRating,
+    );
+    if (quantity > 0 && restriction != null) {
+      state = _copy(message: restriction);
+      return false;
+    }
+    final nextQuantity = quantity.clamp(0, BookingTicketPolicy.maxTickets);
+    final totalWithoutType = state.ticketCount - state.quantityFor(type);
+    if (totalWithoutType + nextQuantity > BookingTicketPolicy.maxTickets) {
+      state = _copy(message: 'Mỗi giao dịch chỉ được đặt tối đa 8 vé.');
+      return false;
+    }
+    final assigned = state.assignments.values
+        .where((item) => item.ticketType == type)
+        .toList(growable: false);
+    if (assigned.length > nextQuantity && !removeExcessAssignments) {
+      return false;
+    }
+    final nextAssignments = Map<int, SeatTicketAssignment>.from(
+      state.assignments,
+    );
+    if (assigned.length > nextQuantity) {
+      for (final item in assigned.skip(nextQuantity)) {
+        nextAssignments.remove(item.seatId);
+        final partner = state.couplePairs[item.seatId];
+        if (partner != null) nextAssignments.remove(partner);
+      }
+    }
+    final gap = _gapMessage(
+      state.selectedSeatIds,
+      nextAssignments.keys.toSet(),
+    );
+    if (gap != null) {
+      state = _copy(
+        message: '$gap Bỏ toàn bộ nhóm ghế liên quan trước khi giảm vé.',
+      );
+      return false;
+    }
+    final quantities = Map<TicketType, int>.from(state.ticketQuantities);
+    if (nextQuantity == 0) {
+      quantities.remove(type);
+    } else {
+      quantities[type] = nextQuantity;
+    }
+    final TicketType? active = nextQuantity > 0
+        ? type
+        : (quantities.isEmpty ? null : quantities.keys.first);
+    state = _copy(
+      ticketQuantities: quantities,
+      assignments: nextAssignments,
+      activeTicketType: active,
+      clearActiveTicketType: active == null,
+      clearMessage: true,
+    );
+    return true;
+  }
+
+  void setActiveTicketType(TicketType type) {
+    if (state.quantityFor(type) == 0 ||
+        state.phase != BookingEntryPhase.selectingSeats) {
+      return;
+    }
+    state = _copy(activeTicketType: type, clearMessage: true);
+  }
+
+  void toggleSeatIds(
+    Set<int> seatIds, {
+    Set<int> unavailableSeatIds = const {},
+  }) {
+    if (state.phase != BookingEntryPhase.selectingSeats) return;
+    if (seatIds.isEmpty) {
+      state = _copy(message: 'Ghế đôi phải gồm đủ 2 ghế cùng loại vé.');
+      return;
+    }
+    seatIds = {
+      ...seatIds,
+      for (final id in seatIds)
+        if (state.couplePairs[id] != null) state.couplePairs[id]!,
+    };
+    final next = Map<int, SeatTicketAssignment>.from(state.assignments);
+    if (seatIds.every(next.containsKey)) {
+      for (final id in seatIds) {
+        next.remove(id);
+      }
+      final gap = _gapMessage(state.selectedSeatIds, next.keys.toSet());
+      if (gap != null) {
+        state = _copy(message: gap);
+        return;
+      }
+      state = _copy(assignments: next, clearMessage: true);
+      return;
+    }
+    if (seatIds.any(unavailableSeatIds.contains) ||
+        seatIds.any(state.unavailableSeatIds.contains)) {
+      state = _copy(
+        message: 'Cặp ghế này không còn đủ 2 ghế trống. Hãy chọn ghế khác.',
+      );
+      return;
+    }
+    if (seatIds.any(next.containsKey)) {
+      state = _copy(
+        message: 'Ghế đôi phải gồm đủ 2 ghế cùng loại vé. Hãy bỏ cặp ghế trước khi đổi loại vé.',
+      );
+      return;
+    }
+    final type = state.activeTicketType;
+    if (type == null) {
+      state = _copy(
+        message: 'Hãy chọn số lượng và loại vé trước khi chọn ghế.',
+      );
+      return;
+    }
+    final newIds = seatIds.where((id) => !next.containsKey(id)).toList();
+    final remaining = state.quantityFor(type) - state.assignedFor(type);
+    if (newIds.length > remaining) {
+      state = _copy(
+        message: 'Loại vé đang chọn chỉ còn $remaining ghế cần gán.',
+      );
+      return;
+    }
+    for (final id in newIds) {
+      next[id] = SeatTicketAssignment(
+        seatId: id,
+        ticketType: type,
+        viewerAge: BookingTicketPolicy.defaultViewerAge(type),
+      );
+    }
+    final gap = _gapMessage(state.selectedSeatIds, next.keys.toSet());
+    if (gap != null) {
+      state = _copy(message: gap);
+      return;
+    }
+    state = _copy(assignments: next, clearMessage: true);
+  }
+
+  Future<BookingDto?> holdSelectedSeats() async {
+    final generation = _generation;
+    if (state.phase == BookingEntryPhase.expired) return null;
+    if (state.hasActiveHold) {
+      if (remainingHold() == Duration.zero) {
+        state = _copy(
+          phase: BookingEntryPhase.expired,
+          message: 'Thời gian giữ ghế đã hết.',
+        );
+        return null;
+      }
+      return state.booking;
+    }
+    if (state.phase == BookingEntryPhase.submittingHold) return null;
+    final showtimeId = state.showtimeId;
+    if (showtimeId == null || !state.assignmentComplete) {
+      state = _copy(
+        message: 'Hãy gán đủ ghế cho tất cả vé trước khi tiếp tục.',
+      );
+      return null;
+    }
+    final mock = ref.read(seatHoldRepositoryProvider).canEnterMockCheckout;
+    state = _copy(phase: BookingEntryPhase.submittingHold, clearMessage: true);
+    try {
+      final freshMap = await ref.refresh(seatMapProvider(showtimeId).future);
+      if (!ref.mounted ||
+          generation != _generation ||
+          state.showtimeId != showtimeId) {
+        return null;
+      }
+      if (freshMap.showtime.id != showtimeId) {
+        throw StateError('Seat map does not match showtime');
+      }
+      reconcileSeatMap(freshMap, duringHoldCheck: true);
+      if (!state.assignmentComplete || state.selectedSeatIds.isEmpty) {
+        state = _copy(
+          phase: BookingEntryPhase.selectingSeats,
+          message: state.message ?? 'Sơ đồ ghế đã thay đổi. Hãy chọn lại ghế.',
+        );
+        return null;
+      }
+      final gap = newlyOrphanedSeat(
+        freshMap.seats,
+        const {},
+        state.selectedSeatIds,
+      );
+      if (gap != null) {
+        state = _copy(
+          phase: BookingEntryPhase.selectingSeats,
+          message:
+              'Sơ đồ ghế đã thay đổi: ghế ${gap.rowLabel}${gap.seatNumber} bị bỏ trống đơn lẻ. Hãy điều chỉnh lựa chọn.',
+        );
+        return null;
+      }
+      final tickets = state.assignments.values
+          .map(
+            (assignment) => TicketSelectionDto(
+              seatId: assignment.seatId,
+              ticketType: assignment.ticketType,
+              viewerAge:
+                  assignment.viewerAge ??
+                  BookingTicketPolicy.defaultViewerAge(assignment.ticketType),
+            ),
+          )
+          .toList(growable: false);
+      final booking = await ref
+          .read(seatHoldRepositoryProvider)
+          .hold(
+            HoldSeatsRequestDto(
+              showtimeId: showtimeId,
+              seatIds: state.selectedSeatIds.toList(growable: false),
+              tickets: tickets,
+            ),
+          );
+      if (!ref.mounted ||
+          generation != _generation ||
+          state.showtimeId != showtimeId) {
+        return null;
+      }
+      state = _copy(phase: BookingEntryPhase.holding, booking: booking);
+      final userId = ref.read(authSessionProvider).session?.user.id;
+      if (userId != null && !mock) {
+        await ref
+            .read(bookingCheckpointStoreProvider)
+            .save(
+              userId,
+              BookingCheckpoint(
+                bookingId: booking.id,
+                viewerAges: {
+                  for (final ticket in tickets)
+                    if (ticket.viewerAge != null)
+                      ticket.seatId: ticket.viewerAge!,
+                },
+              ),
+            );
+        ref.invalidate(resumableBookingProvider);
+      }
+      return booking;
+    } on ApiException catch (error) {
+      if (!ref.mounted || generation != _generation) return null;
+      ShowtimeSeatMapDto? freshMap;
+      if (error.type == ApiErrorType.conflict) {
+        try {
+          freshMap = await ref.refresh(seatMapProvider(showtimeId).future);
+        } catch (_) {
+          // Report the original hold failure when refreshing is also offline.
+        }
+      }
+      if (!ref.mounted || generation != _generation) return null;
+      if (freshMap != null) {
+        reconcileSeatMap(freshMap, duringHoldCheck: true);
+      }
+      state = _copy(
+        phase: BookingEntryPhase.selectingSeats,
+        message: error.type == ApiErrorType.conflict
+            ? state.message ??
+                  'Ghế đã thay đổi trạng thái. Hãy chọn lại ghế còn trống.'
+            : error.message,
+      );
+      return null;
+    } catch (error) {
+      if (!ref.mounted || generation != _generation) return null;
+      state = _copy(
+        phase: BookingEntryPhase.selectingSeats,
+        message: 'Chưa kiểm tra được trạng thái ghế. Vui lòng thử lại.',
+      );
+      return null;
+    }
+  }
+
+  Future<bool> refreshExpiry() async {
+    final booking = state.booking;
+    final generation = _generation;
+    if (booking == null || !state.hasActiveHold) return false;
+    if (remainingHold() == Duration.zero) {
+      state = _copy(
+        phase: BookingEntryPhase.expired,
+        message: 'Thời gian giữ ghế đã hết.',
+      );
+      return true;
+    }
+    final refreshed = await ref
+        .read(seatHoldRepositoryProvider)
+        .getBooking(booking.id);
+    if (!ref.mounted ||
+        generation != _generation ||
+        state.booking?.id != booking.id) {
+      return false;
+    }
+    if (refreshed.status != BookingStatus.expired) return false;
+    state = _copy(
+      phase: BookingEntryPhase.expired,
+      booking: refreshed,
+      message: 'Thời gian giữ ghế đã hết.',
+    );
+    return true;
+  }
+
+  Duration remainingHold() {
+    final expiry = state.booking?.holdExpiresAt;
+    if (expiry == null) return Duration.zero;
+    final remaining = expiry.difference(ref.read(appClockProvider).now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  Future<bool> abandon() async {
+    final generation = _generation;
+    final userId = ref.read(authSessionProvider).session?.user.id;
+    if (_leaving || state.phase == BookingEntryPhase.submittingHold) {
+      return false;
+    }
+    _leaving = true;
+    try {
+      final booking = state.booking;
+      if (booking != null && state.hasActiveHold) {
+        try {
+          await ref.read(seatHoldRepositoryProvider).cancel(booking.id);
+          if (!ref.mounted || generation != _generation) return false;
+        } catch (error) {
+          state = _copy(
+            message: error is ApiException ? error.message : error.toString(),
+          );
+          return false;
+        }
+      }
+      state = const BookingEntryState.idle();
+      if (userId != null) {
+        await ref.read(bookingCheckpointStoreProvider).clear(userId);
+      }
+      ref.invalidate(resumableBookingProvider);
+      return true;
+    } finally {
+      _leaving = false;
+    }
+  }
+
+  Future<bool> editHeldSelection() async {
+    final booking = state.booking;
+    final generation = _generation;
+    if (booking == null || !state.hasActiveHold) return true;
+    try {
+      await ref.read(seatHoldRepositoryProvider).cancel(booking.id);
+      if (!ref.mounted ||
+          generation != _generation ||
+          state.booking?.id != booking.id) {
+        return false;
+      }
+      state = _copy(
+        phase: BookingEntryPhase.selectingSeats,
+        clearBooking: true,
+        clearMessage: true,
+      );
+      return true;
+    } on ApiException catch (error) {
+      state = _copy(message: error.message);
+      return false;
+    }
+  }
+
+  void restartSelection() {
+    _generation++;
+    state = BookingEntryState(
+      phase: BookingEntryPhase.selectingSeats,
+      movieId: state.movieId,
+      movieAgeRating: state.movieAgeRating,
+      couplePairs: state.couplePairs,
+      showtimeId: state.showtimeId,
+      ticketQuantities: state.ticketQuantities,
+      activeTicketType: state.activeTicketType,
+    );
+  }
+
+  BookingEntryState _copy({
+    Map<int, int>? couplePairs,
+    String? movieAgeRating,
+    BookingEntryPhase? phase,
+    Map<TicketType, int>? ticketQuantities,
+    TicketType? activeTicketType,
+    bool clearActiveTicketType = false,
+    Map<int, SeatTicketAssignment>? assignments,
+    Set<int>? unavailableSeatIds,
+    BookingDto? booking,
+    bool clearBooking = false,
+    String? message,
+    bool clearMessage = false,
+  }) => BookingEntryState(
+    phase: phase ?? state.phase,
+    movieId: state.movieId,
+    movieAgeRating: movieAgeRating ?? state.movieAgeRating,
+    showtimeId: state.showtimeId,
+    ticketQuantities: ticketQuantities ?? state.ticketQuantities,
+    activeTicketType: clearActiveTicketType
+        ? null
+        : activeTicketType ?? state.activeTicketType,
+    assignments: assignments ?? state.assignments,
+    couplePairs: couplePairs ?? state.couplePairs,
+    unavailableSeatIds: unavailableSeatIds ?? state.unavailableSeatIds,
+    booking: clearBooking ? null : booking ?? state.booking,
+    message: clearMessage ? null : message ?? state.message,
+  );
+}
+
+final bookingEntryProvider =
+    NotifierProvider<BookingEntryController, BookingEntryState>(
+      BookingEntryController.new,
+    );

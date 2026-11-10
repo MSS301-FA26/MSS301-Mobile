@@ -1,46 +1,251 @@
 import 'package:go_router/go_router.dart';
 
 import '../../features/account/presentation/pages/account_page.dart';
+import '../../features/account/presentation/pages/account_detail_pages.dart';
+import '../../features/account/presentation/pages/wallet_page.dart';
+import '../../features/account/presentation/pages/information_pages.dart';
+import '../../features/auth/presentation/pages/auth_page.dart';
+import '../../features/auth/presentation/widgets/auth_guard.dart';
+import '../../features/booking/presentation/pages/checkout_page.dart';
+import '../../features/booking/presentation/pages/concessions_page.dart';
+import '../../features/booking/presentation/pages/payment_result_page.dart';
+import '../../features/booking/presentation/pages/ticket_page.dart';
 import '../../features/discover/presentation/pages/discover_page.dart';
+import '../../features/cinema/presentation/pages/cinema_directory_page.dart';
+import '../../features/cinema/presentation/pages/cinema_detail_page.dart';
+import '../../features/food/presentation/pages/food_orders_history_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
-import '../../features/movie/presentation/pages/movie_detail_placeholder.dart';
+import '../../features/movie/presentation/pages/movie_detail_page.dart';
+import '../../features/movie/presentation/pages/watchlist_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
+import '../../features/preview/data/provisional_preview_repository.dart';
+import '../../features/preview/presentation/pages/preview_feature_page.dart';
+import '../../features/seat/presentation/pages/seat_selection_page.dart';
 import '../../features/showtime/presentation/pages/showtimes_page.dart';
+import 'app_routes.dart';
+import '../../features/food/presentation/pages/standalone_food_page.dart';
+import '../../features/food/presentation/pages/food_checkout_page.dart';
+import '../../features/popbot/presentation/chat_page.dart';
 
 final appRouter = GoRouter(
-  initialLocation: '/home',
+  initialLocation: AppRoutes.home,
   routes: [
-    GoRoute(path: '/', redirect: (context, state) => '/home'),
     GoRoute(
-      path: '/home',
+      path: AppRoutes.paymentCallback,
+      redirect: (context, state) {
+        final transactionReference =
+            state.uri.queryParameters['vnp_TxnRef'] ?? '';
+        final paymentId = int.tryParse(
+          RegExp(r'^\d+').firstMatch(transactionReference)?.group(0) ?? '',
+        );
+        return paymentId == null
+            ? AppRoutes.orders
+            : AppRoutes.payment(paymentId);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.foodShop,
+      builder: (context, state) => const AuthGuard(child: StandaloneFoodPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.foodOrderDetailPattern,
+      builder: (context, state) => AuthGuard(
+        child: FoodCheckoutPage(
+          orderId: int.parse(state.pathParameters['orderId']!),
+          expectedTotal: state.extra is int ? state.extra as int : null,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.chat,
+      builder: (context, state) => const PopBotChatPage(),
+    ),
+    GoRoute(path: '/', redirect: (context, state) => AppRoutes.home),
+    GoRoute(
+      path: AppRoutes.home,
       name: 'home',
       builder: (context, state) => const HomePage(),
     ),
     GoRoute(
-      path: '/discover',
+      path: AppRoutes.discover,
       name: 'discover',
       builder: (context, state) => const DiscoverPage(),
     ),
     GoRoute(
-      path: '/showtimes',
+      path: AppRoutes.showtimes,
       name: 'showtimes',
-      builder: (context, state) => const ShowtimesPage(),
+      builder: (context, state) => ShowtimesPage(
+        movieId: int.tryParse(state.uri.queryParameters['movieId'] ?? ''),
+        cinemaId: int.tryParse(state.uri.queryParameters['cinemaId'] ?? ''),
+        date: state.uri.queryParameters['date'],
+      ),
     ),
     GoRoute(
-      path: '/orders',
+      path: AppRoutes.cinemas,
+      builder: (context, state) => const CinemaDirectoryPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.cinemaDetailPattern,
+      builder: (context, state) => CinemaDetailPage(
+        cinemaId: int.tryParse(state.pathParameters['cinemaId'] ?? '') ?? -1,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.orders,
       name: 'orders',
-      builder: (context, state) => const OrdersPage(),
+      builder: (context, state) => const AuthGuard(child: OrdersPage()),
     ),
     GoRoute(
-      path: '/account',
+      path: AppRoutes.account,
       name: 'account',
-      builder: (context, state) => const AccountPage(),
+      builder: (context, state) => const AuthGuard(child: AccountPage()),
     ),
     GoRoute(
       path: '/movie/:id',
       name: 'movieDetail',
+      builder: (context, state) => MovieDetailPage(
+        movieId: int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+        showReviews: state.uri.queryParameters['section'] == 'reviews',
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.seatSelectionPattern,
+      name: 'seatSelection',
+      builder: (context, state) => SeatSelectionPage(
+        showtimeId:
+            int.tryParse(state.pathParameters['showtimeId'] ?? '') ?? -1,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.login,
+      builder: (context, state) => const AuthPage(mode: AuthPageMode.login),
+    ),
+    GoRoute(
+      path: AppRoutes.register,
+      builder: (context, state) => const AuthPage(mode: AuthPageMode.register),
+    ),
+    GoRoute(
+      path: AppRoutes.forgotPassword,
       builder: (context, state) =>
-          MovieDetailPlaceholder(movieId: state.pathParameters['id']!),
+          const AuthPage(mode: AuthPageMode.forgotPassword),
+    ),
+    GoRoute(
+      path: AppRoutes.profile,
+      builder: (context, state) => const AuthGuard(child: ProfileEditPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.security,
+      builder: (context, state) => const AuthGuard(child: SecurityPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.wallet,
+      builder: (context, state) => const AuthGuard(child: WalletPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.points,
+      builder: (context, state) => const AuthGuard(child: PointsPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.foodOrders,
+      builder: (context, state) =>
+          const AuthGuard(child: FoodOrdersHistoryPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.watchlist,
+      builder: (context, state) => const AuthGuard(child: WatchlistPage()),
+    ),
+    GoRoute(
+      path: AppRoutes.cinemaInfo,
+      redirect: (context, state) => AppRoutes.cinemas,
+    ),
+    GoRoute(
+      path: AppRoutes.policies,
+      builder: (context, state) =>
+          const InformationPage(type: InformationPageType.policies),
+    ),
+    GoRoute(
+      path: AppRoutes.support,
+      builder: (context, state) =>
+          const InformationPage(type: InformationPageType.support),
+    ),
+    GoRoute(
+      path: AppRoutes.concessionsPattern,
+      name: 'concessions',
+      builder: (context, state) => AuthGuard(
+        child: ConcessionsPage(
+          bookingId:
+              int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.checkoutPattern,
+      name: 'checkout',
+      builder: (context, state) => AuthGuard(
+        child: CheckoutPage(
+          bookingId:
+              int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.paymentPattern,
+      name: 'payment',
+      builder: (context, state) => AuthGuard(
+        child: PaymentResultPage(
+          paymentId:
+              int.tryParse(state.pathParameters['paymentId'] ?? '') ?? -1,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.ticketPattern,
+      name: 'ticket',
+      builder: (context, state) => AuthGuard(
+        child: TicketPage(
+          bookingId:
+              int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+        ),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.previewFood,
+      builder: (context, state) => const PreviewFeaturePage(
+        feature: ProvisionalPreviewFeature.independentFood,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.previewRefundPattern,
+      builder: (context, state) => PreviewFeaturePage(
+        feature: ProvisionalPreviewFeature.refund,
+        bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? -1,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.vouchers,
+      builder: (context, state) =>
+          const PreviewFeaturePage(feature: ProvisionalPreviewFeature.vouchers),
+    ),
+    GoRoute(
+      path: AppRoutes.vip,
+      builder: (context, state) =>
+          const PreviewFeaturePage(feature: ProvisionalPreviewFeature.vip),
+    ),
+    GoRoute(
+      path: AppRoutes.favorites,
+      builder: (context, state) => const PreviewFeaturePage(
+        feature: ProvisionalPreviewFeature.favorites,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.notifications,
+      builder: (context, state) => const PreviewFeaturePage(
+        feature: ProvisionalPreviewFeature.notifications,
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.popBot,
+      builder: (context, state) => const PopBotPreviewPage(),
     ),
   ],
 );

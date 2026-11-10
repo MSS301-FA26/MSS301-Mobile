@@ -13,6 +13,7 @@ class HeroCard extends StatelessWidget {
     required this.activeIndex,
     required this.count,
     required this.onOpen,
+    required this.onBook,
     required this.onTrailer,
     required this.onDot,
   });
@@ -21,6 +22,7 @@ class HeroCard extends StatelessWidget {
   final int activeIndex;
   final int count;
   final VoidCallback onOpen;
+  final VoidCallback onBook;
   final VoidCallback onTrailer;
   final void Function(int) onDot;
 
@@ -29,7 +31,7 @@ class HeroCard extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: AppRadii.card,
         border: Border.all(color: AppColors.border),
       ),
@@ -40,6 +42,7 @@ class HeroCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 GestureDetector(
+                  key: ValueKey('hero-open-${movie.id}'),
                   onTap: onOpen,
                   child: AppImage(
                     asset: movie.bannerAsset ?? movie.posterAsset,
@@ -75,8 +78,10 @@ class HeroCard extends StatelessWidget {
                             variant: AgeBadgeVariant.hero,
                           ),
                           const SizedBox(width: 7),
-                          Flexible(child: _HeroTag(movie.format)),
-                          const SizedBox(width: 7),
+                          if (movie.format.isNotEmpty) ...[
+                            Flexible(child: _HeroTag(movie.format)),
+                            const SizedBox(width: 7),
+                          ],
                           const Icon(
                             Icons.schedule,
                             size: 14,
@@ -100,7 +105,9 @@ class HeroCard extends StatelessWidget {
                             color: AppColors.gold,
                           ),
                           Text(
-                            movie.ratingCount.isEmpty
+                            movie.rating == null
+                                ? 'Chưa có đánh giá'
+                                : movie.ratingCount.isEmpty
                                 ? '${movie.rating}'
                                 : '${movie.rating} (${movie.ratingCount})',
                             style: const TextStyle(
@@ -111,7 +118,7 @@ class HeroCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 9),
+                      const SizedBox(height: AppSpacing.sm),
                       Text(
                         movie.title.toUpperCase(),
                         maxLines: 2,
@@ -128,14 +135,15 @@ class HeroCard extends StatelessWidget {
                           color: AppColors.textMuted,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: AppSpacing.md),
                       Row(
                         children: [
                           Expanded(
                             child: AppButton(
+                              key: ValueKey('hero-book-${movie.id}'),
                               label: 'Đặt vé ngay',
                               icon: Icons.confirmation_number_outlined,
-                              onPressed: onOpen,
+                              onPressed: onBook,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.xs),

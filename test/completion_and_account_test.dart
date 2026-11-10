@@ -1,0 +1,190 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mss301_mobile/features/booking/application/booking_completion_controller.dart';
+import 'package:mss301_mobile/core/routing/app_router.dart';
+import 'package:mss301_mobile/core/routing/app_routes.dart';
+import 'package:mss301_mobile/features/booking/presentation/pages/concessions_page.dart';
+import 'package:mss301_mobile/features/booking/presentation/pages/ticket_page.dart';
+import 'package:mss301_mobile/features/account/presentation/widgets/account_menu.dart';
+import 'package:mss301_mobile/features/account/presentation/pages/wallet_page.dart';
+import 'package:mss301_mobile/features/orders/presentation/widgets/booking_status_badge.dart';
+
+import 'support/pump_test_app.dart';
+
+void main() {
+  Future<ProviderContainer> pumpApp(
+    WidgetTester tester, {
+    Size size = const Size(390, 844),
+  }) async {
+    return pumpTestApp(tester, size: size);
+  }
+
+  Future<void> openPayment(WidgetTester tester) async {
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-tab-now-showing')),
+    );
+    await tester.tap(find.byKey(const ValueKey('home-tab-now-showing')));
+    await tester.pumpAndSettle();
+    final carousel = find.byKey(const ValueKey('movie-coverflow'));
+    await tester.ensureVisible(carousel);
+    await tester.drag(carousel, const Offset(-110, 0));
+    await tester.pumpAndSettle();
+    final bookAvengers = find.byKey(const ValueKey('home-now-book-2'));
+    await tester.ensureVisible(bookAvengers);
+    await tester.tap(bookAvengers);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('showtime-slot-1002')).hitTestable(),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('showtime-continue')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('ticket-plus-adult')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const ValueKey('seat-3001')));
+    await tester.tap(find.byKey(const ValueKey('seat-3001')));
+    // The continue action waits for the authoritative asynchronous quote.
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('seat-continue')));
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.byType(ConcessionsPage), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('concessions-continue')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('checkout-pay')));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'R5 completes hold, checkout, payment verification and QR ticket',
+    (tester) async {
+      await pumpApp(tester);
+      await openPayment(tester);
+
+      await tester.tap(find.byKey(const ValueKey('payment-success')));
+      await tester.pumpAndSettle();
+      expect(find.text('Đặt vé thành công'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('open-ticket')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TicketPage), findsOneWidget);
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BookingStatusBadge),
+          matching: find.text('Đã thanh toán'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('CP-MOCK-'), findsOneWidget);
+    },
+  );
+
+  testWidgets('R5 opens VNPay mock handoff before callback verification', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openPayment(tester);
+
+    expect(find.byKey(const ValueKey('payment-url')), findsOneWidget);
+    expect(find.textContaining('mock://vnpay/'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('payment-open-webview')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Đã mở VNPay Mock'), findsOneWidget);
+    expect(find.byKey(const ValueKey('payment-success')), findsOneWidget);
+  });
+
+  testWidgets('pending order detail exposes no usable QR before payment', (
+    tester,
+  ) async {
+    final container = await pumpApp(tester);
+    await openPayment(tester);
+    final bookingId = container.read(bookingCompletionProvider).booking!.id;
+    appRouter.go(AppRoutes.ticket(bookingId));
+    await tester.pumpAndSettle();
+    expect(find.text('Chi tiết đơn'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(BookingStatusBadge),
+        matching: find.text('Chờ thanh toán'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(QrImageView), findsNothing);
+  });
+
+  testWidgets('R5 payment failure can create a fresh retry payment', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await openPayment(tester);
+    await tester.tap(find.byKey(const ValueKey('payment-failure')));
+    await tester.pumpAndSettle();
+    expect(find.text('Thanh toán thất bại'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('payment-retry')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('payment-success')), findsOneWidget);
+  });
+
+  testWidgets('R6 authenticated customer opens account core actions', (
+    tester,
+  ) async {
+    await pumpApp(tester, size: const Size(360, 800));
+    appRouter.go(AppRoutes.account);
+    await tester.pumpAndSettle();
+    expect(find.text('Hồ sơ cá nhân'), findsOneWidget);
+    final accountMenu = find.byType(AccountMenu);
+    expect(
+      find.descendant(of: accountMenu, matching: find.text('CineWallet')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: accountMenu, matching: find.text('Chi tiết')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: accountMenu,
+        matching: find.text('Lịch sử đơn bắp nước'),
+      ),
+      findsNothing,
+    );
+    for (final removedItem in [
+      'Vé xem phim của tôi',
+      'CinePoints',
+      'Danh sách muốn xem',
+      'Chính sách',
+    ]) {
+      expect(
+        find.descendant(of: accountMenu, matching: find.text(removedItem)),
+        findsNothing,
+        reason: '$removedItem should not appear in the account menu',
+      );
+    }
+    await tester.tap(find.text('Chi tiết'));
+    await tester.pumpAndSettle();
+    expect(find.byType(WalletPage), findsOneWidget);
+    expect(find.byKey(const ValueKey('booking-header')), findsOneWidget);
+  });
+
+  testWidgets('R7 release-like build hides preview account actions', (
+    tester,
+  ) async {
+    await pumpApp(tester, size: const Size(412, 915));
+    appRouter.go(AppRoutes.account);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Trợ lý điện ảnh PopBot AI'), findsNothing);
+    expect(find.text('Ưu đãi & Voucher cá nhân'), findsNothing);
+    expect(find.text('Đặt bắp nước độc lập'), findsNothing);
+
+    appRouter.go(AppRoutes.popBot);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('PopBot AI đang tắt trong release-like build.'),
+      findsOneWidget,
+    );
+  });
+}

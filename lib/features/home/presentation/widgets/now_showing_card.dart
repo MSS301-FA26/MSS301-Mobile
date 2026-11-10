@@ -6,10 +6,16 @@ import '../../../../shared/widgets/age_badge.dart';
 import '../../../movie/presentation/models/movie.dart';
 
 class NowShowingCard extends StatelessWidget {
-  const NowShowingCard({super.key, required this.movie, required this.onOpen});
+  const NowShowingCard({
+    super.key,
+    required this.movie,
+    required this.onOpen,
+    required this.onBook,
+  });
 
   final Movie movie;
   final VoidCallback onOpen;
+  final VoidCallback onBook;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +71,9 @@ class NowShowingCard extends StatelessWidget {
                                   color: AppColors.gold,
                                 ),
                                 Text(
-                                  '${movie.rating}',
+                                  movie.rating == null
+                                      ? 'Chưa có đánh giá'
+                                      : '${movie.rating}',
                                   style: const TextStyle(
                                     color: AppColors.gold,
                                     fontSize: 11,
@@ -87,28 +95,22 @@ class NowShowingCard extends StatelessWidget {
                     movie.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
+                    style: AppTextStyles.cardTitle,
                   ),
                 ),
                 Text(
                   '${movie.genre} • ${movie.duration}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
+                  style: AppTextStyles.caption,
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   height: 36,
                   child: OutlinedButton.icon(
-                    onPressed: onOpen,
+                    key: ValueKey('now-showing-book-${movie.id}'),
+                    onPressed: onBook,
                     icon: const Icon(
                       Icons.confirmation_number_outlined,
                       size: 14,

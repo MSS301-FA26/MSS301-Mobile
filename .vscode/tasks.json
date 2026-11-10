@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Mobile: forward local gateway",
+      "type": "process",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tool/run_local.ps1", "-SetupOnly"],
+      "problemMatcher": []
+    }
+  ]
+}

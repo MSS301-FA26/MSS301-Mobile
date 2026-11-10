@@ -1,0 +1,85 @@
+abstract final class AppRoutes {
+  static const home = '/home';
+  static const foodShop = '/food-order';
+  static const foodOrderDetailPattern = '/food-order/:orderId';
+  static const chat = '/chat';
+  static String foodOrderDetail(int id) => '/food-order/$id';
+  static const discover = '/discover';
+  static const showtimes = '/showtimes';
+  static const cinemas = '/cinemas';
+  static const cinemaDetailPattern = '/cinemas/:cinemaId';
+  static const orders = '/orders';
+  static const account = '/account';
+  static const login = '/auth/login';
+  static const register = '/auth/register';
+  static const forgotPassword = '/auth/forgot-password';
+  static const profile = '/account/profile';
+  static const security = '/account/security';
+  static const wallet = '/account/wallet';
+  static const points = '/account/points';
+  static const foodOrders = '/account/food-orders';
+  static const cinemaInfo = '/information/cinema';
+  static const policies = '/information/policies';
+  static const support = '/support';
+  static const previewFood = '/preview/food';
+  static const previewRefundPattern = '/preview/refund/:bookingId';
+  static const vouchers = '/preview/vouchers';
+  static const vip = '/preview/vip';
+  static const favorites = '/preview/favorites';
+  static const watchlist = '/account/watchlist';
+  static const notifications = '/preview/notifications';
+  static const popBot = '/preview/popbot';
+  static const seatSelectionPattern = '/seat-selection/:showtimeId';
+  static const concessionsPattern = '/booking/:bookingId/concessions';
+  static const checkoutPattern = '/booking/:bookingId/checkout';
+  static const paymentPattern = '/payment/:paymentId';
+  static const paymentCallback = '/payment-callback';
+  static const ticketPattern = '/ticket/:bookingId';
+
+  static String movieReviews(int movieId) => Uri(
+    path: movieDetail(movieId),
+    queryParameters: {'section': 'reviews'},
+  ).toString();
+
+  static String movieDetail(int movieId) => '/movie/$movieId';
+
+  static String showtimesWithFilters({
+    int? movieId,
+    int? cinemaId,
+    DateTime? date,
+  }) => Uri(
+    path: showtimes,
+    queryParameters: {
+      if (movieId != null) 'movieId': '$movieId',
+      if (cinemaId != null) 'cinemaId': '$cinemaId',
+      if (date != null)
+        'date':
+            '${date.year.toString().padLeft(4, '0')}-'
+            '${date.month.toString().padLeft(2, '0')}-'
+            '${date.day.toString().padLeft(2, '0')}',
+    },
+  ).toString();
+
+  static String showtimesForMovie(int movieId) =>
+      showtimesWithFilters(movieId: movieId);
+
+  static String showtimesForCinema(int cinemaId) =>
+      showtimesWithFilters(cinemaId: cinemaId);
+
+  static String cinemaDetail(int cinemaId) => '/cinemas/$cinemaId';
+
+  static String seatSelection(int showtimeId) => '/seat-selection/$showtimeId';
+
+  static String concessions(int bookingId) => '/booking/$bookingId/concessions';
+
+  static String checkout(int bookingId) => '/booking/$bookingId/checkout';
+
+  static String payment(int paymentId) => '/payment/$paymentId';
+
+  static String ticket(int bookingId) => '/ticket/$bookingId';
+
+  static String previewRefund(int bookingId) => '/preview/refund/$bookingId';
+
+  static String loginWithRedirect(String route) =>
+      Uri(path: login, queryParameters: {'continue': route}).toString();
+}

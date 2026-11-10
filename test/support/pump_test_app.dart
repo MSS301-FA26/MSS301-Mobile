@@ -1,0 +1,145 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mss301_mobile/app/app.dart';
+import 'package:mss301_mobile/core/routing/app_router.dart';
+import 'package:mss301_mobile/core/routing/app_routes.dart';
+import 'package:mss301_mobile/features/auth/application/auth_session.dart';
+import 'package:mss301_mobile/features/movie/data/repositories/catalog_providers.dart';
+import 'package:mss301_mobile/features/movie/data/models/catalog_enums.dart';
+import 'package:mss301_mobile/features/home/data/home_banner_repository.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/poster_ambient_color.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/home_preview_provider.dart';
+import 'package:mss301_mobile/features/home/presentation/providers/home_recommendations_provider.dart';
+import 'package:mss301_mobile/features/orders/data/repositories/booking_providers.dart';
+import 'package:mss301_mobile/features/orders/data/repositories/booking_repository.dart';
+import 'package:mss301_mobile/features/orders/data/repositories/mock_booking_repository.dart';
+import 'package:mss301_mobile/features/orders/data/models/booking_dto.dart';
+import 'package:mss301_mobile/features/seat/data/repositories/seat_hold_providers.dart';
+import 'package:mss301_mobile/features/seat/data/repositories/seat_hold_repository.dart';
+import 'package:mss301_mobile/core/demo/demo_scenario.dart';
+import 'package:mss301_mobile/core/network/api_exception.dart';
+import 'package:mss301_mobile/features/payment/data/repositories/payment_providers.dart';
+import 'package:mss301_mobile/features/payment/data/repositories/mock_payment_repository.dart';
+import 'package:mss301_mobile/features/account/data/repositories/account_providers.dart';
+import 'package:mss301_mobile/features/account/presentation/providers/account_summary_provider.dart';
+import 'package:mss301_mobile/features/account/presentation/models/account_summary.dart';
+
+import 'fake_auth_session.dart';
+
+import 'package:mss301_mobile/features/booking/application/booking_checkpoint.dart';
+
+Future<ProviderContainer> pumpTestApp(
+  WidgetTester tester, {
+  AuthState? authState,
+  String initialLocation = AppRoutes.home,
+  Size? size,
+  List<dynamic> providerOverrides = const [],
+}) async {
+  appRouter.go(initialLocation);
+  if (size != null) {
+    await tester.binding.setSurfaceSize(size);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+  }
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        homeBannersProvider.overrideWith((ref) async => const []),
+        homeRecommendationsProvider.overrideWith((ref) async {
+          final showing = await ref.watch(
+            homeCategoryMoviesProvider(MovieStatus.nowShowing).future,
+          );
+          return [
+            for (final movie in showing.take(3))
+              HomeRecommendation(movie: movie, reason: 'Gợi ý cho bạn'),
+          ];
+        }),
+        posterAmbientLoaderProvider.overrideWithValue(
+          (_) async => const Color(0xFF232631),
+        ),
+        bookingCheckpointStoreProvider.overrideWithValue(_MemoryCheckpoints()),
+        catalogRepositoryProvider.overrideWith(
+          (ref) => ref.watch(mockCatalogRepositoryProvider),
+        ),
+        authSessionProvider.overrideWith(
+          () => FakeAuthSessionController(
+            authState ?? authenticatedCustomerState(),
+          ),
+        ),
+        bookingRepositoryProvider.overrideWith(
+          (ref) => MockBookingRepository(
+            ref.watch(appClockProvider),
+            ref.watch(mockCatalogRepositoryProvider),
+          ),
+        ),
+        seatHoldRepositoryProvider.overrideWith(
+          (ref) =>
+              _FakeSeatHoldRepository(ref.watch(bookingRepositoryProvider)),
+        ),
+        paymentRepositoryProvider.overrideWith(
+          (ref) => MockPaymentRepository(
+            ref.watch(appClockProvider),
+            ref.watch(bookingRepositoryProvider),
+          ),
+        ),
+        profileRepositoryProvider.overrideWith(
+          (ref) => ref.watch(mockAccountStoreProvider),
+        ),
+        accountSummaryProvider.overrideWith((ref) async {
+          final store = ref.watch(mockAccountStoreProvider);
+          return mapAccountSummary(
+            await store.getProfile(DemoIds.user),
+            await store.getWallet(DemoIds.user),
+            await store.getLoyalty(DemoIds.user),
+          );
+        }),
+        accountWalletProvider.overrideWith(
+          (ref) => ref.watch(mockAccountStoreProvider).getWallet(DemoIds.user),
+        ),
+        accountLoyaltyProvider.overrideWith(
+          (ref) => ref.watch(mockAccountStoreProvider).getLoyalty(DemoIds.user),
+        ),
+        ...providerOverrides,
+      ],
+      child: const CinePremierApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return ProviderScope.containerOf(tester.element(find.byType(CinePremierApp)));
+}
+
+class _MemoryCheckpoints implements BookingCheckpointStore {
+  final _values = <int, BookingCheckpoint>{};
+  @override
+  Future<BookingCheckpoint?> read(int userId) async => _values[userId];
+  @override
+  Future<void> save(int userId, BookingCheckpoint checkpoint) async {
+    _values[userId] = checkpoint;
+  }
+
+  @override
+  Future<void> clear(int userId) async {
+    _values.remove(userId);
+  }
+}
+
+class _FakeSeatHoldRepository implements SeatHoldRepository {
+  _FakeSeatHoldRepository(this._booking);
+  final BookingRepository _booking;
+  @override
+  bool get canEnterMockCheckout => true;
+  @override
+  Future<BookingDto> hold(HoldSeatsRequestDto request) async {
+    try {
+      return await _booking.holdSeats(DemoIds.user, request);
+    } on BookingConflictException catch (error) {
+      throw ApiException(type: ApiErrorType.conflict, message: error.message);
+    }
+  }
+
+  @override
+  Future<BookingDto> getBooking(int bookingId) async =>
+      (await _booking.getBooking(bookingId))!;
+  @override
+  Future<BookingDto> cancel(int bookingId) => _booking.cancel(bookingId);
+}

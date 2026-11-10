@@ -1,0 +1,3 @@
+# The app currently owns one process-wide GoRouter. Keep widget files serial so
+# navigation state cannot race between independent ProviderScope test trees.
+concurrency: 1

@@ -1,0 +1,8 @@
+{
+  "name": "Remix CinePremier - Đặt Vé Xem Phim \u0026 PopBot AI",
+  "description": "Ứng dụng đặt vé xem phim cao cấp CinePremier với trải nghiệm rạp VIP, chọn ghế 3D, bắp nước, ví CineWallet và trợ lý điện ảnh PopBot AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

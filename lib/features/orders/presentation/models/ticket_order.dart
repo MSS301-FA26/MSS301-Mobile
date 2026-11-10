@@ -1,3 +1,9 @@
+import '../../../../core/time/vietnam_time.dart';
+import '../../../../core/money/vnd_money.dart';
+import '../../data/models/booking_dto.dart';
+import '../../data/models/booking_enums.dart';
+import '../../../movie/data/models/catalog_enums.dart';
+
 class TicketOrder {
   const TicketOrder({
     required this.id,
@@ -9,31 +15,119 @@ class TicketOrder {
     required this.format,
     required this.cinemaLocation,
     required this.roomName,
-    required this.dateTime,
+    required this.showtimeAt,
+    this.showtimeEnd,
     required this.seats,
     required this.seatsTypeLabel,
+    this.foods = const [],
     required this.concessionsSummary,
     required this.totalPrice,
     required this.status,
-    required this.statusLabel,
   });
 
-  final String id;
+  final int id;
   final String ticketCode;
-  final String movieId;
+  final int movieId;
   final String movieTitle;
   final String moviePoster;
   final String ageRating;
   final String format;
   final String cinemaLocation;
   final String roomName;
-  final String dateTime;
+  final DateTime? showtimeAt;
+  final DateTime? showtimeEnd;
   final List<String> seats;
   final String seatsTypeLabel;
+  final List<BookingFoodDto> foods;
   final String concessionsSummary;
-  final int totalPrice;
-  final TicketOrderStatus status;
-  final String statusLabel;
+  final VndMoney totalPrice;
+  final BookingStatus status;
+
+  DateTime? get effectiveShowtimeEnd {
+    if (showtimeEnd != null) return showtimeEnd;
+    return showtimeAt?.add(const Duration(minutes: 120));
+  }
+
+  bool get hasShowtimeEnded {
+    final end = effectiveShowtimeEnd;
+    return end != null && !DateTime.now().isBefore(end);
+  }
+
+  bool get isUpcoming => switch (status) {
+    BookingStatus.holding || BookingStatus.pendingPayment => true,
+    BookingStatus.paid => !hasShowtimeEnded,
+    _ => false,
+  };
+
+  String get statusLabel => switch (status) {
+    BookingStatus.holding => 'Đang giữ ghế',
+    BookingStatus.pendingPayment => 'Chờ thanh toán',
+    BookingStatus.paid => 'Đã thanh toán',
+    BookingStatus.used => 'Đã xem',
+    BookingStatus.cancelled => 'Đã hủy',
+    BookingStatus.expired => 'Đã hết hạn',
+    BookingStatus.refunded => 'Đã hoàn tiền',
+    BookingStatus.unknown => 'Không xác định',
+  };
+
+  String get dateTime {
+    final value = showtimeAt;
+    if (value == null) return 'Chưa có thời gian';
+    return formatVietnamDateTime(value);
+  }
 }
 
-enum TicketOrderStatus { upcoming, completed }
+TicketOrder mapBookingToOrder(
+  BookingDto booking, {
+  required String moviePoster,
+  required String ageRating,
+}) {
+  final seatTypes = booking.seats
+      .map((seat) => seat.seatType.wireValue)
+      .toSet();
+  final ticketSummary = [
+    for (final type in const [
+      TicketType.adult,
+      TicketType.student,
+      TicketType.child,
+    ])
+      if (booking.tickets
+          .where((ticket) => ticket.ticketType == type)
+          .isNotEmpty)
+        '${booking.tickets.where((ticket) => ticket.ticketType == type).length} ${_ticketLabel(type)}',
+  ].join(', ');
+  final foods = booking.foods
+      .map((food) => '${food.productName} × ${food.quantity}')
+      .join(', ');
+  final room = booking.roomNameSnapshot ?? booking.roomName ?? 'Phòng chiếu';
+  final cinema =
+      booking.cinemaNameSnapshot ?? booking.cinemaName ?? 'CineAI Central';
+  return TicketOrder(
+    id: booking.id,
+    ticketCode: booking.bookingCode,
+    movieId: booking.movieId,
+    movieTitle: booking.movieTitleSnapshot ?? booking.movieTitle ?? 'Phim',
+    moviePoster:
+        booking.moviePosterSnapshot ?? booking.posterUrl ?? moviePoster,
+    ageRating: ageRating,
+    format: '',
+    cinemaLocation: '$cinema • $room',
+    roomName: room,
+    showtimeAt: booking.showtimeStartSnapshot ?? booking.showtimeStart,
+    showtimeEnd: booking.showtimeEnd,
+    seats: booking.seats.map((seat) => seat.seatLabel).toList(growable: false),
+    seatsTypeLabel: ticketSummary.isNotEmpty
+        ? ticketSummary
+        : '${booking.seats.length} vé${seatTypes.isEmpty ? '' : ' (${seatTypes.join(', ')})'}',
+    foods: booking.foods,
+    concessionsSummary: foods.isEmpty ? 'Không kèm F&B' : foods,
+    totalPrice: booking.totalAmount,
+    status: booking.status,
+  );
+}
+
+String _ticketLabel(TicketType type) => switch (type) {
+  TicketType.child => 'trẻ em',
+  TicketType.student => 'sinh viên',
+  _ => 'người lớn',
+};

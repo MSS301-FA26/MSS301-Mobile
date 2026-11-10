@@ -16,7 +16,7 @@ class ComingSoonCard extends StatelessWidget {
   final Movie movie;
   final bool reminded;
   final VoidCallback onOpen;
-  final VoidCallback onReminder;
+  final VoidCallback? onReminder;
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +73,7 @@ class ComingSoonCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                movie.releaseDate ?? '',
+                                _releaseDate(movie.releaseDate),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -120,7 +120,11 @@ class ComingSoonCard extends StatelessWidget {
                             size: 15,
                           ),
                           label: Text(
-                            reminded ? 'Đã bật nhắc' : 'Nhắc tôi mở bán',
+                            reminded
+                                ? 'Đã bật nhắc'
+                                : onReminder == null
+                                ? 'Nhắc mở bán • Sắp có'
+                                : 'Nhắc tôi mở bán',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -157,4 +161,11 @@ class ComingSoonCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _releaseDate(DateTime? value) {
+  if (value == null) return 'Sắp chiếu';
+  final day = value.day.toString().padLeft(2, '0');
+  final month = value.month.toString().padLeft(2, '0');
+  return 'Khởi chiếu $day/$month';
 }

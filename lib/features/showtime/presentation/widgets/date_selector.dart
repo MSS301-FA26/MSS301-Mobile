@@ -3,8 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class DateOption {
-  const DateOption({required this.label, required this.sub});
+  const DateOption({
+    required this.date,
+    required this.label,
+    required this.sub,
+  });
 
+  final DateTime date;
   final String label;
   final String sub;
 }
@@ -18,7 +23,7 @@ class DateSelector extends StatelessWidget {
   });
 
   final List<DateOption> dates;
-  final int selectedIndex;
+  final int? selectedIndex;
   final ValueChanged<int> onSelected;
 
   @override
@@ -68,8 +73,8 @@ class _DatePill extends StatelessWidget {
       onTap: onTap,
       borderRadius: AppRadii.card,
       child: Container(
-        width: 66,
-        height: 60,
+        constraints: const BoxConstraints(minWidth: 76, minHeight: 64),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? AppColors.surfaceRaised : AppColors.surface,
@@ -86,18 +91,16 @@ class _DatePill extends StatelessWidget {
               option.label.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: selected ? AppColors.gold : AppColors.textDisabled,
-                fontSize: 9,
+              style: AppTextStyles.meta.copyWith(
+                color: selected ? AppColors.gold : AppColors.textSecondary,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 3),
             Text(
               option.sub,
-              style: TextStyle(
+              style: AppTextStyles.label.copyWith(
                 color: selected ? AppColors.text : AppColors.textSecondary,
-                fontSize: 13,
                 fontWeight: FontWeight.w900,
               ),
             ),

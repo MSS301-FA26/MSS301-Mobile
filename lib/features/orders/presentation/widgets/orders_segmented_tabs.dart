@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
-enum OrdersTab { upcoming, completed }
+enum OrdersTab { tickets, foodOrders }
 
 class OrdersSegmentedTabs extends StatelessWidget {
   const OrdersSegmentedTabs({
     super.key,
     required this.selected,
-    required this.upcomingCount,
-    required this.completedCount,
+    required this.ticketsCount,
+    required this.foodOrdersCount,
     required this.onSelected,
   });
 
   final OrdersTab selected;
-  final int upcomingCount;
-  final int completedCount;
+  final int? ticketsCount;
+  final int? foodOrdersCount;
   final ValueChanged<OrdersTab> onSelected;
 
   @override
@@ -23,23 +23,25 @@ class OrdersSegmentedTabs extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceRaised,
         borderRadius: AppRadii.card,
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           _TabButton(
-            label: 'Sắp chiếu',
-            count: upcomingCount,
-            selected: selected == OrdersTab.upcoming,
-            onTap: () => onSelected(OrdersTab.upcoming),
+            key: const ValueKey('orders-tab-tickets'),
+            label: 'Lịch sử vé',
+            count: ticketsCount,
+            selected: selected == OrdersTab.tickets,
+            onTap: () => onSelected(OrdersTab.tickets),
           ),
           _TabButton(
-            label: 'Lịch sử đã xem',
-            count: completedCount,
-            selected: selected == OrdersTab.completed,
-            onTap: () => onSelected(OrdersTab.completed),
+            key: const ValueKey('orders-tab-food'),
+            label: 'Đơn bắp nước',
+            count: foodOrdersCount,
+            selected: selected == OrdersTab.foodOrders,
+            onTap: () => onSelected(OrdersTab.foodOrders),
           ),
         ],
       ),
@@ -49,6 +51,7 @@ class OrdersSegmentedTabs extends StatelessWidget {
 
 class _TabButton extends StatelessWidget {
   const _TabButton({
+    super.key,
     required this.label,
     required this.count,
     required this.selected,
@@ -56,7 +59,7 @@ class _TabButton extends StatelessWidget {
   });
 
   final String label;
-  final int count;
+  final int? count;
   final bool selected;
   final VoidCallback onTap;
 
@@ -68,7 +71,7 @@ class _TabButton extends StatelessWidget {
         borderRadius: AppRadii.control,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          height: 38,
+          height: 48,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? AppColors.gold : Colors.transparent,
@@ -90,23 +93,27 @@ class _TabButton extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? Colors.black.withValues(alpha: 0.18)
-                      : AppColors.surfaceRaised,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    color: selected ? Colors.black : AppColors.textMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
+              if (count != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Colors.black.withValues(alpha: 0.18)
+                        : AppColors.surfaceRaised,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      color: selected ? Colors.black : AppColors.textMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
